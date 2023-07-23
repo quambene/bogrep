@@ -1,0 +1,10 @@
+# Rust
+/target
+
+# Keys
+**/*.jks
+**/*.p8
+**/*.pem
+
+# VS Code
+.vscode
