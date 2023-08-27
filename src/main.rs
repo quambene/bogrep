@@ -1,0 +1,39 @@
+use anyhow::anyhow;
+use bogrep::{cmd, Args, Config, Subcommands};
+use clap::Parser;
+use env_logger::{Builder, Env};
+
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
+    // Default to INFO level logs if RUST_LOG is not set.
+    Builder::from_env(Env::default().default_filter_or("info")).init();
+
+    let args = Args::parse();
+    let config = Config::init(&args)?;
+
+    if let Some(subcommands) = args.subcommands {
+        match subcommands {
+            Subcommands::Config(args) => cmd::configure(config, args)?,
+            Subcommands::Import => cmd::import(&config)?,
+            Subcommands::Init(args) => cmd::init(&config, &args).await?,
+            Subcommands::Update(args) => cmd::update(&config, &args).await?,
+            Subcommands::Ignore(args) => cmd::ignore(&config, args)?,
+            Subcommands::Fetch(args) => {
+                if args.diff {
+                    cmd::fetch_diff(&config, args).await?;
+                } else {
+                    cmd::fetch(&config, &args).await?;
+                }
+            }
+            Subcommands::Clean(args) => cmd::clean(&config, &args).await?,
+        }
+    } else {
+        if let Some(pattern) = args.pattern {
+            cmd::search(pattern, &config, &args.mode)?;
+        } else {
+            return Err(anyhow!("Missing search pattern: `bogrep <pattern>`"));
+        }
+    }
+
+    Ok(())
+}

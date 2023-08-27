@@ -1,0 +1,231 @@
+{
+    "guid": "root________",
+    "title": "",
+    "index": 0,
+    "dateAdded": 1495755056610000,
+    "lastModified": 1527773057850000,
+    "id": 1,
+    "typeCode": 2,
+    "type": "text/x-moz-place-container",
+    "root": "placesRoot",
+    "children": [
+        {
+            "guid": "menu________",
+            "title": "Bookmarks Menu",
+            "index": 0,
+            "dateAdded": 1495755056610000,
+            "lastModified": 1527773057850000,
+            "id": 2,
+            "typeCode": 2,
+            "type": "text/x-moz-place-container",
+            "root": "bookmarksMenuFolder",
+            "children": [
+                {
+                    "guid": "XCUnUev44ZCL",
+                    "title": "Recent Tags",
+                    "index": 0,
+                    "dateAdded": 1495755057913000,
+                    "lastModified": 1495755058372000,
+                    "id": 19,
+                    "typeCode": 1,
+                    "annos": [
+                        {
+                            "name": "Places/SmartBookmark",
+                            "value": "RecentTags",
+                            "expires": 4,
+                            "flags": 0
+                        }
+                    ],
+                    "type": "text/x-moz-place",
+                    "uri": "place:type=6&sort=14&maxResults=10"
+                },
+                {
+                    "guid": "ONPxc6C-Kn59",
+                    "title": "",
+                    "index": 1,
+                    "dateAdded": 1495755058417000,
+                    "lastModified": 1495755058417000,
+                    "id": 20,
+                    "typeCode": 3,
+                    "type": "text/x-moz-place-separator"
+                },
+                {
+                    "guid": "UaSgsGOhJccD",
+                    "title": "science",
+                    "index": 2,
+                    "dateAdded": 1495803708666000,
+                    "lastModified": 1496512591249000,
+                    "id": 27,
+                    "typeCode": 2,
+                    "type": "text/x-moz-place-container",
+                    "children": [
+                        {
+                            "guid": "RmwFowupfr4u",
+                            "title": "How Mathematical Curves Enable Advanced Communication",
+                            "index": 0,
+                            "dateAdded": 1496433726090000,
+                            "lastModified": 1496433726090000,
+                            "id": 28,
+                            "typeCode": 1,
+                            "iconuri": "https://www.quantamagazine.org/favicon.png",
+                            "type": "text/x-moz-place",
+                            "uri": "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
+                        }
+                    ]
+                },
+                {
+                    "guid": "52KhAsU7ayvx",
+                    "title": "dev",
+                    "index": 3,
+                    "dateAdded": 1495803708666000,
+                    "lastModified": 1496512591249000,
+                    "id": 29,
+                    "typeCode": 2,
+                    "type": "text/x-moz-place-container",
+                    "children": [
+                        {
+                            "guid": "QNyA95TKLiay",
+                            "title": "rust",
+                            "index": 0,
+                            "dateAdded": 1495803708666000,
+                            "lastModified": 1496512591249000,
+                            "id": 30,
+                            "typeCode": 2,
+                            "type": "text/x-moz-place-container",
+                            "children": [
+                                {
+                                    "guid": "SoRqpiXJZpu3",
+                                    "title": "The Rust Programming Language - The Rust Programming Language",
+                                    "index": 0,
+                                    "dateAdded": 1496433726090000,
+                                    "lastModified": 1496433726090000,
+                                    "id": 31,
+                                    "typeCode": 1,
+                                    "iconuri": "https://doc.rust-lang.org/book/favicon.svg",
+                                    "type": "text/x-moz-place",
+                                    "uri": "https://doc.rust-lang.org/book/title-page.html"
+                                }
+                            ]
+                        },
+                        {
+                            "guid": "T80FMHHHk2XR",
+                            "title": "Design Patterns - Wikipedia",
+                            "index": 1,
+                            "dateAdded": 1496433726090000,
+                            "lastModified": 1496433726090000,
+                            "id": 32,
+                            "typeCode": 1,
+                            "iconuri": "https://en.wikipedia.org/static/favicon/wikipedia.ico",
+                            "type": "text/x-moz-place",
+                            "uri": "https://en.wikipedia.org/wiki/Design_Patterns"
+                        }
+                    ]
+                },
+                {
+                    "guid": "uNpZJS7mDBLA",
+                    "title": "Recently Bookmarked",
+                    "index": 4,
+                    "dateAdded": 1454630229000000,
+                    "lastModified": 1473003846000000,
+                    "id": 101,
+                    "typeCode": 1,
+                    "type": "text/x-moz-place",
+                    "uri": "place:folder=BOOKMARKS_MENU&folder=UNFILED_BOOKMARKS&folder=TOOLBAR&queryType=1&sort=12&maxResults=10&excludeQueries=1"
+                },
+                {
+                    "guid": "oY0fHzN6PGRd",
+                    "title": "Recent Tags",
+                    "index": 5,
+                    "dateAdded": 1473003847000000,
+                    "lastModified": 1473003847000000,
+                    "id": 102,
+                    "typeCode": 1,
+                    "type": "text/x-moz-place",
+                    "uri": "place:type=6&sort=14&maxResults=10"
+                }
+            ]
+        },
+        {
+            "guid": "toolbar_____",
+            "title": "Bookmarks Toolbar",
+            "index": 1,
+            "dateAdded": 1495755056610000,
+            "lastModified": 1495755057786000,
+            "id": 3,
+            "typeCode": 2,
+            "annos": [
+                {
+                    "name": "bookmarkProperties/description",
+                    "value": "Add bookmarks to this folder to see them displayed on the Bookmarks Toolbar",
+                    "expires": 4,
+                    "flags": 0
+                }
+            ],
+            "type": "text/x-moz-place-container",
+            "root": "toolbarFolder",
+            "children": [
+                {
+                    "guid": "SyhYbAvh4dds",
+                    "title": "Most Visited",
+                    "index": 0,
+                    "dateAdded": 1495755057786000,
+                    "lastModified": 1495755057907000,
+                    "id": 18,
+                    "typeCode": 1,
+                    "annos": [
+                        {
+                            "name": "Places/SmartBookmark",
+                            "value": "MostVisited",
+                            "expires": 4,
+                            "flags": 0
+                        }
+                    ],
+                    "type": "text/x-moz-place",
+                    "uri": "place:sort=8&maxResults=10"
+                },
+                {
+                    "guid": "NIrnLE0oykpx",
+                    "title": "Getting Started",
+                    "index": 1,
+                    "dateAdded": 1495755057697000,
+                    "lastModified": 1495755057698000,
+                    "id": 7,
+                    "typeCode": 1,
+                    "iconuri": "http://www.mozilla.org/2005/made-up-favicon/0-1495755057697",
+                    "type": "text/x-moz-place",
+                    "uri": "https://www.mozilla.org/en-US/firefox/central/"
+                }
+            ]
+        },
+        {
+            "guid": "unfiled_____",
+            "title": "Other Bookmarks",
+            "index": 2,
+            "dateAdded": 1495755056610000,
+            "lastModified": 1496433177504000,
+            "id": 5,
+            "typeCode": 2,
+            "type": "text/x-moz-place-container",
+            "root": "unfiledBookmarksFolder"
+        },
+        {
+            "guid": "mobile______",
+            "title": "Mobile Bookmarks",
+            "index": 3,
+            "dateAdded": 1495755056614000,
+            "lastModified": 1495755056614000,
+            "id": 6,
+            "typeCode": 2,
+            "annos": [
+                {
+                    "name": "mobile/bookmarksRoot",
+                    "value": "1",
+                    "expires": 4,
+                    "flags": 0
+                }
+            ],
+            "type": "text/x-moz-place-container",
+            "root": "mobileFolder"
+        }
+    ]
+}

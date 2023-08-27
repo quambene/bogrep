@@ -1,0 +1,26 @@
+[package]
+name = "bogrep"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.72"
+log = "0.4.19"
+env_logger = "0.10.0"
+clap = { version = "4.3.19", features = ["derive"] }
+reqwest = { version = "0.11.18", features = ["trust-dns"] }
+uuid = { version = "1.4.1", features = ["v4"] }
+serde = { version = "1.0.175", features = ["derive"] }
+serde_json = "1.0.103"
+html5ever = "0.24.1"
+regex = "1.9.1"
+colored = "2.0.4"
+lz4 = "1.24.0"
+similar = "2.2.1"
+chrono = "0.4.26"
+tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "time", "test-util"] }
+futures = "0.3.28"
+html2md = "0.2.14"
+readability = "0.2.0"

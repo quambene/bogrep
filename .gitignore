@@ -8,3 +8,15 @@
 
 # VS Code
 .vscode
+
+# Test data
+**/*.jsonlz4
+**/*.html
+
+# Performance
+perf.data
+perf.data.old
+flamegraph.svg
+
+# Images
+assets
