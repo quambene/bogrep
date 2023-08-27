@@ -7,7 +7,7 @@ use log::info;
 /// new bookmarks; delete cache for removed bookmarks.
 pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
     let cache = Cache::new(&config.cache_path, &args.mode)?;
-    let client = Client::new()?;
+    let client = Client::new(config)?;
 
     let mut source_bookmarks = SourceBookmarks::new();
     source_bookmarks.read(config)?;
