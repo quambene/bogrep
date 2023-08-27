@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn test_parse_all() {
-        let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
+        let source_path = Path::new("test_data/bookmarks_firefox.json");
         assert!(source_path.exists());
 
         let bookmark_reader = FirefoxBookmarkReader;
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_parse_folder() {
-        let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
+        let source_path = Path::new("test_data/bookmarks_firefox.json");
         assert!(source_path.exists());
 
         let bookmark_reader = FirefoxBookmarkReader;

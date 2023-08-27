@@ -1,0 +1,34 @@
+name: Rust CI
+on:
+    push:
+      branches: [main]
+    pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+        - name: cargo check
+          run: cargo check
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+        - name: cargo clippy
+          run: cargo clippy
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+        - name: cargo fmt
+          run: cargo fmt
+  test:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+        - name: cargo test
+          run: cargo test
