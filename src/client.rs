@@ -1,4 +1,4 @@
-use crate::bookmarks::TargetBookmark;
+use crate::{bookmarks::TargetBookmark, Config};
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use log::debug;
@@ -9,23 +9,19 @@ use std::{
 };
 use tokio::time::{self, Duration};
 
-/// The request timeout in milliseconds.
-const REQUEST_TIMEOUT: u64 = 60_000;
-
-/// The throttling between requests in milliseconds.
-const THROTTLING: u64 = 1_000;
-
 pub struct Client {
     client: ReqwestClient,
     throttler: Option<Throttler>,
 }
 
 impl Client {
-    pub fn new() -> Result<Self, anyhow::Error> {
+    pub fn new(config: &Config) -> Result<Self, anyhow::Error> {
+        let request_timeout = config.settings.request_timeout;
+        let request_throttling = config.settings.request_throttling;
         let client = ReqwestClient::builder()
-            .timeout(Duration::from_millis(REQUEST_TIMEOUT))
+            .timeout(Duration::from_millis(request_timeout))
             .build()?;
-        let throttler = Some(Throttler::new());
+        let throttler = Some(Throttler::new(request_throttling));
         Ok(Self { client, throttler })
     }
 
@@ -46,12 +42,14 @@ impl Client {
 #[derive(Debug)]
 struct Throttler {
     last_fetched: Mutex<HashMap<String, DateTime<Utc>>>,
+    request_throttling: u64,
 }
 
 impl Throttler {
-    pub fn new() -> Self {
+    pub fn new(request_throttling: u64) -> Self {
         Self {
             last_fetched: Mutex::new(HashMap::new()),
+            request_throttling,
         }
     }
 
@@ -63,15 +61,18 @@ impl Throttler {
         if let Some(last_fetched) = self.last_fetched(bookmark, now)? {
             let duration_since_last_fetched = now - last_fetched;
 
-            if duration_since_last_fetched < chrono::Duration::milliseconds(THROTTLING as i64 / 2) {
-                debug!("Wait for bookmark {}", bookmark.url);
-                time::sleep(Duration::from_millis(THROTTLING)).await;
-            } else if chrono::Duration::milliseconds(THROTTLING as i64 / 2)
-                < duration_since_last_fetched
-                && duration_since_last_fetched < chrono::Duration::milliseconds(THROTTLING as i64)
+            if duration_since_last_fetched
+                < chrono::Duration::milliseconds(self.request_throttling as i64 / 2)
             {
                 debug!("Wait for bookmark {}", bookmark.url);
-                time::sleep(Duration::from_millis(THROTTLING / 2)).await;
+                time::sleep(Duration::from_millis(self.request_throttling)).await;
+            } else if chrono::Duration::milliseconds(self.request_throttling as i64 / 2)
+                < duration_since_last_fetched
+                && duration_since_last_fetched
+                    < chrono::Duration::milliseconds(self.request_throttling as i64)
+            {
+                debug!("Wait for bookmark {}", bookmark.url);
+                time::sleep(Duration::from_millis(self.request_throttling / 2)).await;
             }
         }
 
@@ -112,7 +113,8 @@ mod tests {
     async fn test_throttle() {
         tokio::time::pause();
         let now = Utc::now();
-        let throttler = Throttler::new();
+        let request_throttling = 1000;
+        let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Applicative_functor",
             now,
@@ -132,14 +134,15 @@ mod tests {
         throttler.throttle(&bookmark2).await.unwrap();
         assert_eq!(
             Instant::now().duration_since(start_instant).as_millis(),
-            (THROTTLING + 1) as u128
+            (request_throttling + 1) as u128
         );
     }
 
     #[test]
     fn test_last_fetched() {
         let now = Utc::now();
-        let throttler = Throttler::new();
+        let request_throttling = 1000;
+        let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Applicative_functor",
             now,

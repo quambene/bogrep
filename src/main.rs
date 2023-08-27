@@ -6,7 +6,7 @@ use env_logger::{Builder, Env};
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     // Default to INFO level logs if RUST_LOG is not set.
-    Builder::from_env(Env::default().default_filter_or("info")).init();
+    Builder::from_env(Env::default().default_filter_or("bogrep=info")).init();
 
     let args = Args::parse();
     let config = Config::init(&args)?;

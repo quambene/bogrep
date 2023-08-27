@@ -10,7 +10,7 @@ use std::path::Path;
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     let mut bookmarks = TargetBookmarks::read(config)?;
     let cache = Cache::init(config, &args.mode).await?;
-    let client = Client::new()?;
+    let client = Client::new(config)?;
 
     if args.all {
         fetch_and_replace_all(config, &client, &cache, &mut bookmarks).await?;
@@ -151,7 +151,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
     debug!("Diff content for urls: {:#?}", args.urls);
     let target_bookmarks = TargetBookmarks::read(config)?;
     let cache = Cache::new(&config.cache_path, &args.mode)?;
-    let client = Client::new()?;
+    let client = Client::new(config)?;
 
     for url in args.urls {
         let bookmark = target_bookmarks.find(&url);

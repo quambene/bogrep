@@ -1,5 +1,5 @@
 use crate::{Config, ConfigArgs, SourceFile};
-use log::info;
+use log::{debug, info};
 use std::path::PathBuf;
 
 /// Configure the source files to import the bookmarks.
@@ -11,6 +11,7 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
     let settings_path = config.settings_path;
 
     if let Some(source) = args.set_source.source {
+        debug!("Set source");
         let source = PathBuf::from(source);
         let source_file = SourceFile::new(source, args.set_source.folders);
         config.settings.source_bookmark_files.push(source_file);
@@ -18,6 +19,7 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
     }
 
     if let Some(set_cache_mode) = args.set_cache_mode {
+        debug!("Set cache mode");
         config.settings.cache_mode = set_cache_mode;
         config.settings.write(&settings_path)?;
     }

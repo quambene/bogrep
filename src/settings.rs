@@ -7,8 +7,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// The maximal number of concurrent requests.
+/// The default `Settungs::max_concurrent_requests`.
 const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 100;
+
+/// The default for `Settings::request_timeout`.
+const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
+
+/// The default for `Settings::request_throttling`.
+const REQUEST_THROTTLING_DEFAULT: u64 = 1_000;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
@@ -21,6 +27,10 @@ pub struct Settings {
     pub cache_mode: CacheMode,
     /// The maximal number of concurrent requests.
     pub max_concurrent_requests: usize,
+    /// The request timeout in milliseconds.
+    pub request_timeout: u64,
+    /// The throttling between requests in milliseconds.
+    pub request_throttling: u64,
 }
 
 impl Default for Settings {
@@ -29,6 +39,8 @@ impl Default for Settings {
             source_bookmark_files: Vec::new(),
             cache_mode: CacheMode::default(),
             max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
+            request_timeout: REQUEST_TIMEOUT_DEFAULT,
+            request_throttling: REQUEST_THROTTLING_DEFAULT,
         }
     }
 }
@@ -38,11 +50,15 @@ impl Settings {
         source_bookmark_files: Vec<SourceFile>,
         cache_mode: CacheMode,
         max_concurrent_requests: usize,
+        request_timeout: u64,
+        request_throttling: u64,
     ) -> Self {
         Self {
             source_bookmark_files,
             cache_mode,
             max_concurrent_requests,
+            request_timeout,
+            request_throttling,
         }
     }
 
