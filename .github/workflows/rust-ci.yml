@@ -23,6 +23,8 @@ jobs:
     steps:
         - uses: actions/checkout@v3
         - uses: dtolnay/rust-toolchain@stable
+        - name: cargo +nightly fmt
+          run: cargo +nightly fmt
         - name: cargo fmt
           run: cargo fmt
   test:
