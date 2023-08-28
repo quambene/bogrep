@@ -73,6 +73,10 @@ impl Config {
             settings,
         );
 
+        if verbosity >= 1 {
+            info!("Config: {:#?}", config);
+        }
+
         Ok(config)
     }
 }
