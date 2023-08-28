@@ -8,13 +8,13 @@ use std::{
 };
 
 /// The default `Settungs::max_concurrent_requests`.
-const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 100;
+const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 1000;
 
 /// The default for `Settings::request_timeout`.
-const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
+const REQUEST_TIMEOUT_DEFAULT: u64 = 120_000;
 
 /// The default for `Settings::request_throttling`.
-const REQUEST_THROTTLING_DEFAULT: u64 = 1_000;
+const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
