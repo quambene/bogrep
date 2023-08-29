@@ -24,8 +24,8 @@ jobs:
     steps:
         - uses: actions/checkout@v3
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo fmt
-          run: cargo fmt
+        - name: cargo fmt --check
+          run: cargo fmt --check
   fmt-nightly:
     runs-on: ubuntu-latest
     steps:
@@ -33,8 +33,8 @@ jobs:
         - uses: dtolnay/rust-toolchain@nightly
           with:
             components: rustfmt
-        - name: cargo +nightly fmt
-          run: cargo +nightly fmt
+        - name: cargo +nightly fmt --check
+          run: cargo +nightly fmt --check
   test:
     runs-on: ubuntu-latest
     steps:
