@@ -1,5 +1,5 @@
 coverage:
-  range: 50..100 # set a high standard for ourselves
+  range: 50..100
 ignore:
   - "tests"
   - "benches"
