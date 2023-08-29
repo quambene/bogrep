@@ -17,6 +17,3 @@
 perf.data
 perf.data.old
 flamegraph.svg
-
-# Code coverage
-cobertura.xml
