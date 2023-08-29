@@ -40,7 +40,7 @@ async fn fetch_and_replace_all(
         .collect::<Vec<_>>();
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| task::spawn(fetch_and_replace(client.clone(), cache.clone(), bookmark)))
-        .buffer_unordered(config.settings.max_concurrent_requests);
+        .buffer_unordered(config.settings.max_parallel_requests);
 
     while let Some(item) = stream.next().await {
         if let Err(err) = item? {
@@ -89,7 +89,7 @@ pub async fn fetch_and_add_all(
         .collect::<Vec<_>>();
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| task::spawn(fetch_and_add(client.clone(), cache.clone(), bookmark)))
-        .buffer_unordered(config.settings.max_concurrent_requests);
+        .buffer_unordered(config.settings.max_parallel_requests);
 
     while let Some(item) = stream.next().await {
         if let Err(err) = item {
@@ -154,7 +154,7 @@ pub async fn fetch_and_add_urls(
         .collect::<Vec<_>>();
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| task::spawn(fetch_and_add(client.clone(), cache.clone(), bookmark)))
-        .buffer_unordered(config.settings.max_concurrent_requests);
+        .buffer_unordered(config.settings.max_parallel_requests);
 
     while let Some(item) = stream.next().await {
         if let Err(err) = item {
