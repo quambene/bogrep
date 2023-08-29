@@ -65,6 +65,14 @@ Configure Chrome as source for bookmarks:
 bogrep config ~/.config/google-chrome/Default/bookmarks
 ```
 
+### Specify bookmark folders
+
+Specify which bookmark folders are imported. Multiple folders are separated by comma:
+
+``` bash
+bogrep config "my/path/to/bookmarks_file.json" --folders dev,science,articles
+```
+
 ## Ignore urls
 
 Ignore specific urls. The content for these urls will not be fetched and cached.
