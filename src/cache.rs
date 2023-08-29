@@ -58,7 +58,7 @@ impl Cache {
                 mode: cache_mode.clone().unwrap_or_default(),
             })
         } else {
-            Err(anyhow!("Missing cache, run `bogrep init` first"))
+            Err(anyhow!("Missing cache directory, run `bogrep fetch` first"))
         }
     }
 
