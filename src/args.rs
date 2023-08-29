@@ -44,8 +44,12 @@ pub struct ConfigArgs {
 #[derive(ClapArgs, Debug)]
 #[group(required = false, multiple = true)]
 pub struct SetSource {
+    /// The path of the bookmark file to be imported.
     #[arg(long)]
     pub source: Option<String>,
+    /// The bookmark folders to be imported.
+    ///
+    /// Multiple folders are separated by a comma.
     #[arg(long)]
     pub folders: Vec<String>,
 }
