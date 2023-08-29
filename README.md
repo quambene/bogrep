@@ -4,6 +4,12 @@ Bogrep downloads and caches your bookmarks in plaintext without images or
 videos. Use the Bogrep CLI to grep through your cached bookmarks in full-text
 search.
 
+``` bash
+bogrep "reed-solomon code"
+```
+
+![Bogrep mockup](/assets/mockup.png)
+
 - [Install Bogrep](#install-bogrep)
 - [Usage](#usage)
 - [Import bookmarks](#import-bookmarks)
