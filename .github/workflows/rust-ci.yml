@@ -3,6 +3,7 @@ on:
     push:
       branches: [main]
     pull_request:
+      branches: [main]
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -41,3 +42,16 @@ jobs:
         - uses: dtolnay/rust-toolchain@stable
         - name: cargo test
           run: cargo test
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+      - name: Generate coverage report
+        run: cargo tarpaulin --all-features --out Xml
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v3
+        with:
+          fail_ci_if_error: true

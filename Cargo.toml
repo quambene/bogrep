@@ -24,3 +24,6 @@ tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "ti
 futures = "0.3.28"
 html2md = "0.2.14"
 readability = "0.2.0"
+
+[dev-dependencies]
+cargo-tarpaulin = "0.26.1"
