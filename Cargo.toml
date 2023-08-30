@@ -8,7 +8,7 @@ homepage = "https://github.com/quambene/bogrep"
 repository = "https://github.com/quambene/bogrep"
 documentation = "https://github.com/quambene/bogrep"
 keywords = ["bookmarks", "full-text-search", "grep", "cli"]
-categories = ["command-line-utilities"]
+categories = ["command-line-utilities", "text-processing"]
 readme = "README.md"
 license = "Apache-2.0"
 
