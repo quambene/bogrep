@@ -43,7 +43,7 @@ cargo install --path .
 
 ``` bash
 # Configure the path to the bookmarks file (e.g. of your browser)
-bogrep config "my/path/to/bookmarks_file.json"
+bogrep config --source "my/path/to/bookmarks_file.json"
 
 # Import bookmarks
 bogrep import
@@ -65,10 +65,10 @@ Configure Firefox as source for bookmarks, where `<my_profile>` is your Firefox 
 
 ``` bash
 # snap package
-bogrep config ~/snap/firefox/common/.mozilla/firefox/<my_profile>/bookmarkbackups
+bogrep config --source ~/snap/firefox/common/.mozilla/firefox/<my_profile>/bookmarkbackups
 
 # apt package
-bogrep config ~/.mozilla/firefox/<my_profile>/bookmarkbackups
+bogrep config --source ~/.mozilla/firefox/<my_profile>/bookmarkbackups
 ```
 
 Directory `bookmarkbackups` contains multiple backups files, and `bogrep` will
@@ -79,7 +79,7 @@ choose the most recent bookmarks file.
 Configure Chrome as source for bookmarks:
 
 ``` bash
-bogrep config ~/.config/google-chrome/Default/bookmarks
+bogrep config --source ~/.config/google-chrome/Default/bookmarks
 ```
 
 ### Specify bookmark folders
@@ -87,7 +87,7 @@ bogrep config ~/.config/google-chrome/Default/bookmarks
 Specify which bookmark folders are imported. Multiple folders are separated by comma:
 
 ``` bash
-bogrep config "my/path/to/bookmarks_file.json" --folders dev,science,articles
+bogrep config --source "my/path/to/bookmarks_file.json" --folders dev,science,articles
 ```
 
 ## Ignore urls
