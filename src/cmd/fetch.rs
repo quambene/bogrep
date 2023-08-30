@@ -6,7 +6,7 @@ use log::{debug, error, trace, warn};
 use similar::{ChangeTag, TextDiff};
 use std::path::Path;
 
-/// Fetch existing bookmarks and replace cached websites.
+/// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     let mut bookmarks = TargetBookmarks::read(config)?;
     let cache = Cache::init(config, &args.mode).await?;
@@ -46,6 +46,7 @@ pub async fn fetch_and_replace_all(
     Ok(())
 }
 
+/// Fetch bookmark and replace cached bookmark.
 async fn fetch_and_replace(
     client: &Client,
     cache: &Cache,
@@ -88,6 +89,7 @@ pub async fn fetch_and_add_all(
     Ok(())
 }
 
+/// Fetch bookmark and add bookmark to cache if it does not exist yet.
 async fn fetch_and_add(
     client: &Client,
     cache: &Cache,

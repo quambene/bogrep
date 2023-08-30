@@ -27,7 +27,7 @@ pub enum Subcommands {
     Ignore(IgnoreArgs),
     /// Import bookmarks from the configured source files.
     Import,
-    /// Fetch existing bookmarks and replace cached websites.
+    /// Fetch and cache bookmarks.
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
     Clean(CleanArgs),
