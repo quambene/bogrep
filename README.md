@@ -14,6 +14,7 @@ bogrep "reed-solomon code"
   - [Install Bogrep from crates.io](#install-bogrep-from-cratesio)
   - [Install Bogrep from github.com](#install-bogrep-from-githubcom)
 - [Usage](#usage)
+- [Getting help](#getting-help)
 - [Import bookmarks](#import-bookmarks)
   - [Firefox](#firefox)
   - [Chrome](#chrome)
@@ -53,6 +54,21 @@ bogrep fetch
 
 # Search your bookmarks in full-text search
 bogrep <pattern>
+```
+
+## Getting help
+
+``` bash
+# Check version
+bogrep --version
+
+# Print help
+bogrep --help
+
+# Print help for subcommands
+bogrep config --help
+bogrep import --help
+bogrep fetch --help
 ```
 
 ## Import bookmarks
