@@ -1,6 +1,6 @@
 [package]
 name = "bogrep"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["quambene <contact.quambene@gmail.com>"]
 description = "Full-text search for bookmarks from multiple browsers"
