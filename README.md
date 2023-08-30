@@ -25,7 +25,7 @@ bogrep "reed-solomon code"
 ### Install Bogrep from [crates.io](https://crates.io/crates/bogrep)
 
 ``` bash
-# Build and install bogrep binary to ~/.cargo/bin
+# Build and install bogrep binary to ~/.cargo/bin; settings and cache are installed to ~/.config/bogrep
 cargo install bogrep
 ```
 
