@@ -2,6 +2,15 @@
 name = "bogrep"
 version = "0.1.0"
 edition = "2021"
+authors = ["quambene <contact.quambene@gmail.com>"]
+description = "Grep your bookmarks – Full-text search for bookmarks from multiple browsers"
+homepage = "https://github.com/quambene/bogrep"
+repository = "https://github.com/quambene/bogrep"
+documentation = "https://github.com/quambene/bogrep"
+keywords = ["bookmarks", "full-text-search", "grep", "cli"]
+categories = ["command-line-utilities", "bookmarks"]
+readme = "README.md"
+license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
