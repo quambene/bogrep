@@ -11,6 +11,8 @@ bogrep "reed-solomon code"
 ![Bogrep mockup](/assets/mockup.png)
 
 - [Install Bogrep](#install-bogrep)
+  - [Install Bogrep from crates.io](#install-bogrep-from-cratesio)
+  - [Install Bogrep from github.com](#install-bogrep-from-githubcom)
 - [Usage](#usage)
 - [Import bookmarks](#import-bookmarks)
   - [Firefox](#firefox)
@@ -19,6 +21,15 @@ bogrep "reed-solomon code"
 - [Diff websites](#diff-websites)
 
 ## Install Bogrep
+
+### Install Bogrep from [crates.io](https://crates.io/crates/bogrep)
+
+``` bash
+# Build and install bogrep binary to ~/.cargo/bin
+cargo install bogrep
+```
+
+### Install Bogrep from [github.com](https://github.com/quambene/bogrep)
 
 ``` bash
 git clone git@github.com:quambene/bogrep.git
