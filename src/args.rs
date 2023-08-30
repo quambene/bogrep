@@ -50,7 +50,7 @@ pub struct SetSource {
     /// The bookmark folders to be imported.
     ///
     /// Multiple folders are separated by a comma.
-    #[arg(long)]
+    #[arg(long, value_delimiter = ',')]
     pub folders: Vec<String>,
 }
 
