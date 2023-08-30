@@ -49,6 +49,8 @@ impl Config {
     pub fn init(args: &Args) -> Result<Config, anyhow::Error> {
         let verbosity = args.verbose;
         let home_dir = env::var("HOME").context("HOME environment variable not set")?;
+        let config_path = format!("{}/{}", home_dir, CONFIG_PATH);
+        let config_path = Path::new(&config_path);
         let settings_path = format!("{}/{}/{}", home_dir, CONFIG_PATH, SETTINGS_FILE);
         let settings_path = Path::new(&settings_path);
         let ignore_path = format!("{}/{}/{}", home_dir, CONFIG_PATH, IGNORE_FILE);
@@ -58,7 +60,7 @@ impl Config {
         let cache_path = format!("{}/{}/cache", &home_dir, CONFIG_PATH);
         let cache_path = Path::new(&cache_path);
 
-        let settings = Settings::init(settings_path)?;
+        let settings = Settings::init(config_path, settings_path)?;
 
         if verbosity >= 1 {
             info!("Read config from {}", settings_path.display());
@@ -72,6 +74,10 @@ impl Config {
             target_bookmark_file,
             settings,
         );
+
+        if verbosity >= 1 {
+            info!("Config: {:#?}", config);
+        }
 
         Ok(config)
     }

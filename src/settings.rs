@@ -2,7 +2,7 @@ use crate::cache::CacheMode;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
 };
@@ -14,7 +14,7 @@ const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 100;
 const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 
 /// The default for `Settings::request_throttling`.
-const REQUEST_THROTTLING_DEFAULT: u64 = 1_000;
+const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
@@ -62,11 +62,12 @@ impl Settings {
         }
     }
 
-    pub fn init(settings_path: &Path) -> Result<Settings, anyhow::Error> {
+    pub fn init(config_path: &Path, settings_path: &Path) -> Result<Settings, anyhow::Error> {
         if settings_path.exists() {
             let settings = Settings::read(settings_path)?;
             Ok(settings)
         } else {
+            fs::create_dir_all(&config_path).context("Can't create config directory: {}")?;
             let settings = Settings::default();
             settings.write(settings_path)?;
             Ok(settings)
