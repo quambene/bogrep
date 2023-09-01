@@ -15,7 +15,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     if args.all {
         fetch_and_replace_all(config, &client, &cache, &mut bookmarks).await?;
     } else {
-        fetch_and_add_all(config, &client, &cache, &mut bookmarks).await?;
+        fetch_and_add_all(config, &client, &cache, &bookmarks).await?;
     }
 
     trace!("Fetched bookmarks: {bookmarks:#?}");
@@ -34,7 +34,7 @@ pub async fn fetch_and_replace_all(
 ) -> Result<(), anyhow::Error> {
     let bookmarks = bookmarks.bookmarks.as_mut_slice();
     let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_replace(&client, &cache, bookmark))
+        .map(|bookmark| fetch_and_replace(client, cache, bookmark))
         .buffer_unordered(config.settings.max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
@@ -52,10 +52,10 @@ async fn fetch_and_replace(
     cache: &Cache,
     bookmark: &mut TargetBookmark,
 ) -> Result<(), anyhow::Error> {
-    match client.fetch(&bookmark).await {
+    match client.fetch(bookmark).await {
         Ok(website) => {
             let website = html::filter_html(&website)?;
-            if let Err(err) = cache.replace(website, &bookmark).await {
+            if let Err(err) = cache.replace(website, bookmark).await {
                 error!("Can't replace website {} in cache: {}", bookmark.url, err);
             } else {
                 bookmark.last_cached = Some(Utc::now().timestamp_millis());
@@ -77,7 +77,7 @@ pub async fn fetch_and_add_all(
 ) -> Result<(), anyhow::Error> {
     let bookmarks = &bookmarks.bookmarks;
     let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_add(&client, &cache, bookmark))
+        .map(|bookmark| fetch_and_add(client, cache, bookmark))
         .buffer_unordered(config.settings.max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
@@ -105,10 +105,10 @@ async fn fetch_and_add(
             cache_file.display()
         );
 
-        match client.fetch(&bookmark).await {
+        match client.fetch(bookmark).await {
             Ok(website) => {
                 let website = html::filter_html(&website)?;
-                if let Err(err) = cache.add(website, &bookmark).await {
+                if let Err(err) = cache.add(website, bookmark).await {
                     error!("Can't add website '{}' to cache: {}", bookmark.url, err);
                 }
             }
@@ -136,7 +136,7 @@ pub async fn fetch_and_add_urls(
 
     let bookmarks = &bookmarks.bookmarks;
     let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_add(&client, &cache, bookmark))
+        .map(|bookmark| fetch_and_add(client, cache, bookmark))
         .buffer_unordered(config.settings.max_concurrent_requests);
 
     while let Some(item) = stream.next().await {

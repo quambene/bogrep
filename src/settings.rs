@@ -67,7 +67,7 @@ impl Settings {
             let settings = Settings::read(settings_path)?;
             Ok(settings)
         } else {
-            fs::create_dir_all(&config_path).context("Can't create config directory: {}")?;
+            fs::create_dir_all(config_path).context("Can't create config directory: {}")?;
             let settings = Settings::default();
             settings.write(settings_path)?;
             Ok(settings)
