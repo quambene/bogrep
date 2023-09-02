@@ -20,7 +20,7 @@ bogrep "reed-solomon code"
   - [Chrome](#chrome)
 - [Ignore URLs](#ignore-urls)
 - [Diff websites](#diff-websites)
-- [Rate limiting](#rate-limiting)
+- [Request throttling](#request-throttling)
 
 ## Install Bogrep
 
@@ -130,7 +130,7 @@ Fetch difference between cached and fetched website for multiple urls, and displ
 bogrep fetch --diff <url1> <url2> ...
 ```
 
-## Rate limiting
+## Request throttling
 
 Fetching of bookmarks from the same host is conservatively throttled, but can
 also be configured in the `settings.json` usually
