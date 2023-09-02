@@ -28,6 +28,7 @@ pub fn search(
     }
 }
 
+#[allow(clippy::comparison_chain)]
 fn search_bookmarks(
     pattern: String,
     bookmarks: &TargetBookmarks,
@@ -80,7 +81,7 @@ fn search_bookmarks(
                 }
             }
 
-            if &matched_lines.len() == &1 {
+            if matched_lines.len() == 1 {
                 println!("Match in bookmark: {}", bookmark.url.blue());
             } else if matched_lines.len() > 1 {
                 println!("Matches in bookmark: {}", bookmark.url.blue());

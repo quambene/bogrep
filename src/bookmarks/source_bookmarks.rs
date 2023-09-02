@@ -10,6 +10,12 @@ pub struct SourceBookmarks {
     pub bookmarks: HashSet<String>,
 }
 
+impl Default for SourceBookmarks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SourceBookmarks {
     pub fn new() -> Self {
         Self {
@@ -43,15 +49,15 @@ impl SourceBookmarks {
 
             if path_str.contains("firefox") {
                 let firefox_reader = FirefoxBookmarkReader;
-                firefox_reader.read_and_parse(&bookmark_file, self)?;
+                firefox_reader.read_and_parse(bookmark_file, self)?;
             } else if path_str.contains("google-chrome") {
                 let chrome_reader = ChromeBookmarkReader;
-                chrome_reader.read_and_parse(&bookmark_file, self)?;
+                chrome_reader.read_and_parse(bookmark_file, self)?;
             } else if bookmark_file.source.extension().map(|path| path.to_str())
                 == Some(Some("txt"))
             {
                 let simple_reader = SimpleBookmarkReader;
-                simple_reader.read_and_parse(&bookmark_file, self)?;
+                simple_reader.read_and_parse(bookmark_file, self)?;
             } else {
                 return Err(anyhow!(
                     "Format not supported for bookmark file '{}'",
