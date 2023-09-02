@@ -95,22 +95,16 @@ impl Cache {
         let cache_path = &self.path;
 
         if cache_path.is_dir() {
-            match std::fs::read_dir(&cache_path) {
+            match std::fs::read_dir(cache_path) {
                 Ok(entries) => {
-                    for entry in entries {
-                        if let Ok(entry) = entry {
-                            if let Some(file_name) = entry.file_name().to_str() {
-                                if let Some(file_name) = file_name.strip_suffix(self.mode.suffix())
-                                {
-                                    if file_name == bookmark.id {
-                                        let bookmark_path = self.get_path(bookmark);
-                                        debug!(
-                                            "Found website in cache: {}",
-                                            bookmark_path.display()
-                                        );
-                                        let file = read_file(&bookmark_path)?;
-                                        return Ok(Some(String::from_utf8(file)?));
-                                    }
+                    for entry in entries.flatten() {
+                        if let Some(file_name) = entry.file_name().to_str() {
+                            if let Some(file_name) = file_name.strip_suffix(self.mode.suffix()) {
+                                if file_name == bookmark.id {
+                                    let bookmark_path = self.get_path(bookmark);
+                                    debug!("Found website in cache: {}", bookmark_path.display());
+                                    let file = read_file(&bookmark_path)?;
+                                    return Ok(Some(String::from_utf8(file)?));
                                 }
                             }
                         }
@@ -200,7 +194,7 @@ impl Cache {
 
 fn convert_to_text(html: &str, bookmark_url: &str) -> Result<String, anyhow::Error> {
     let mut cursor = Cursor::new(html);
-    let bookmark_url = Url::parse(&bookmark_url)?;
+    let bookmark_url = Url::parse(bookmark_url)?;
     let product = extractor::extract(&mut cursor, &bookmark_url)?;
     Ok(product.text)
 }

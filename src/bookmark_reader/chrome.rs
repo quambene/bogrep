@@ -60,18 +60,22 @@ impl ChromeBookmarkReader {
         }
     }
 
-    fn traverse_children(value: &Value, bookmarks: &mut SourceBookmarks, source_file: &SourceFile) {
+    fn traverse_children(
+        value: &Value,
+        bookmarks: &mut SourceBookmarks,
+        _source_file: &SourceFile,
+    ) {
         match value {
             Value::Object(obj) => {
                 Self::select_bookmark(obj, bookmarks);
 
                 for (_, val) in obj {
-                    Self::traverse_children(val, bookmarks, source_file);
+                    Self::traverse_children(val, bookmarks, _source_file);
                 }
             }
             Value::Array(arr) => {
                 for (_index, val) in arr.iter().enumerate() {
-                    Self::traverse_children(val, bookmarks, source_file);
+                    Self::traverse_children(val, bookmarks, _source_file);
                 }
             }
             Value::String(_) => (),

@@ -40,7 +40,7 @@ fn filter_dom(dom: RcDom) -> RcDom {
                 template_contents: _,
                 mathml_annotation_xml_integration_point: _,
             } => {
-                if is_filtered_tag(&name) {
+                if is_filtered_tag(name) {
                     continue;
                 }
 
@@ -66,7 +66,7 @@ fn filter_tree(node: Rc<Node>) -> Rc<Node> {
                 template_contents: _,
                 mathml_annotation_xml_integration_point: _,
             } => {
-                if is_filtered_tag(&name) {
+                if is_filtered_tag(name) {
                     continue;
                 }
 
@@ -82,15 +82,10 @@ fn filter_tree(node: Rc<Node>) -> Rc<Node> {
 }
 
 fn is_filtered_tag(tag_name: &QualName) -> bool {
-    if tag_name.local.contains("svg")
+    tag_name.local.contains("svg")
         || tag_name.local.contains("img")
         || tag_name.local.contains("video")
         || tag_name.local.contains("script")
-    {
-        true
-    } else {
-        false
-    }
 }
 
 #[cfg(test)]

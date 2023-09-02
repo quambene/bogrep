@@ -27,7 +27,7 @@ pub enum Subcommands {
     Ignore(IgnoreArgs),
     /// Import bookmarks from the configured source files.
     Import,
-    /// Fetch existing bookmarks and replace cached websites.
+    /// Fetch and cache bookmarks.
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
     Clean(CleanArgs),
@@ -44,9 +44,13 @@ pub struct ConfigArgs {
 #[derive(ClapArgs, Debug)]
 #[group(required = false, multiple = true)]
 pub struct SetSource {
+    /// The path of the bookmark file to be imported.
     #[arg(long)]
     pub source: Option<String>,
-    #[arg(long)]
+    /// The bookmark folders to be imported.
+    ///
+    /// Multiple folders are separated by a comma.
+    #[arg(long, value_delimiter = ',')]
     pub folders: Vec<String>,
 }
 

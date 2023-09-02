@@ -7,7 +7,7 @@ use similar::{ChangeTag, TextDiff};
 use std::{path::Path, rc::Rc, sync::Arc};
 use tokio::{sync::Mutex, task};
 
-/// Fetch existing bookmarks and replace cached websites.
+/// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     let bookmarks = Rc::new(TargetBookmarks::read(config)?);
     let cache = Arc::new(Cache::init(config, &args.mode).await?);
