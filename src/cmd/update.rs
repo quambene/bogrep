@@ -2,8 +2,8 @@ use super::fetch::fetch_and_add_urls;
 use crate::{args::UpdateArgs, Cache, Client, Config, SourceBookmarks, TargetBookmarks};
 use chrono::Utc;
 use log::info;
-use parking_lot::Mutex;
 use std::{rc::Rc, sync::Arc};
+use tokio::sync::Mutex;
 
 /// Determine diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
@@ -41,7 +41,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         )
         .await?;
 
-        let target_bookmarks = target_bookmarks.lock();
+        let target_bookmarks = target_bookmarks.lock().await;
         target_bookmarks.write(config)?;
 
         Ok(())

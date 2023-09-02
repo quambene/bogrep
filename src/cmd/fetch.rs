@@ -137,10 +137,10 @@ pub async fn fetch_and_add_urls(
     client: Arc<Client>,
     cache: Arc<Cache>,
     urls: &[&str],
-    bookmarks: Rc<parking_lot::Mutex<TargetBookmarks>>,
+    bookmarks: Rc<Mutex<TargetBookmarks>>,
     now: chrono::DateTime<Utc>,
 ) -> Result<(), anyhow::Error> {
-    let mut bookmarks = bookmarks.lock();
+    let mut bookmarks = bookmarks.lock().await;
 
     for url in urls {
         let bookmark = TargetBookmark::new(*url, now, None);
