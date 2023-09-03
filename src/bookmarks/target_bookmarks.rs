@@ -192,7 +192,7 @@ mod tests {
     use std::{collections::HashSet, path::PathBuf};
 
     #[test]
-    fn test_init_source_none() {
+    fn test_init_target_empty() {
         let settings = Settings {
             source_bookmark_files: vec![],
             ..Default::default()
@@ -210,46 +210,64 @@ mod tests {
     }
 
     #[test]
-    fn test_init_source_simple() {
+    fn test_init_target_simple() {
+        let source_path = PathBuf::from("test_data/source/bookmarks_simple.txt");
+        let target_path = PathBuf::from("test_data/target/bookmarks_simple.json");
+
+        // Prepare test
+        utils::remove_file(&target_path).unwrap();
+
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_simple.txt"),
+                source: source_path,
                 folders: vec![],
             }],
             ..Default::default()
         };
         let config = Config {
-            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_simple.json"),
+            target_bookmark_file: target_path,
             settings,
             ..Default::default()
         };
         let res = TargetBookmarks::init(&config);
         assert!(res.is_ok(), "{}", res.unwrap_err());
-
         let target_bookmarks = res.unwrap();
+
+        assert!(target_bookmarks
+            .bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached == None));
         assert_eq!(
-            target_bookmarks.bookmarks.iter()
-            .cloned()
+            target_bookmarks
+            .bookmarks
+            .iter()
+            .map(|bookmark| bookmark.url.clone())
             .collect::<HashSet<_>>(),
             HashSet::from_iter([
-                TargetBookmark { id: target_bookmarks.bookmarks[0].id.clone(), url: String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"), last_imported: target_bookmarks.bookmarks[0].last_imported, last_cached: None },
-                TargetBookmark { id: target_bookmarks.bookmarks[1].id.clone(), url: String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"), last_imported: target_bookmarks.bookmarks[1].last_imported, last_cached: None },
-                TargetBookmark { id: target_bookmarks.bookmarks[2].id.clone(), url: String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"), last_imported: target_bookmarks.bookmarks[2].last_imported, last_cached: None },
+                String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+                String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
+                String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/")
             ])
         );
     }
 
     #[test]
-    fn test_init_source_firefox() {
+    fn test_init_target_firefox() {
+        let source_path = PathBuf::from("test_data/source/bookmarks_firefox.json");
+        let target_path = PathBuf::from("test_data/target/bookmarks_firefox.json");
+
+        // Prepare test
+        utils::remove_file(&target_path).unwrap();
+
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_firefox.json"),
+                source: source_path,
                 folders: vec![],
             }],
             ..Default::default()
         };
         let config = Config {
-            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_firefox.json"),
+            target_bookmark_file: target_path,
             settings,
             ..Default::default()
         };
@@ -278,16 +296,22 @@ mod tests {
     }
 
     #[test]
-    fn test_init_source_chrome() {
+    fn test_init_target_chrome() {
+        let source_path = PathBuf::from("test_data/source/bookmarks_google-chrome.json");
+        let target_path = PathBuf::from("test_data/target/bookmarks_google-chrome.json");
+
+        // Prepare test
+        utils::remove_file(&target_path).unwrap();
+
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_google-chrome.json"),
+                source: source_path,
                 folders: vec![],
             }],
             ..Default::default()
         };
         let config = Config {
-            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_google-chrome.json"),
+            target_bookmark_file: target_path,
             settings,
             ..Default::default()
         };

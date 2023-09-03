@@ -1,6 +1,6 @@
 use anyhow::Context;
 use std::{
-    fs::{File, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::{Read, Write},
     path::Path,
 };
@@ -41,6 +41,7 @@ pub async fn create_file_async(path: &Path) -> Result<tokio::fs::File, anyhow::E
     Ok(file)
 }
 
+/// Helper function to append a file that logs the path of the file in case of an error.
 pub fn append_file(path: &Path) -> Result<File, anyhow::Error> {
     let file = OpenOptions::new()
         .write(true)
@@ -48,4 +49,13 @@ pub fn append_file(path: &Path) -> Result<File, anyhow::Error> {
         .open(path)
         .context(format!("Can't append file at {}", path.display()))?;
     Ok(file)
+}
+
+/// Helper function to remove a file that logs the path of the file in case of an error.
+pub fn remove_file(path: &Path) -> Result<(), anyhow::Error> {
+    if path.exists() {
+        fs::remove_file(path).context(format!("Can't remove file at {}", path.display()))
+    } else {
+        Ok(())
+    }
 }

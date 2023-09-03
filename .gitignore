@@ -12,6 +12,7 @@
 # Test data
 **/*.jsonlz4
 **/*.html
+# test_data/target
 
 # Performance
 perf.data
