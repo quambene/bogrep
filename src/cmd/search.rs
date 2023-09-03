@@ -1,10 +1,9 @@
-use crate::{cache::CacheMode, Cache, Config, TargetBookmarks};
+use crate::{cache::CacheMode, utils, Cache, Config, TargetBookmarks};
 use anyhow::{anyhow, Context};
 use colored::Colorize;
 use log::info;
 use regex::Regex;
 use std::{
-    fs::File,
     io::{self, BufRead},
     path::Path,
 };
@@ -44,7 +43,7 @@ fn search_bookmarks(
         let cache_path = cache.get_path(bookmark);
 
         if cache_path.exists() {
-            let cache_file = File::open(&cache_path).context(format!(
+            let cache_file = utils::open_file(&cache_path).context(format!(
                 "Can't open cached file at {}",
                 cache_path.display()
             ))?;

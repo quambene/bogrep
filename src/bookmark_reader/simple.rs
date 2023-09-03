@@ -1,9 +1,6 @@
-use crate::{BookmarkReader, SourceBookmarks, SourceFile};
+use crate::{utils, BookmarkReader, SourceBookmarks, SourceFile};
 use anyhow::Context;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-};
+use std::io::{BufRead, BufReader};
 
 pub struct SimpleBookmarkReader;
 
@@ -15,7 +12,7 @@ impl BookmarkReader for SimpleBookmarkReader {
         source_file: &SourceFile,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        let bookmark_file = File::open(&source_file.source).context(format!(
+        let bookmark_file = utils::open_file(&source_file.source).context(format!(
             "Can't open source file at {}",
             source_file.source.display()
         ))?;
@@ -38,7 +35,7 @@ mod tests {
 
     #[test]
     fn test_read_txt() {
-        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let source_path = Path::new("test_data/source/bookmarks_simple.txt");
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::new();

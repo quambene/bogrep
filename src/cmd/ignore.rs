@@ -1,10 +1,7 @@
-use crate::{Config, IgnoreArgs};
+use crate::{utils, Config, IgnoreArgs};
 use log::warn;
 use reqwest::Url;
-use std::{
-    fs::{File, OpenOptions},
-    io::Write,
-};
+use std::io::Write;
 
 /// Ignore the given urls and don't fetch and add these urls to the cache.
 ///
@@ -12,13 +9,10 @@ use std::{
 /// the `.bogrepignore` file.
 pub fn ignore(config: &Config, ignore_args: IgnoreArgs) -> Result<(), anyhow::Error> {
     if !config.ignore_path.exists() {
-        File::create(&config.ignore_path)?;
+        utils::create_file(&config.ignore_path)?;
     }
 
-    let mut ignore_file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(&config.ignore_path)?;
+    let mut ignore_file = utils::append_file(&config.ignore_path)?;
 
     for url in ignore_args.urls {
         match Url::parse(&url) {
