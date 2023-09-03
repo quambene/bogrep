@@ -215,7 +215,9 @@ mod tests {
         let target_path = PathBuf::from("test_data/target/bookmarks_simple.json");
 
         // Prepare test
-        utils::remove_file(&target_path).unwrap();
+        if target_path.exists() {
+            utils::remove_file(&target_path).unwrap();
+        }
 
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
@@ -257,7 +259,9 @@ mod tests {
         let target_path = PathBuf::from("test_data/target/bookmarks_firefox.json");
 
         // Prepare test
-        utils::remove_file(&target_path).unwrap();
+        if target_path.exists() {
+            utils::remove_file(&target_path).unwrap();
+        }
 
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
@@ -301,7 +305,9 @@ mod tests {
         let target_path = PathBuf::from("test_data/target/bookmarks_google-chrome.json");
 
         // Prepare test
-        utils::remove_file(&target_path).unwrap();
+        if target_path.exists() {
+            utils::remove_file(&target_path).unwrap();
+        }
 
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
