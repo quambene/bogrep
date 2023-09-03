@@ -16,7 +16,7 @@ const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 /// The default for `Settings::request_throttling`.
 const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Settings {
     /// The paths to the configured bookmark files.
     ///
@@ -67,7 +67,7 @@ impl Settings {
             let settings = Settings::read(settings_path)?;
             Ok(settings)
         } else {
-            fs::create_dir_all(config_path).context("Can't create config directory: {}")?;
+            fs::create_dir_all(config_path).context("Can't create config directory at {}")?;
             let settings = Settings::default();
             settings.write(settings_path)?;
             Ok(settings)
@@ -88,7 +88,7 @@ impl Settings {
     pub fn write(&self, settings_path: &Path) -> Result<(), anyhow::Error> {
         let json = serde_json::to_string_pretty(&self)?;
         let mut settings_file = utils::create_file(settings_path).context(format!(
-            "Can't create settings file: {}",
+            "Can't create settings file at {}",
             settings_path.display()
         ))?;
         settings_file.write_all(json.as_bytes())?;
@@ -96,7 +96,7 @@ impl Settings {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct SourceFile {
     /// The source file for bookmarks.
     pub source: PathBuf,
