@@ -75,7 +75,7 @@ bogrep fetch --help
 
 ## Import bookmarks
 
-The path of bookmarks may depend on your operating system.
+The path of bookmarks may be different for your operating system.
 
 ### Firefox
 
