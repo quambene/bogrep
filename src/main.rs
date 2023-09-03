@@ -9,7 +9,7 @@ async fn main() -> Result<(), anyhow::Error> {
     Builder::from_env(Env::default().default_filter_or("bogrep=info")).init();
 
     let args = Args::parse();
-    let config = Config::init(&args)?;
+    let config = Config::init(args.verbose)?;
 
     if let Some(subcommands) = args.subcommands {
         match subcommands {
