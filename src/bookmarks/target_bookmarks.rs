@@ -1,10 +1,9 @@
-use crate::{config::Config, SourceBookmarks};
+use crate::{config::Config, utils, SourceBookmarks};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use log::{info, trace};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::File,
     io::{Read, Write},
     slice,
 };
@@ -39,42 +38,6 @@ pub struct TargetBookmarks {
 }
 
 impl TargetBookmarks {
-    pub fn read(config: &Config) -> Result<TargetBookmarks, anyhow::Error> {
-        let mut target_bookmarks_file = File::open(&config.target_bookmark_file)?;
-        let mut buffer = String::new();
-        target_bookmarks_file
-            .read_to_string(&mut buffer)
-            .context("Can't read bookmark file")?;
-        let bookmarks = serde_json::from_str(&buffer)?;
-        Ok(bookmarks)
-    }
-
-    pub fn write(&self, config: &Config) -> Result<(), anyhow::Error> {
-        let json_bookmarks = serde_json::to_string_pretty(self)?;
-        let mut target_bookmarks_file = File::create(&config.target_bookmark_file)?;
-        target_bookmarks_file.write_all(json_bookmarks.as_bytes())?;
-        Ok(())
-    }
-
-    pub fn add(&mut self, bookmark: &TargetBookmark) {
-        self.bookmarks.push(bookmark.to_owned());
-    }
-
-    pub fn remove(&mut self, bookmark: &TargetBookmark) {
-        let index = self
-            .bookmarks
-            .iter()
-            .position(|target_bookmark| target_bookmark == bookmark);
-
-        if let Some(index) = index {
-            self.bookmarks.remove(index);
-        }
-    }
-
-    pub fn find(&self, url: &str) -> Option<&TargetBookmark> {
-        self.bookmarks.iter().find(|bookmark| bookmark.url == url)
-    }
-
     pub fn init(config: &Config) -> Result<TargetBookmarks, anyhow::Error> {
         let bookmarks = if config.target_bookmark_file.exists() {
             info!("Bookmarks already imported");
@@ -102,6 +65,42 @@ impl TargetBookmarks {
         };
 
         Ok(bookmarks)
+    }
+
+    pub fn read(config: &Config) -> Result<TargetBookmarks, anyhow::Error> {
+        let mut target_bookmarks_file = utils::open_file(&config.target_bookmark_file)?;
+        let mut buffer = String::new();
+        target_bookmarks_file
+            .read_to_string(&mut buffer)
+            .context("Can't read bookmark file")?;
+        let bookmarks = serde_json::from_str(&buffer)?;
+        Ok(bookmarks)
+    }
+
+    pub fn write(&self, config: &Config) -> Result<(), anyhow::Error> {
+        let json_bookmarks = serde_json::to_string_pretty(self)?;
+        let mut target_bookmarks_file = utils::create_file(&config.target_bookmark_file)?;
+        target_bookmarks_file.write_all(json_bookmarks.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn add(&mut self, bookmark: &TargetBookmark) {
+        self.bookmarks.push(bookmark.to_owned());
+    }
+
+    pub fn remove(&mut self, bookmark: &TargetBookmark) {
+        let index = self
+            .bookmarks
+            .iter()
+            .position(|target_bookmark| target_bookmark == bookmark);
+
+        if let Some(index) = index {
+            self.bookmarks.remove(index);
+        }
+    }
+
+    pub fn find(&self, url: &str) -> Option<&TargetBookmark> {
+        self.bookmarks.iter().find(|bookmark| bookmark.url == url)
     }
 
     pub fn filter_to_add<'a>(&self, source_bookmarks: &'a SourceBookmarks) -> Vec<&'a str> {
@@ -183,5 +182,40 @@ impl From<SourceBookmarks> for TargetBookmarks {
                 .map(|bookmark| TargetBookmark::new(bookmark, now, None))
                 .collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Settings, SourceFile};
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_init_no_target() {
+        let settings = Settings {
+            source_bookmark_files: vec![SourceFile {
+                source: PathBuf::from("test_data/bookmarks_simple.txt"),
+                folders: vec![],
+            }],
+            ..Default::default()
+        };
+        let config = Config {
+            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_simple.json"),
+            settings,
+            ..Default::default()
+        };
+        let res = TargetBookmarks::init(&config);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let target_bookmarks = res.unwrap();
+        assert_eq!(
+            target_bookmarks.bookmarks,
+            vec![
+                TargetBookmark { id: target_bookmarks.bookmarks[0].id.clone(), url: String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"), last_imported: target_bookmarks.bookmarks[0].last_imported, last_cached: None },
+                TargetBookmark { id: target_bookmarks.bookmarks[1].id.clone(), url: String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"), last_imported: target_bookmarks.bookmarks[1].last_imported, last_cached: None },
+                TargetBookmark { id: target_bookmarks.bookmarks[2].id.clone(), url: String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"), last_imported: target_bookmarks.bookmarks[2].last_imported, last_cached: None },
+            ]
+        );
     }
 }
