@@ -153,5 +153,5 @@ host in milliseconds.
 
 Bogrep assumes a configuration path at `~/.config/bogrep` in your home directory
 for storing the `settings.json`, `bookmarks.json`, and `cache` folder. This
-should for for most Linux derivatives. Feel free to open an issue if you need
+should work for most Linux derivatives. Feel free to open an issue if you need
 support for macOS or Windows.
