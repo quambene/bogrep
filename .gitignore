@@ -12,6 +12,9 @@
 # Test data
 **/*.jsonlz4
 **/*.html
+test_data/target/**
+!test_data/target/.gitkeep
+
 
 # Performance
 perf.data

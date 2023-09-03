@@ -1,4 +1,4 @@
-use crate::cache::CacheMode;
+use crate::{cache::CacheMode, utils};
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -87,7 +87,7 @@ impl Settings {
 
     pub fn write(&self, settings_path: &Path) -> Result<(), anyhow::Error> {
         let json = serde_json::to_string_pretty(&self)?;
-        let mut settings_file = File::create(settings_path).context(format!(
+        let mut settings_file = utils::create_file(settings_path).context(format!(
             "Can't create settings file: {}",
             settings_path.display()
         ))?;
