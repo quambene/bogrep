@@ -35,7 +35,7 @@ mod tests {
 
     #[test]
     fn test_read_txt() {
-        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let source_path = Path::new("test_data/source/bookmarks_simple.txt");
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::new();

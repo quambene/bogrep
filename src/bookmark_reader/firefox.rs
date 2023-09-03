@@ -206,11 +206,11 @@ mod tests {
 
     #[test]
     fn test_read() {
-        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
         assert!(decompressed_bookmark_path.exists());
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
 
-        let compressed_bookmark_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
+        let compressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
         compress_bookmarks(&decompressed_bookmarks, compressed_bookmark_path);
         assert!(compressed_bookmark_path.exists());
 
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_parse_all() {
-        let source_path = Path::new("test_data/bookmarks_firefox.json");
+        let source_path = Path::new("test_data/source/bookmarks_firefox.json");
         assert!(source_path.exists());
 
         let bookmark_reader = FirefoxBookmarkReader;
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_parse_folder() {
-        let source_path = Path::new("test_data/bookmarks_firefox.json");
+        let source_path = Path::new("test_data/source/bookmarks_firefox.json");
         assert!(source_path.exists());
 
         let bookmark_reader = FirefoxBookmarkReader;

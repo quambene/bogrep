@@ -195,7 +195,7 @@ mod tests {
     fn test_init_no_target() {
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/bookmarks_simple.txt"),
+                source: PathBuf::from("test_data/source/bookmarks_simple.txt"),
                 folders: vec![],
             }],
             ..Default::default()

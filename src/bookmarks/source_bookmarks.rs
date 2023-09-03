@@ -97,7 +97,7 @@ mod tests {
         let mut source_bookmarks = SourceBookmarks::new();
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/bookmarks_firefox.json"),
+                source: PathBuf::from("test_data/source/bookmarks_firefox.json"),
                 folders: vec![],
             }],
             ..Default::default()
@@ -121,7 +121,7 @@ mod tests {
         let mut source_bookmarks = SourceBookmarks::new();
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/bookmarks_google-chrome.json"),
+                source: PathBuf::from("test_data/source/bookmarks_google-chrome.json"),
                 folders: vec![],
             }],
             ..Default::default()
@@ -145,7 +145,7 @@ mod tests {
         let mut source_bookmarks = SourceBookmarks::new();
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/bookmarks_simple.txt"),
+                source: PathBuf::from("test_data/source/bookmarks_simple.txt"),
                 folders: vec![],
             }],
             ..Default::default()
