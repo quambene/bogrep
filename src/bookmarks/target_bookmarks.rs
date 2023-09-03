@@ -9,7 +9,7 @@ use std::{
 };
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]
 pub struct TargetBookmark {
     pub id: String,
     pub url: String,
@@ -189,10 +189,28 @@ impl From<SourceBookmarks> for TargetBookmarks {
 mod tests {
     use super::*;
     use crate::{Settings, SourceFile};
-    use std::path::PathBuf;
+    use std::{collections::HashSet, path::PathBuf};
 
     #[test]
-    fn test_init_no_target() {
+    fn test_init_source_none() {
+        let settings = Settings {
+            source_bookmark_files: vec![],
+            ..Default::default()
+        };
+        let config = Config {
+            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_empty.json"),
+            settings,
+            ..Default::default()
+        };
+        let res = TargetBookmarks::init(&config);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let target_bookmarks = res.unwrap();
+        assert_eq!(target_bookmarks.bookmarks, vec![]);
+    }
+
+    #[test]
+    fn test_init_source_simple() {
         let settings = Settings {
             source_bookmark_files: vec![SourceFile {
                 source: PathBuf::from("test_data/source/bookmarks_simple.txt"),
@@ -210,12 +228,90 @@ mod tests {
 
         let target_bookmarks = res.unwrap();
         assert_eq!(
-            target_bookmarks.bookmarks,
-            vec![
+            target_bookmarks.bookmarks.iter()
+            .cloned()
+            .collect::<HashSet<_>>(),
+            HashSet::from_iter([
                 TargetBookmark { id: target_bookmarks.bookmarks[0].id.clone(), url: String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"), last_imported: target_bookmarks.bookmarks[0].last_imported, last_cached: None },
                 TargetBookmark { id: target_bookmarks.bookmarks[1].id.clone(), url: String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"), last_imported: target_bookmarks.bookmarks[1].last_imported, last_cached: None },
                 TargetBookmark { id: target_bookmarks.bookmarks[2].id.clone(), url: String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"), last_imported: target_bookmarks.bookmarks[2].last_imported, last_cached: None },
-            ]
+            ])
+        );
+    }
+
+    #[test]
+    fn test_init_source_firefox() {
+        let settings = Settings {
+            source_bookmark_files: vec![SourceFile {
+                source: PathBuf::from("test_data/source/bookmarks_firefox.json"),
+                folders: vec![],
+            }],
+            ..Default::default()
+        };
+        let config = Config {
+            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_firefox.json"),
+            settings,
+            ..Default::default()
+        };
+        let res = TargetBookmarks::init(&config);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let target_bookmarks = res.unwrap();
+
+        assert!(target_bookmarks
+            .bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached == None));
+        assert_eq!(
+            target_bookmarks
+            .bookmarks
+            .iter()
+            .map(|bookmark| bookmark.url.clone())
+            .collect::<HashSet<_>>(),
+            HashSet::from_iter([
+                String::from("https://www.mozilla.org/en-US/firefox/central/"),
+                String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+                String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+                String::from("https://doc.rust-lang.org/book/title-page.html")
+            ])
+        );
+    }
+
+    #[test]
+    fn test_init_source_chrome() {
+        let settings = Settings {
+            source_bookmark_files: vec![SourceFile {
+                source: PathBuf::from("test_data/source/bookmarks_google-chrome.json"),
+                folders: vec![],
+            }],
+            ..Default::default()
+        };
+        let config = Config {
+            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_google-chrome.json"),
+            settings,
+            ..Default::default()
+        };
+        let res = TargetBookmarks::init(&config);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let target_bookmarks = res.unwrap();
+
+        assert!(target_bookmarks
+            .bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached == None));
+        assert_eq!(
+            target_bookmarks
+            .bookmarks
+            .iter()
+            .map(|bookmark| bookmark.url.clone())
+            .collect::<HashSet<_>>(),
+            HashSet::from_iter([
+                String::from("https://www.deepl.com/translator"),
+                String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+                String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+                String::from("https://doc.rust-lang.org/book/title-page.html"),
+            ])
         );
     }
 }
