@@ -21,6 +21,7 @@ bogrep "reed-solomon code"
 - [Ignore URLs](#ignore-urls)
 - [Diff websites](#diff-websites)
 - [Request throttling](#request-throttling)
+- [Supported operating systems](#supported-operating-systems)
 
 ## Install Bogrep
 
@@ -147,3 +148,10 @@ placed at `~/.config/bogrep` in your home directory:
 
 where `request_throttling` is the waiting time between requests for the same
 host in milliseconds.
+
+## Supported operating systems
+
+Bogrep assumes a configuration path at `~/.config/bogrep` in your home directory
+for storing the `settings.json`, `bookmarks.json`, and `cache` folder. This
+should for for most Linux derivatives. Feel free to open an issue if you need
+support for macOS or Windows.
