@@ -187,7 +187,7 @@ impl BookmarkReader for FirefoxBookmarkReader {
 mod tests {
     use super::*;
     use lz4::block;
-    use std::{collections::HashSet, fs::File, io::Write};
+    use std::{collections::HashSet, io::Write};
 
     fn compress_bookmarks(decompressed_bookmarks: &[u8], compressed_bookmark_path: &Path) {
         let compressed_data = block::compress(decompressed_bookmarks, None, true).unwrap();
@@ -199,7 +199,7 @@ mod tests {
         compressed_data_with_header.extend_from_slice(prefix);
         compressed_data_with_header.extend_from_slice(&compressed_data);
 
-        let mut file = File::create(compressed_bookmark_path).unwrap();
+        let mut file = utils::create_file(compressed_bookmark_path).unwrap();
         file.write_all(&compressed_data_with_header).unwrap();
         file.flush().unwrap();
     }

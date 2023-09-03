@@ -1,4 +1,8 @@
-use crate::{bookmarks::TargetBookmark, utils::read_file, Config, TargetBookmarks};
+use crate::{
+    bookmarks::TargetBookmark,
+    utils::{self, read_file},
+    Config, TargetBookmarks,
+};
 use anyhow::anyhow;
 use clap::ValueEnum;
 use log::{debug, warn};
@@ -9,10 +13,7 @@ use std::{
     io::Cursor,
     path::{Path, PathBuf},
 };
-use tokio::{
-    fs::{self, File},
-    io::AsyncWriteExt,
-};
+use tokio::{fs, io::AsyncWriteExt};
 
 #[derive(Debug, ValueEnum, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -136,7 +137,7 @@ impl Cache {
 
         if !cache_file.exists() {
             debug!("Add website to cache: {}", cache_file.display());
-            let mut file = File::create(&cache_file).await?;
+            let mut file = utils::create_file_async(&cache_file).await?;
             file.write_all(website.as_bytes()).await?;
             file.flush().await?;
         }
@@ -159,7 +160,7 @@ impl Cache {
             CacheMode::Text => convert_to_text(&html, &bookmark.url)?,
         };
 
-        let mut file = File::create(&cache_file).await?;
+        let mut file = utils::create_file_async(&cache_file).await?;
         file.write_all(website.as_bytes()).await?;
         file.flush().await?;
         Ok(())

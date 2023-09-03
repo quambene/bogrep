@@ -72,10 +72,9 @@ impl SourceBookmarks {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
     use crate::{Settings, SourceFile};
+    use std::path::PathBuf;
 
     #[test]
     fn test_read_empty() {
