@@ -69,3 +69,98 @@ impl SourceBookmarks {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+    use crate::{Settings, SourceFile};
+
+    #[test]
+    fn test_read_empty() {
+        let mut source_bookmarks = SourceBookmarks::new();
+        let settings = Settings {
+            source_bookmark_files: vec![],
+            ..Default::default()
+        };
+        let config = Config {
+            settings,
+            ..Default::default()
+        };
+        let res = source_bookmarks.read(&config);
+        assert!(res.is_ok());
+        assert_eq!(source_bookmarks.bookmarks, HashSet::new());
+    }
+
+    #[test]
+    fn test_read_firefox() {
+        let mut source_bookmarks = SourceBookmarks::new();
+        let settings = Settings {
+            source_bookmark_files: vec![SourceFile {
+                source: PathBuf::from("test_data/bookmarks_firefox.json"),
+                folders: vec![],
+            }],
+            ..Default::default()
+        };
+        let config = Config {
+            settings,
+            ..Default::default()
+        };
+        let res = source_bookmarks.read(&config);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
+            String::from("https://www.mozilla.org/en-US/firefox/central/"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html")
+        ]));
+    }
+
+    #[test]
+    fn test_read_chrome() {
+        let mut source_bookmarks = SourceBookmarks::new();
+        let settings = Settings {
+            source_bookmark_files: vec![SourceFile {
+                source: PathBuf::from("test_data/bookmarks_google-chrome.json"),
+                folders: vec![],
+            }],
+            ..Default::default()
+        };
+        let config = Config {
+            settings,
+            ..Default::default()
+        };
+        let res = source_bookmarks.read(&config);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]));
+    }
+
+    #[test]
+    fn test_read_simple() {
+        let mut source_bookmarks = SourceBookmarks::new();
+        let settings = Settings {
+            source_bookmark_files: vec![SourceFile {
+                source: PathBuf::from("test_data/bookmarks_simple.txt"),
+                folders: vec![],
+            }],
+            ..Default::default()
+        };
+        let config = Config {
+            settings,
+            ..Default::default()
+        };
+        let res = source_bookmarks.read(&config);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
+            String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"),
+        ]));
+    }
+}

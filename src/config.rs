@@ -82,3 +82,21 @@ impl Config {
         Ok(config)
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    impl Default for Config {
+        fn default() -> Self {
+            Self {
+                verbosity: u8::default(),
+                settings_path: PathBuf::default(),
+                ignore_path: PathBuf::default(),
+                cache_path: PathBuf::default(),
+                target_bookmark_file: PathBuf::default(),
+                settings: Settings::default(),
+            }
+        }
+    }
+}
