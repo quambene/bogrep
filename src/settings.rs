@@ -80,10 +80,10 @@ impl Settings {
     }
 
     pub fn set_source(&mut self, set_source: SetSource) {
-        if let Some(source) = set_source.source {
-            debug!("Set source to {source}");
-            let source = PathBuf::from(source);
-            let source_file = SourceFile::new(source, set_source.folders);
+        if let Some(source_path) = set_source.source {
+            debug!("Set source to {source_path}");
+            let source_path = PathBuf::from(source_path);
+            let source_file = SourceFile::new(source_path, set_source.folders);
             self.source_bookmark_files.push(source_file);
         }
     }

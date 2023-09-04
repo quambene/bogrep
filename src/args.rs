@@ -55,8 +55,9 @@ pub struct SetSource {
 }
 
 #[derive(ClapArgs, Debug)]
+#[group(required = false)]
 pub struct SetCacheMode {
-    #[arg(long, group = "cache_mode")]
+    #[arg(long)]
     pub cache_mode: Option<CacheMode>,
 }
 
