@@ -15,7 +15,7 @@ use std::{
 };
 use tokio::{fs, io::AsyncWriteExt};
 
-#[derive(Debug, ValueEnum, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, ValueEnum, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CacheMode {
     Html,

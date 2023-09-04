@@ -1,5 +1,10 @@
-use crate::{cache::CacheMode, utils};
+use crate::{
+    args::{SetCacheMode, SetSource},
+    cache::CacheMode,
+    utils,
+};
 use anyhow::Context;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
@@ -16,7 +21,7 @@ const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 /// The default for `Settings::request_throttling`.
 const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Settings {
     /// The paths to the configured bookmark files.
     ///
@@ -67,11 +72,32 @@ impl Settings {
             let settings = Settings::read(settings_path)?;
             Ok(settings)
         } else {
-            fs::create_dir_all(config_path).context("Can't create config directory: {}")?;
+            fs::create_dir_all(config_path).context("Can't create config directory at {}")?;
             let settings = Settings::default();
             settings.write(settings_path)?;
             Ok(settings)
         }
+    }
+
+    pub fn set_source(&mut self, set_source: SetSource) {
+        if let Some(source_path) = set_source.source {
+            debug!("Set source to {source_path}");
+            let source_path = PathBuf::from(source_path);
+            let source_file = SourceFile::new(source_path, set_source.folders);
+            self.source_bookmark_files.push(source_file);
+        }
+    }
+
+    pub fn set_cache_mode(&mut self, set_cache_mode: SetCacheMode) {
+        if let Some(cache_mode) = set_cache_mode.cache_mode {
+            debug!("Set cache mode to {:#?}", cache_mode);
+            self.cache_mode = cache_mode;
+        }
+    }
+
+    pub fn configure(&mut self, set_source: SetSource, set_cache_mode: SetCacheMode) {
+        self.set_source(set_source);
+        self.set_cache_mode(set_cache_mode);
     }
 
     fn read(settings_path: &Path) -> Result<Settings, anyhow::Error> {
@@ -88,7 +114,7 @@ impl Settings {
     pub fn write(&self, settings_path: &Path) -> Result<(), anyhow::Error> {
         let json = serde_json::to_string_pretty(&self)?;
         let mut settings_file = utils::create_file(settings_path).context(format!(
-            "Can't create settings file: {}",
+            "Can't create settings file at {}",
             settings_path.display()
         ))?;
         settings_file.write_all(json.as_bytes())?;
@@ -96,7 +122,7 @@ impl Settings {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct SourceFile {
     /// The source file for bookmarks.
     pub source: PathBuf,
@@ -113,5 +139,68 @@ impl SourceFile {
             source: source.into(),
             folders,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_source() {
+        let mut settings = Settings::default();
+        settings.set_source(SetSource {
+            source: Some(String::from("path/to/source")),
+            folders: vec![String::from("dev,science,article")],
+        });
+        assert_eq!(
+            settings,
+            Settings {
+                source_bookmark_files: vec![SourceFile {
+                    source: PathBuf::from("path/to/source"),
+                    folders: vec![String::from("dev,science,article")]
+                }],
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_set_cache_mode() {
+        let mut settings = Settings::default();
+        settings.set_cache_mode(SetCacheMode {
+            cache_mode: Some(CacheMode::Html),
+        });
+        assert_eq!(
+            settings,
+            Settings {
+                cache_mode: CacheMode::Html,
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_configure() {
+        let mut settings = Settings::default();
+        let set_source = SetSource {
+            source: Some(String::from("path/to/source")),
+            folders: vec![String::from("dev,science,article")],
+        };
+        let set_cache_mode = SetCacheMode {
+            cache_mode: Some(CacheMode::Html),
+        };
+        settings.configure(set_source, set_cache_mode);
+        assert_eq!(
+            settings,
+            Settings {
+                source_bookmark_files: vec![SourceFile {
+                    source: PathBuf::from("path/to/source"),
+                    folders: vec![String::from("dev,science,article")]
+                }],
+                cache_mode: CacheMode::Html,
+                ..Default::default()
+            }
+        );
     }
 }
