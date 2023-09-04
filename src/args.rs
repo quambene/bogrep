@@ -37,8 +37,8 @@ pub enum Subcommands {
 pub struct ConfigArgs {
     #[command(flatten)]
     pub set_source: SetSource,
-    #[arg(long, group = "cache_mode")]
-    pub set_cache_mode: Option<CacheMode>,
+    #[command(flatten)]
+    pub set_cache_mode: SetCacheMode,
 }
 
 #[derive(ClapArgs, Debug)]
@@ -52,6 +52,12 @@ pub struct SetSource {
     /// Multiple folders are separated by a comma.
     #[arg(long, value_delimiter = ',')]
     pub folders: Vec<String>,
+}
+
+#[derive(ClapArgs, Debug)]
+pub struct SetCacheMode {
+    #[arg(long, group = "cache_mode")]
+    pub cache_mode: Option<CacheMode>,
 }
 
 #[derive(ClapArgs, Debug)]

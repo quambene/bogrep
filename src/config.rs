@@ -15,13 +15,13 @@ const BOOKMARKS_FILE: &str = "bookmarks.json";
 pub struct Config {
     /// The log level of the program.
     pub verbosity: u8,
-    /// The path of the settings file, usually ~/.config/bogrep/settings.json.
+    /// The path of the settings file.
     pub settings_path: PathBuf,
-    /// The path to the ignored urls, usually ~/.config/bogrep/.bogrepignore.
+    /// The path to the ignored urls.
     pub ignore_path: PathBuf,
-    /// The path to the cached websites, usually ~/.config/bogrep/cache.
+    /// The path to the cached websites.
     pub cache_path: PathBuf,
-    /// The path to the generated bookmark file, usually ~/.config/bogrep/bookmarks.json.
+    /// The path to the generated bookmark file.
     pub target_bookmark_file: PathBuf,
     /// The configured settings.
     pub settings: Settings,
