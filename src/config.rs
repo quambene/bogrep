@@ -48,8 +48,8 @@ impl Config {
 
     pub fn init(verbosity: u8) -> Result<Config, anyhow::Error> {
         let home_dir = env::var("HOME").context("HOME environment variable not set")?;
-        let config_path = if let Some(bogreg_home) = env::var("BOGREP_HOME").ok() {
-            format!("{}", bogreg_home)
+        let config_path = if let Ok(bogreg_home) = env::var("BOGREP_HOME") {
+            bogreg_home
         } else {
             format!("{}/{}", home_dir, CONFIG_PATH)
         };
