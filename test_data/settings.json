@@ -1,7 +1,7 @@
 {
-  "bookmark_files": [],
-  "cache_mode": "text",
-  "max_concurrent_requests": 100,
-  "request_timeout": 60000,
-  "request_throttling": 3000
+    "bookmark_files": [],
+    "cache_mode": "text",
+    "max_parallel_requests": 1000,
+    "request_timeout": 120000,
+    "request_throttling": 3000
 }
