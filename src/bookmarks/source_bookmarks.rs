@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use log::{debug, info};
 use std::collections::HashSet;
 
+#[derive(Debug, Clone)]
 pub struct SourceBookmarks {
     pub bookmarks: HashSet<String>,
 }

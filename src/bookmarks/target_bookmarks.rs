@@ -125,14 +125,19 @@ impl TargetBookmarks {
             .collect()
     }
 
-    pub fn diff(
-        &mut self,
-        source_bookmarks: &SourceBookmarks,
-        config: &Config,
-    ) -> Result<(), anyhow::Error> {
+    /// Update target bookmarks.
+    ///
+    /// Determine the difference between source and target bookmarks and update
+    /// the target bookmarks.
+    pub fn update(&mut self, source_bookmarks: SourceBookmarks) -> Result<(), anyhow::Error> {
+        if self.bookmarks.is_empty() {
+            self.bookmarks = Self::from(source_bookmarks.clone()).bookmarks;
+            return Ok(());
+        }
+
         let now = Utc::now();
-        let bookmarks_to_add = self.filter_to_add(source_bookmarks);
-        let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
+        let bookmarks_to_add = self.filter_to_add(&source_bookmarks);
+        let bookmarks_to_remove = self.filter_to_remove(&source_bookmarks);
 
         for url in &bookmarks_to_add {
             let bookmark = TargetBookmark::new(*url, now, None);
@@ -144,13 +149,11 @@ impl TargetBookmarks {
         }
 
         if !bookmarks_to_add.is_empty() {
-            self.write(config)?;
             info!("Added {} new bookmarks", bookmarks_to_add.len());
             trace!("Added new bookmarks: {bookmarks_to_add:#?}");
         }
 
         if !bookmarks_to_remove.is_empty() {
-            self.write(config)?;
             info!("Removed {} bookmarks", bookmarks_to_remove.len());
             trace!("Removed bookmarks: {bookmarks_to_remove:#?}");
         }
