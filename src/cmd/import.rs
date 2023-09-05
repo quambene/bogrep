@@ -17,6 +17,8 @@ pub fn import(config: &Config) -> Result<(), anyhow::Error> {
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let target_bookmarks_files = utils::open_file(&config.target_bookmark_file)?;
 
+    // TODO: impl BookmarkReader::find_bookmark_file() -> fs::File and use as writer.
+
     import_bookmarks(
         config.verbosity,
         &config.settings.source_bookmark_files,
