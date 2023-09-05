@@ -3,6 +3,7 @@ use anyhow::Context;
 use log::info;
 use std::{
     env,
+    fs::{self, File},
     path::{Path, PathBuf},
 };
 
@@ -58,13 +59,34 @@ impl Config {
         let settings_path = Path::new(&settings_path);
         let ignore_path = format!("{}/{}", config_path, IGNORE_FILE);
         let ignore_path = Path::new(&ignore_path);
-        let target_bookmark_file = format!("{}/{}", config_path, BOOKMARKS_FILE);
-        let target_bookmark_file = Path::new(&target_bookmark_file);
+        let target_bookmark_path = format!("{}/{}", config_path, BOOKMARKS_FILE);
+        let target_bookmark_path = Path::new(&target_bookmark_path);
         let cache_path = format!("{config_path}/cache");
         let cache_path = Path::new(&cache_path);
-
         let config_path = Path::new(&config_path);
-        let settings = Settings::init(config_path, settings_path)?;
+
+        if !config_path.exists() {
+            fs::create_dir_all(config_path).context(format!(
+                "Can't create config directory: {}",
+                config_path.display()
+            ))?;
+        }
+
+        let settings = Settings::init(settings_path)?;
+
+        if !target_bookmark_path.exists() {
+            File::create(&target_bookmark_path).context(format!(
+                "Can't create `bookmarks.json` file: {}",
+                target_bookmark_path.display()
+            ))?;
+        }
+
+        if !cache_path.exists() {
+            fs::create_dir_all(&cache_path).context(format!(
+                "Can't create cache directory: {}",
+                cache_path.display()
+            ))?;
+        }
 
         if verbosity >= 1 {
             info!("Read config from {}", settings_path.display());
@@ -75,7 +97,7 @@ impl Config {
             settings_path,
             ignore_path,
             cache_path,
-            target_bookmark_file,
+            target_bookmark_path,
             settings,
         );
 
