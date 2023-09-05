@@ -6,6 +6,7 @@ mod client;
 pub mod cmd;
 mod config;
 pub mod html;
+pub mod json;
 mod settings;
 pub mod utils;
 

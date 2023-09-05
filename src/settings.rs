@@ -1,7 +1,7 @@
 use crate::{
     args::{SetCacheMode, SetSource},
     cache::CacheMode,
-    utils,
+    json, utils,
 };
 use anyhow::Context;
 use log::debug;
@@ -74,7 +74,10 @@ impl Settings {
         } else {
             fs::create_dir_all(config_path).context("Can't create config directory at {}")?;
             let settings = Settings::default();
-            settings.write(settings_path)?;
+            let settings_json = json::serialize(&settings)?;
+            let mut settings_file =
+                utils::create_file(settings_path).context("Can't create settings file")?;
+            settings_file.write_all(&settings_json)?;
             Ok(settings)
         }
     }
@@ -109,16 +112,6 @@ impl Settings {
             .context("Can't read settings file")?;
         let settings = serde_json::from_str(&buffer)?;
         Ok(settings)
-    }
-
-    pub fn write(&self, settings_path: &Path) -> Result<(), anyhow::Error> {
-        let json = serde_json::to_string_pretty(&self)?;
-        let mut settings_file = utils::create_file(settings_path).context(format!(
-            "Can't create settings file at {}",
-            settings_path.display()
-        ))?;
-        settings_file.write_all(json.as_bytes())?;
-        Ok(())
     }
 }
 

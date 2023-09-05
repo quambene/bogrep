@@ -1,0 +1,12 @@
+{
+    "bookmark_files": [
+        {
+            "source": "path/to/bookmarks",
+            "folders": []
+        }
+    ],
+    "cache_mode": "text",
+    "max_concurrent_requests": 100,
+    "request_timeout": 60000,
+    "request_throttling": 3000
+}
