@@ -1,4 +1,4 @@
-use crate::{Args, Settings};
+use crate::Settings;
 use anyhow::Context;
 use log::info;
 use std::{
@@ -11,17 +11,17 @@ const SETTINGS_FILE: &str = "settings.json";
 const IGNORE_FILE: &str = ".bogrepignore";
 const BOOKMARKS_FILE: &str = "bookmarks.json";
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Config {
     /// The log level of the program.
     pub verbosity: u8,
-    /// The path of the settings file, usually ~/.config/bogrep/settings.json.
+    /// The path of the settings file.
     pub settings_path: PathBuf,
-    /// The path to the ignored urls, usually ~/.config/bogrep/.bogrepignore.
+    /// The path to the ignored urls.
     pub ignore_path: PathBuf,
-    /// The path to the cached websites, usually ~/.config/bogrep/cache.
+    /// The path to the cached websites.
     pub cache_path: PathBuf,
-    /// The path to the generated bookmark file, usually ~/.config/bogrep/bookmarks.json.
+    /// The path to the generated bookmark file.
     pub target_bookmark_file: PathBuf,
     /// The configured settings.
     pub settings: Settings,
@@ -46,20 +46,24 @@ impl Config {
         }
     }
 
-    pub fn init(args: &Args) -> Result<Config, anyhow::Error> {
-        let verbosity = args.verbose;
+    pub fn init(verbosity: u8) -> Result<Config, anyhow::Error> {
         let home_dir = env::var("HOME").context("HOME environment variable not set")?;
-        let config_path = format!("{}/{}", home_dir, CONFIG_PATH);
-        let config_path = Path::new(&config_path);
-        let settings_path = format!("{}/{}/{}", home_dir, CONFIG_PATH, SETTINGS_FILE);
+        let config_path = if let Ok(bogreg_home) = env::var("BOGREP_HOME") {
+            bogreg_home
+        } else {
+            format!("{}/{}", home_dir, CONFIG_PATH)
+        };
+
+        let settings_path = format!("{}/{}", config_path, SETTINGS_FILE);
         let settings_path = Path::new(&settings_path);
-        let ignore_path = format!("{}/{}/{}", home_dir, CONFIG_PATH, IGNORE_FILE);
+        let ignore_path = format!("{}/{}", config_path, IGNORE_FILE);
         let ignore_path = Path::new(&ignore_path);
-        let target_bookmark_file = format!("{}/{}/{}", home_dir, CONFIG_PATH, BOOKMARKS_FILE);
+        let target_bookmark_file = format!("{}/{}", config_path, BOOKMARKS_FILE);
         let target_bookmark_file = Path::new(&target_bookmark_file);
-        let cache_path = format!("{}/{}/cache", &home_dir, CONFIG_PATH);
+        let cache_path = format!("{config_path}/cache");
         let cache_path = Path::new(&cache_path);
 
+        let config_path = Path::new(&config_path);
         let settings = Settings::init(config_path, settings_path)?;
 
         if verbosity >= 1 {
@@ -98,5 +102,31 @@ pub mod tests {
                 settings: Settings::default(),
             }
         }
+    }
+
+    #[test]
+    fn test_config() {
+        let verbosity = 0;
+        let project_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
+        let config_path = format!("{}/test_data", project_dir.to_string_lossy());
+
+        // Prepare test
+        env::set_var("BOGREP_HOME", &config_path);
+
+        let res = Config::init(verbosity);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let config = res.unwrap();
+        assert_eq!(
+            config,
+            Config {
+                verbosity: 0,
+                settings_path: PathBuf::from(format!("{config_path}/settings.json")),
+                ignore_path: PathBuf::from(format!("{config_path}/.bogrepignore")),
+                cache_path: PathBuf::from(format!("{config_path}/cache")),
+                target_bookmark_file: PathBuf::from(format!("{config_path}/bookmarks.json")),
+                settings: Settings::default()
+            }
+        );
     }
 }
