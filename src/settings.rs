@@ -1,13 +1,13 @@
 use crate::{
     args::{SetCacheMode, SetSource},
     cache::CacheMode,
-    json, utils,
+    json,
 };
 use anyhow::Context;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, File},
+    fs::File,
     io::{Read, Write},
     path::{Path, PathBuf},
 };
@@ -67,16 +67,22 @@ impl Settings {
         }
     }
 
-    pub fn init(config_path: &Path, settings_path: &Path) -> Result<Settings, anyhow::Error> {
+    pub fn init(settings_path: &Path) -> Result<Settings, anyhow::Error> {
         if settings_path.exists() {
-            let settings = Settings::read(settings_path)?;
+            let mut buf = String::new();
+            let mut settings_file = File::open(settings_path)?;
+            settings_file
+                .read_to_string(&mut buf)
+                .context("Can't read `settings.json` file")?;
+            let settings = json::deserialize::<Settings>(&buf)?;
             Ok(settings)
         } else {
-            fs::create_dir_all(config_path).context("Can't create config directory at {}")?;
             let settings = Settings::default();
             let settings_json = json::serialize(&settings)?;
-            let mut settings_file =
-                utils::create_file(settings_path).context("Can't create settings file")?;
+            let mut settings_file = File::create(settings_path).context(format!(
+                "Can't create `settings.json` file: {}",
+                settings_path.display()
+            ))?;
             settings_file.write_all(&settings_json)?;
             Ok(settings)
         }
@@ -101,17 +107,6 @@ impl Settings {
     pub fn configure(&mut self, set_source: SetSource, set_cache_mode: SetCacheMode) {
         self.set_source(set_source);
         self.set_cache_mode(set_cache_mode);
-    }
-
-    fn read(settings_path: &Path) -> Result<Settings, anyhow::Error> {
-        let mut buffer = String::new();
-        let mut settings_file = File::open(settings_path)
-            .context("Missing settings file: Run `bogrep config <my_bookmarks_file>`")?;
-        settings_file
-            .read_to_string(&mut buffer)
-            .context("Can't read settings file")?;
-        let settings = serde_json::from_str(&buffer)?;
-        Ok(settings)
     }
 }
 
