@@ -1,11 +1,20 @@
 use crate::{utils, BookmarkReader, SourceBookmarks, SourceFile};
 use anyhow::Context;
-use std::io::{BufRead, BufReader};
+use std::{
+    io::{BufRead, BufReader},
+    path::PathBuf,
+};
 
-pub struct SimpleBookmarkReader;
+pub struct SimpleBookmarkReader {
+    pub path: PathBuf,
+}
 
 impl BookmarkReader for SimpleBookmarkReader {
     const NAME: &'static str = "text file";
+
+    fn path(&self) -> Result<PathBuf, anyhow::Error> {
+        Ok(self.path.clone())
+    }
 
     fn read_and_parse(
         &self,
@@ -40,7 +49,9 @@ mod tests {
 
         let mut source_bookmarks = SourceBookmarks::new();
         let source_file = SourceFile::new(source_path, vec![]);
-        let bookmark_reader = SimpleBookmarkReader;
+        let bookmark_reader = SimpleBookmarkReader {
+            path: source_path.to_owned(),
+        };
         let res = bookmark_reader.read_and_parse(&source_file, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 

@@ -49,15 +49,21 @@ impl SourceBookmarks {
             let path_str = bookmark_file.source.to_str().unwrap_or("");
 
             if path_str.contains("firefox") {
-                let firefox_reader = FirefoxBookmarkReader;
+                let firefox_reader = FirefoxBookmarkReader {
+                    path: bookmark_file.source.clone(),
+                };
                 firefox_reader.read_and_parse(bookmark_file, self)?;
             } else if path_str.contains("google-chrome") {
-                let chrome_reader = ChromeBookmarkReader;
+                let chrome_reader = ChromeBookmarkReader {
+                    path: bookmark_file.source.clone(),
+                };
                 chrome_reader.read_and_parse(bookmark_file, self)?;
             } else if bookmark_file.source.extension().map(|path| path.to_str())
                 == Some(Some("txt"))
             {
-                let simple_reader = SimpleBookmarkReader;
+                let simple_reader = SimpleBookmarkReader {
+                    path: bookmark_file.source.clone(),
+                };
                 simple_reader.read_and_parse(bookmark_file, self)?;
             } else {
                 return Err(anyhow!(

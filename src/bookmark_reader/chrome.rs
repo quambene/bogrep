@@ -1,10 +1,12 @@
 use super::BookmarkReader;
-use crate::{utils, SourceBookmarks, SourceFile};
+use crate::{SourceBookmarks, SourceFile};
 use log::{debug, trace};
 use serde_json::{Map, Value};
-use std::path::Path;
+use std::{io::Read, path::PathBuf};
 
-pub struct ChromeBookmarkReader;
+pub struct ChromeBookmarkReader {
+    pub path: PathBuf,
+}
 
 impl ChromeBookmarkReader {
     fn select_bookmark(obj: &Map<String, Value>, bookmarks: &mut SourceBookmarks) {
@@ -89,9 +91,14 @@ impl ChromeBookmarkReader {
 impl BookmarkReader for ChromeBookmarkReader {
     const NAME: &'static str = "Google Chrome";
 
-    fn read(&self, bookmark_path: &Path) -> Result<String, anyhow::Error> {
+    fn path(&self) -> Result<PathBuf, anyhow::Error> {
+        Ok(self.path.clone())
+    }
+
+    fn read(&self, bookmark_reader: &mut impl Read) -> Result<String, anyhow::Error> {
         debug!("Read bookmarks from {}", Self::NAME);
-        let bookmarks = utils::read_file(bookmark_path)?;
+        let mut bookmarks = Vec::new();
+        bookmark_reader.read_to_end(&mut bookmarks)?;
         Ok(String::from_utf8(bookmarks)?)
     }
 
@@ -111,15 +118,19 @@ impl BookmarkReader for ChromeBookmarkReader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
+    use std::{collections::HashSet, path::Path};
 
     #[test]
     fn test_parse_all() {
         let source_path = Path::new("test_data/source/bookmarks_google-chrome.json");
         assert!(source_path.exists());
 
-        let bookmark_reader = ChromeBookmarkReader;
-        let bookmarks = bookmark_reader.read(source_path).unwrap();
+        let bookmark_reader = ChromeBookmarkReader {
+            path: source_path.to_owned(),
+        };
+        let mut bookmark_file = bookmark_reader.open().unwrap();
+
+        let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
         let source_file = SourceFile::new(source_path, vec![]);
 
@@ -139,8 +150,12 @@ mod tests {
         let source_path = Path::new("test_data/source/bookmarks_google-chrome.json");
         assert!(source_path.exists());
 
-        let bookmark_reader = ChromeBookmarkReader;
-        let bookmarks = bookmark_reader.read(source_path).unwrap();
+        let bookmark_reader = ChromeBookmarkReader {
+            path: source_path.to_owned(),
+        };
+        let mut bookmark_file = bookmark_reader.open().unwrap();
+
+        let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
         let source_file = SourceFile::new(source_path, vec![String::from("dev")]);
 

@@ -6,13 +6,23 @@ use crate::{SourceBookmarks, SourceFile};
 pub use chrome::ChromeBookmarkReader;
 pub use firefox::FirefoxBookmarkReader;
 pub use simple::SimpleBookmarkReader;
-use std::path::Path;
+use std::{fs::File, io::Read, path::PathBuf};
 
 pub trait BookmarkReader {
     const NAME: &'static str;
 
-    fn read(&self, _source_file: &Path) -> Result<String, anyhow::Error> {
-        Ok(String::default())
+    fn path(&self) -> Result<PathBuf, anyhow::Error>;
+
+    fn open(&self) -> Result<File, anyhow::Error> {
+        let path = self.path()?;
+        let file = File::open(path)?;
+        Ok(file)
+    }
+
+    fn read(&self, source_reader: &mut impl Read) -> Result<String, anyhow::Error> {
+        let mut buf = String::new();
+        source_reader.read_to_string(&mut buf)?;
+        Ok(buf)
     }
 
     fn parse(
@@ -29,7 +39,8 @@ pub trait BookmarkReader {
         source_file: &SourceFile,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        let raw_bookmarks = self.read(&source_file.source)?;
+        let mut file = self.open()?;
+        let raw_bookmarks = self.read(&mut file)?;
         self.parse(&raw_bookmarks, source_file, bookmarks)?;
         Ok(())
     }
