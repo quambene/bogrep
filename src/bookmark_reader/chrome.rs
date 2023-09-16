@@ -1,5 +1,5 @@
 use super::BookmarkReader;
-use crate::{SourceBookmarks, SourceFile};
+use crate::{Source, SourceBookmarks};
 use log::{debug, trace};
 use serde_json::{Map, Value};
 use std::{io::Read, path::PathBuf};
@@ -23,7 +23,7 @@ impl ChromeBookmarkReader {
         }
     }
 
-    fn traverse_json(value: &Value, bookmarks: &mut SourceBookmarks, source_file: &SourceFile) {
+    fn traverse_json(value: &Value, bookmarks: &mut SourceBookmarks, source_file: &Source) {
         match value {
             Value::Object(obj) => {
                 if source_file.folders.is_empty() {
@@ -62,11 +62,7 @@ impl ChromeBookmarkReader {
         }
     }
 
-    fn traverse_children(
-        value: &Value,
-        bookmarks: &mut SourceBookmarks,
-        _source_file: &SourceFile,
-    ) {
+    fn traverse_children(value: &Value, bookmarks: &mut SourceBookmarks, _source_file: &Source) {
         match value {
             Value::Object(obj) => {
                 Self::select_bookmark(obj, bookmarks);
@@ -105,12 +101,12 @@ impl BookmarkReader for ChromeBookmarkReader {
     fn parse(
         &self,
         raw_bookmarks: &str,
-        source_file: &SourceFile,
+        source: &Source,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Parse bookmarks from {}", Self::NAME);
         let value: Value = serde_json::from_str(raw_bookmarks)?;
-        Self::traverse_json(&value, bookmarks, source_file);
+        Self::traverse_json(&value, bookmarks, source);
         Ok(())
     }
 }
@@ -132,7 +128,7 @@ mod tests {
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![]);
+        let source_file = Source::new(source_path, vec![]);
 
         let res = bookmark_reader.parse(&bookmarks, &source_file, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -157,9 +153,9 @@ mod tests {
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![String::from("dev")]);
+        let source = Source::new(source_path, vec![String::from("dev")]);
 
-        let res = bookmark_reader.parse(&bookmarks, &source_file, &mut source_bookmarks);
+        let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(

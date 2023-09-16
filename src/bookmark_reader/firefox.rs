@@ -1,5 +1,5 @@
 use super::BookmarkReader;
-use crate::{SourceBookmarks, SourceFile};
+use crate::{Source, SourceBookmarks};
 use anyhow::anyhow;
 use log::{debug, trace};
 use lz4::block;
@@ -30,22 +30,22 @@ impl FirefoxBookmarkReader {
         }
     }
 
-    fn traverse_json(value: &Value, bookmarks: &mut SourceBookmarks, source_file: &SourceFile) {
+    fn traverse_json(value: &Value, bookmarks: &mut SourceBookmarks, source: &Source) {
         match value {
             Value::Object(obj) => {
-                if source_file.folders.is_empty() {
+                if source.folders.is_empty() {
                     Self::select_bookmark(obj, bookmarks);
 
                     for (_, val) in obj {
-                        Self::traverse_json(val, bookmarks, source_file);
+                        Self::traverse_json(val, bookmarks, source);
                     }
                 } else {
                     if let Some(Value::String(type_value)) = obj.get("type") {
                         if type_value == "text/x-moz-place-container" {
                             if let Some(Value::String(title_value)) = obj.get("title") {
-                                if source_file.folders.contains(title_value) {
+                                if source.folders.contains(title_value) {
                                     for (_, val) in obj {
-                                        Self::traverse_children(val, bookmarks, source_file);
+                                        Self::traverse_children(val, bookmarks, source);
                                     }
                                 }
                             }
@@ -53,13 +53,13 @@ impl FirefoxBookmarkReader {
                     }
 
                     for (_, val) in obj {
-                        Self::traverse_json(val, bookmarks, source_file);
+                        Self::traverse_json(val, bookmarks, source);
                     }
                 }
             }
             Value::Array(arr) => {
                 for (_index, val) in arr.iter().enumerate() {
-                    Self::traverse_json(val, bookmarks, source_file);
+                    Self::traverse_json(val, bookmarks, source);
                 }
             }
             Value::String(_) => (),
@@ -69,11 +69,7 @@ impl FirefoxBookmarkReader {
         }
     }
 
-    fn traverse_children(
-        value: &Value,
-        bookmarks: &mut SourceBookmarks,
-        _source_file: &SourceFile,
-    ) {
+    fn traverse_children(value: &Value, bookmarks: &mut SourceBookmarks, _source_file: &Source) {
         match value {
             Value::Object(obj) => {
                 Self::select_bookmark(obj, bookmarks);
@@ -187,12 +183,12 @@ impl BookmarkReader for FirefoxBookmarkReader {
     fn parse(
         &self,
         raw_bookmarks: &str,
-        source_file: &SourceFile,
+        source: &Source,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Parse bookmarks from {}", Self::NAME);
         let value: Value = serde_json::from_str(raw_bookmarks)?;
-        Self::traverse_json(&value, bookmarks, source_file);
+        Self::traverse_json(&value, bookmarks, source);
         Ok(())
     }
 }
@@ -257,9 +253,9 @@ mod tests {
 
         let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![]);
+        let source = Source::new(source_path, vec![]);
 
-        let res = bookmark_reader.parse(&raw_bookmarks, &source_file, &mut source_bookmarks);
+        let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
@@ -282,9 +278,9 @@ mod tests {
 
         let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![String::from("dev")]);
+        let source = Source::new(source_path, vec![String::from("dev")]);
 
-        let res = bookmark_reader.parse(&raw_bookmarks, &source_file, &mut source_bookmarks);
+        let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(

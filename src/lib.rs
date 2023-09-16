@@ -18,4 +18,4 @@ pub use bookmarks::{SourceBookmarks, TargetBookmark, TargetBookmarks};
 pub use cache::Cache;
 pub use client::Client;
 pub use config::Config;
-pub use settings::{Settings, SourceFile};
+pub use settings::{Settings, Source};

@@ -1,19 +1,19 @@
 use crate::{
     json, utils, BookmarkReader, ChromeBookmarkReader, Config, FirefoxBookmarkReader,
-    SimpleBookmarkReader, SourceBookmarks, SourceFile, TargetBookmarks,
+    SimpleBookmarkReader, Source, SourceBookmarks, TargetBookmarks,
 };
 use anyhow::{anyhow, Context};
 use log::{debug, info, trace};
 use std::io::{Read, Write};
 
 /// Import bookmarks from the configured source files and store unique bookmarks
-/// in `bookmarks.json`.
+/// in cache.
 pub fn import(config: &Config) -> Result<(), anyhow::Error> {
     let source_bookmarks_files = config
         .settings
         .source_bookmark_files
         .iter()
-        .map(|source_file| utils::open_file(&source_file.source))
+        .map(|source| utils::open_file(&source.path))
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let target_bookmarks_files = utils::open_file(&config.target_bookmark_file)?;
 
@@ -31,7 +31,7 @@ pub fn import(config: &Config) -> Result<(), anyhow::Error> {
 
 fn import_bookmarks(
     verbosity: u8,
-    source_bookmark_files: &[SourceFile],
+    source_bookmark_files: &[Source],
     mut source_reader: Vec<impl Read>,
     mut target_reader_writer: impl Read + Write,
 ) -> Result<(), anyhow::Error> {
@@ -49,45 +49,39 @@ fn import_bookmarks(
 
 fn read_source_bookmarks(
     verbosity: u8,
-    source_bookmark_files: &[SourceFile],
+    sources: &[Source],
     mut source_reader: Vec<impl Read>,
 ) -> Result<SourceBookmarks, anyhow::Error> {
     let mut bookmarks = SourceBookmarks::new();
 
-    for bookmark_file in source_bookmark_files {
-        debug!(
-            "Read bookmarks from file '{}'",
-            bookmark_file.source.display()
-        );
+    for source in sources {
+        debug!("Read bookmarks from file '{}'", source.path.display());
 
         if verbosity >= 1 {
-            info!(
-                "Read bookmarks from file '{}'",
-                bookmark_file.source.display()
-            );
+            info!("Read bookmarks from file '{}'", source.path.display());
         }
 
-        let path_str = bookmark_file.source.to_str().unwrap_or("");
+        let path_str = source.path.to_str().unwrap_or("");
 
         if path_str.contains("firefox") {
             let firefox_reader = FirefoxBookmarkReader {
-                path: bookmark_file.source.clone(),
+                path: source.path.clone(),
             };
-            firefox_reader.read_and_parse(bookmark_file, &mut bookmarks)?;
+            firefox_reader.read_and_parse(source, &mut bookmarks)?;
         } else if path_str.contains("google-chrome") {
             let chrome_reader = ChromeBookmarkReader {
-                path: bookmark_file.source.clone(),
+                path: source.path.clone(),
             };
-            chrome_reader.read_and_parse(bookmark_file, &mut bookmarks)?;
-        } else if bookmark_file.source.extension().map(|path| path.to_str()) == Some(Some("txt")) {
+            chrome_reader.read_and_parse(source, &mut bookmarks)?;
+        } else if source.path.extension().map(|path| path.to_str()) == Some(Some("txt")) {
             let simple_reader = SimpleBookmarkReader {
-                path: bookmark_file.source.clone(),
+                path: source.path.clone(),
             };
-            simple_reader.read_and_parse(bookmark_file, &mut bookmarks)?;
+            simple_reader.read_and_parse(source, &mut bookmarks)?;
         } else {
             return Err(anyhow!(
                 "Format not supported for bookmark file '{}'",
-                bookmark_file.source.display()
+                source.path.display()
             ));
         }
     }
@@ -117,7 +111,7 @@ fn write_target_bookmarks(
     Ok(())
 }
 
-fn log_import(source_bookmark_files: &[SourceFile], target_bookmarks: &TargetBookmarks) {
+fn log_import(source_bookmark_files: &[Source], target_bookmarks: &TargetBookmarks) {
     let source = if source_bookmark_files.len() == 1 {
         "source"
     } else {
@@ -130,7 +124,7 @@ fn log_import(source_bookmark_files: &[SourceFile], target_bookmarks: &TargetBoo
         source_bookmark_files.len(),
         source_bookmark_files
             .iter()
-            .map(|bookmark_file| bookmark_file.source.to_string_lossy())
+            .map(|source| source.path.to_string_lossy())
             .collect::<Vec<_>>()
             .join(", ")
     );

@@ -56,7 +56,7 @@ impl TargetBookmarks {
                     .settings
                     .source_bookmark_files
                     .iter()
-                    .map(|bookmark_file| bookmark_file.source.to_string_lossy())
+                    .map(|source| source.path.to_string_lossy())
                     .collect::<Vec<_>>()
                     .join(", ")
             );
@@ -191,7 +191,7 @@ impl From<SourceBookmarks> for TargetBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Settings, SourceFile};
+    use crate::{Settings, Source};
     use std::{collections::HashSet, path::PathBuf};
 
     #[test]
@@ -223,8 +223,8 @@ mod tests {
         }
 
         let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: source_path,
+            source_bookmark_files: vec![Source {
+                path: source_path,
                 folders: vec![],
             }],
             ..Default::default()
@@ -267,8 +267,8 @@ mod tests {
         }
 
         let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: source_path,
+            source_bookmark_files: vec![Source {
+                path: source_path,
                 folders: vec![],
             }],
             ..Default::default()
@@ -313,8 +313,8 @@ mod tests {
         }
 
         let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: source_path,
+            source_bookmark_files: vec![Source {
+                path: source_path,
                 folders: vec![],
             }],
             ..Default::default()

@@ -1,4 +1,4 @@
-use crate::{utils, BookmarkReader, SourceBookmarks, SourceFile};
+use crate::{utils, BookmarkReader, Source, SourceBookmarks};
 use anyhow::Context;
 use std::{
     io::{BufRead, BufReader},
@@ -18,12 +18,12 @@ impl BookmarkReader for SimpleBookmarkReader {
 
     fn read_and_parse(
         &self,
-        source_file: &SourceFile,
+        source: &Source,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        let bookmark_file = utils::open_file(&source_file.source).context(format!(
+        let bookmark_file = utils::open_file(&source.path).context(format!(
             "Can't open source file at {}",
-            source_file.source.display()
+            source.path.display()
         ))?;
         // TODO: increase buffer size
         let reader = BufReader::new(bookmark_file);
@@ -48,11 +48,11 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![]);
+        let source = Source::new(source_path, vec![]);
         let bookmark_reader = SimpleBookmarkReader {
             path: source_path.to_owned(),
         };
-        let res = bookmark_reader.read_and_parse(&source_file, &mut source_bookmarks);
+        let res = bookmark_reader.read_and_parse(&source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([

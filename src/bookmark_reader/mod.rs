@@ -2,7 +2,7 @@ mod chrome;
 mod firefox;
 mod simple;
 
-use crate::{SourceBookmarks, SourceFile};
+use crate::{Source, SourceBookmarks};
 pub use chrome::ChromeBookmarkReader;
 pub use firefox::FirefoxBookmarkReader;
 pub use simple::SimpleBookmarkReader;
@@ -28,7 +28,7 @@ pub trait BookmarkReader {
     fn parse(
         &self,
         _raw_bookmarks: &str,
-        _source_file: &SourceFile,
+        _source: &Source,
         _bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         Ok(())
@@ -36,12 +36,12 @@ pub trait BookmarkReader {
 
     fn read_and_parse(
         &self,
-        source_file: &SourceFile,
+        source: &Source,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         let mut file = self.open()?;
         let raw_bookmarks = self.read(&mut file)?;
-        self.parse(&raw_bookmarks, source_file, bookmarks)?;
+        self.parse(&raw_bookmarks, source, bookmarks)?;
         Ok(())
     }
 }

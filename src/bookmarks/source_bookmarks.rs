@@ -33,42 +33,34 @@ impl SourceBookmarks {
     }
 
     pub fn read(&mut self, config: &Config) -> Result<(), anyhow::Error> {
-        for bookmark_file in &config.settings.source_bookmark_files {
-            debug!(
-                "Read bookmarks from file '{}'",
-                bookmark_file.source.display()
-            );
+        for source in &config.settings.source_bookmark_files {
+            debug!("Read bookmarks from file '{}'", source.path.display());
 
             if config.verbosity >= 1 {
-                info!(
-                    "Read bookmarks from file '{}'",
-                    bookmark_file.source.display()
-                );
+                info!("Read bookmarks from file '{}'", source.path.display());
             }
 
-            let path_str = bookmark_file.source.to_str().unwrap_or("");
+            let path_str = source.path.to_str().unwrap_or("");
 
             if path_str.contains("firefox") {
                 let firefox_reader = FirefoxBookmarkReader {
-                    path: bookmark_file.source.clone(),
+                    path: source.path.clone(),
                 };
-                firefox_reader.read_and_parse(bookmark_file, self)?;
+                firefox_reader.read_and_parse(source, self)?;
             } else if path_str.contains("google-chrome") {
                 let chrome_reader = ChromeBookmarkReader {
-                    path: bookmark_file.source.clone(),
+                    path: source.path.clone(),
                 };
-                chrome_reader.read_and_parse(bookmark_file, self)?;
-            } else if bookmark_file.source.extension().map(|path| path.to_str())
-                == Some(Some("txt"))
-            {
+                chrome_reader.read_and_parse(source, self)?;
+            } else if source.path.extension().map(|path| path.to_str()) == Some(Some("txt")) {
                 let simple_reader = SimpleBookmarkReader {
-                    path: bookmark_file.source.clone(),
+                    path: source.path.clone(),
                 };
-                simple_reader.read_and_parse(bookmark_file, self)?;
+                simple_reader.read_and_parse(source, self)?;
             } else {
                 return Err(anyhow!(
                     "Format not supported for bookmark file '{}'",
-                    bookmark_file.source.display()
+                    source.path.display()
                 ));
             }
         }
@@ -80,7 +72,7 @@ impl SourceBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Settings, SourceFile};
+    use crate::{Settings, Source};
     use std::path::PathBuf;
 
     #[test]
@@ -103,8 +95,8 @@ mod tests {
     fn test_read_firefox() {
         let mut source_bookmarks = SourceBookmarks::new();
         let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_firefox.json"),
+            source_bookmark_files: vec![Source {
+                path: PathBuf::from("test_data/source/bookmarks_firefox.json"),
                 folders: vec![],
             }],
             ..Default::default()
@@ -127,8 +119,8 @@ mod tests {
     fn test_read_chrome() {
         let mut source_bookmarks = SourceBookmarks::new();
         let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_google-chrome.json"),
+            source_bookmark_files: vec![Source {
+                path: PathBuf::from("test_data/source/bookmarks_google-chrome.json"),
                 folders: vec![],
             }],
             ..Default::default()
@@ -151,8 +143,8 @@ mod tests {
     fn test_read_simple() {
         let mut source_bookmarks = SourceBookmarks::new();
         let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_simple.txt"),
+            source_bookmark_files: vec![Source {
+                path: PathBuf::from("test_data/source/bookmarks_simple.txt"),
                 folders: vec![],
             }],
             ..Default::default()
