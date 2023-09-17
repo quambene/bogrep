@@ -69,10 +69,10 @@ impl Settings {
 
     pub fn init(settings_path: &Path) -> Result<Settings, anyhow::Error> {
         if settings_path.exists() {
-            let mut buf = String::new();
+            let mut buf = Vec::new();
             let mut settings_file = File::open(settings_path)?;
             settings_file
-                .read_to_string(&mut buf)
+                .read_to_end(&mut buf)
                 .context("Can't read `settings.json` file")?;
             let settings = json::deserialize::<Settings>(&buf)?;
             Ok(settings)

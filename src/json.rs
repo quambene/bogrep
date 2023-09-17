@@ -8,7 +8,7 @@ pub fn serialize(value: impl Serialize) -> Result<Vec<u8>, anyhow::Error> {
     Ok(buf)
 }
 
-pub fn deserialize<T: DeserializeOwned>(str: &str) -> Result<T, anyhow::Error> {
-    let value = serde_json::from_str(str)?;
+pub fn deserialize<T: DeserializeOwned>(slice: &[u8]) -> Result<T, anyhow::Error> {
+    let value = serde_json::from_slice(slice)?;
     Ok(value)
 }
