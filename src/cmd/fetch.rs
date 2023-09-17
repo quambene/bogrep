@@ -8,7 +8,8 @@ use std::path::Path;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
-    let mut target_bookmark_file = utils::open_file_in_write_mode(&config.target_bookmark_file)?;
+    let mut target_bookmark_file =
+        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
     let mut bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache = Cache::init(config, &args.mode).await?;
     let client = Client::new(config)?;

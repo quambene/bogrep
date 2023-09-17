@@ -13,7 +13,8 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         .iter()
         .map(SourceReader::new)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-    let mut target_bookmark_file = utils::open_file_in_write_mode(&config.target_bookmark_file)?;
+    let mut target_bookmark_file =
+        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
 
     let bookmarks = if config.target_bookmark_file.exists() {
         info!("Bookmarks already imported");

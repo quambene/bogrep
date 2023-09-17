@@ -27,8 +27,9 @@ pub fn open_file(path: &Path) -> Result<File, anyhow::Error> {
     Ok(file)
 }
 
-pub fn open_file_in_write_mode(path: &Path) -> Result<File, anyhow::Error> {
+pub fn open_file_in_read_write_mode(path: &Path) -> Result<File, anyhow::Error> {
     let file = OpenOptions::new()
+        .read(true)
         .write(true)
         .open(path)
         .context(format!("Can't open file at {}", path.display()))?;

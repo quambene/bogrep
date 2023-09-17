@@ -18,7 +18,8 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         .iter()
         .map(SourceReader::new)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-    let mut target_bookmark_file = utils::open_file_in_write_mode(&config.target_bookmark_file)?;
+    let mut target_bookmark_file =
+        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
 
     let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
     let mut target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
