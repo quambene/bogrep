@@ -53,7 +53,7 @@ impl TargetBookmarks {
         &self,
         target_reader_writer: &mut (impl Read + Write),
     ) -> Result<(), anyhow::Error> {
-        let bookmarks_json = json::serialize(&self)?;
+        let bookmarks_json = json::serialize(self)?;
         target_reader_writer
             .write_all(&bookmarks_json)
             .context("Can't write to `bookmarks.json` file")?;
