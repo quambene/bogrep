@@ -171,6 +171,33 @@ mod tests {
     use std::{io::Cursor, path::Path};
 
     #[test]
+    fn test_read_target_bookmarks() {
+        let bookmark_path = Path::new("test_data/target/bookmarks.json");
+        let mut bookmark_file = utils::open_file(bookmark_path).unwrap();
+        let res = TargetBookmarks::read(&mut bookmark_file);
+        assert!(res.is_ok());
+
+        let bookmarks = res.unwrap();
+        assert_eq!(
+            bookmarks.bookmarks,
+            vec![
+                TargetBookmark {
+                    id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
+                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                },
+                TargetBookmark {
+                    id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                    url: String::from("https://www.deepl.com/translator"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                }
+            ]
+        );
+    }
+
+    #[test]
     fn test_read_target_bookmarks_empty() {
         let bookmark_path = Path::new("test_data/target/bookmarks_empty.json");
         let mut bookmark_file = utils::open_file(bookmark_path).unwrap();
@@ -179,6 +206,37 @@ mod tests {
 
         let bookmarks = res.unwrap();
         assert!(bookmarks.bookmarks.is_empty());
+    }
+
+    #[test]
+    fn test_write_target_bookmarks() {
+        let bookmarks = TargetBookmarks {
+            bookmarks: vec![
+                TargetBookmark {
+                    id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
+                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                },
+                TargetBookmark {
+                    id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                    url: String::from("https://www.deepl.com/translator"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                },
+            ],
+        };
+        let mut cursor = Cursor::new(Vec::new());
+        let res = TargetBookmarks::write(&bookmarks, &mut cursor);
+        assert!(res.is_ok());
+
+        let actual = cursor.into_inner();
+        let expected_path = Path::new("test_data/target/bookmarks.json");
+        let expected = utils::read_file(expected_path).unwrap();
+        assert_eq!(
+            String::from_utf8(actual).unwrap(),
+            String::from_utf8(expected).unwrap()
+        );
     }
 
     #[test]
