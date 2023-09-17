@@ -1,9 +1,10 @@
-use crate::Settings;
+use crate::{json, Settings, TargetBookmarks};
 use anyhow::Context;
 use log::info;
 use std::{
     env,
     fs::{self, File},
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -75,10 +76,14 @@ impl Config {
         let settings = Settings::init(settings_path)?;
 
         if !target_bookmark_path.exists() {
-            File::create(target_bookmark_path).context(format!(
+            let target_bookmarks = TargetBookmarks::default();
+            let json = json::serialize(target_bookmarks)?;
+            let mut bookmark_file = File::create(target_bookmark_path).context(format!(
                 "Can't create `bookmarks.json` file: {}",
                 target_bookmark_path.display()
             ))?;
+            bookmark_file.write_all(&json)?;
+            bookmark_file.flush()?;
         }
 
         if !cache_path.exists() {
