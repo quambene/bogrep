@@ -130,7 +130,7 @@ pub mod tests {
     fn test_config() {
         let verbosity = 0;
         let project_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
-        let config_path = format!("{}/test_data", project_dir.to_string_lossy());
+        let config_path = format!("{}/test_data/bogrep", project_dir.to_string_lossy());
 
         // Prepare test
         env::set_var("BOGREP_HOME", &config_path);

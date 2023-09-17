@@ -12,6 +12,7 @@
 # Test data
 **/*.jsonlz4
 **/*.html
+test_data/bogrep
 test_data/target/**
 !test_data/target/.gitkeep
 
