@@ -32,7 +32,7 @@ impl TargetBookmark {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct TargetBookmarks {
     pub bookmarks: Vec<TargetBookmark>,
 }
@@ -41,9 +41,9 @@ impl TargetBookmarks {
     pub fn read(
         target_reader_writer: &mut (impl Read + Write),
     ) -> Result<TargetBookmarks, anyhow::Error> {
-        let mut buf = String::new();
+        let mut buf = Vec::new();
         target_reader_writer
-            .read_to_string(&mut buf)
+            .read_to_end(&mut buf)
             .context("Can't read from `bookmarks.json` file:")?;
         let target_bookmarks = json::deserialize::<TargetBookmarks>(&buf)?;
         Ok(target_bookmarks)
@@ -53,7 +53,7 @@ impl TargetBookmarks {
         &self,
         target_reader_writer: &mut (impl Read + Write),
     ) -> Result<(), anyhow::Error> {
-        let bookmarks_json = json::serialize(&self.bookmarks)?;
+        let bookmarks_json = json::serialize(&self)?;
         target_reader_writer
             .write_all(&bookmarks_json)
             .context("Can't write to `bookmarks.json` file")?;
@@ -161,5 +161,39 @@ impl From<SourceBookmarks> for TargetBookmarks {
                 .map(|bookmark| TargetBookmark::new(bookmark, now, None))
                 .collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils;
+    use std::{io::Cursor, path::Path};
+
+    #[test]
+    fn test_read_target_bookmarks_empty() {
+        let bookmark_path = Path::new("test_data/target/bookmarks_empty.json");
+        let mut bookmark_file = utils::open_file(bookmark_path).unwrap();
+        let res = TargetBookmarks::read(&mut bookmark_file);
+        assert!(res.is_ok());
+
+        let bookmarks = res.unwrap();
+        assert!(bookmarks.bookmarks.is_empty());
+    }
+
+    #[test]
+    fn test_write_target_bookmarks_empty() {
+        let bookmarks = TargetBookmarks::default();
+        let mut cursor = Cursor::new(Vec::new());
+        let res = TargetBookmarks::write(&bookmarks, &mut cursor);
+        assert!(res.is_ok());
+
+        let actual = cursor.into_inner();
+        let expected_path = Path::new("test_data/target/bookmarks_empty.json");
+        let expected = utils::read_file(expected_path).unwrap();
+        assert_eq!(
+            String::from_utf8(actual).unwrap(),
+            String::from_utf8(expected).unwrap()
+        );
     }
 }
