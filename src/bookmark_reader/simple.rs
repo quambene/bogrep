@@ -1,34 +1,35 @@
-use crate::{utils, BookmarkReader, Source, SourceBookmarks};
-use anyhow::Context;
+use super::ReadBookmark;
+use crate::{Source, SourceBookmarks};
+use anyhow::anyhow;
 use std::{
-    io::{BufRead, BufReader},
-    path::PathBuf,
+    io::{BufRead, BufReader, Read},
+    path::{Path, PathBuf},
 };
 
-pub struct SimpleBookmarkReader {
-    pub path: PathBuf,
-}
+pub struct SimpleBookmarkReader;
 
-impl BookmarkReader for SimpleBookmarkReader {
-    const NAME: &'static str = "text file";
+impl ReadBookmark for SimpleBookmarkReader {
+    fn name(&self) -> &str {
+        "text file"
+    }
 
-    fn path(&self) -> Result<PathBuf, anyhow::Error> {
-        Ok(self.path.clone())
+    fn validate_path(&self, path: &Path) -> Result<PathBuf, anyhow::Error> {
+        if path.exists() && path.is_file() {
+            Ok(path.to_owned())
+        } else {
+            Err(anyhow!("Missing file"))
+        }
     }
 
     fn read_and_parse(
         &self,
-        source: &Source,
+        reader: &mut dyn Read,
+        _source: &Source,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        let bookmark_file = utils::open_file(&source.path).context(format!(
-            "Can't open source file at {}",
-            source.path.display()
-        ))?;
-        // TODO: increase buffer size
-        let reader = BufReader::new(bookmark_file);
+        let buf_reader = BufReader::new(reader);
 
-        for line in reader.lines() {
+        for line in buf_reader.lines() {
             let url = line?;
             bookmarks.insert(&url);
         }
@@ -40,19 +41,24 @@ impl BookmarkReader for SimpleBookmarkReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils;
     use std::{collections::HashSet, path::Path};
 
     #[test]
     fn test_read_txt() {
         let source_path = Path::new("test_data/source/bookmarks_simple.txt");
         assert!(source_path.exists());
+        let mut source_bookmark_file = utils::open_file(source_path).unwrap();
 
         let mut source_bookmarks = SourceBookmarks::new();
         let source = Source::new(source_path, vec![]);
-        let bookmark_reader = SimpleBookmarkReader {
-            path: source_path.to_owned(),
-        };
-        let res = bookmark_reader.read_and_parse(&source, &mut source_bookmarks);
+        let bookmark_reader = SimpleBookmarkReader;
+
+        let res = bookmark_reader.read_and_parse(
+            &mut source_bookmark_file,
+            &source,
+            &mut source_bookmarks,
+        );
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([

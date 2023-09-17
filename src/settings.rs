@@ -27,7 +27,7 @@ pub struct Settings {
     ///
     /// Source could be Firefox or Chrome.
     #[serde(rename = "bookmark_files")]
-    pub source_bookmark_files: Vec<Source>,
+    pub sources: Vec<Source>,
     /// The file extension used to cache websites.
     pub cache_mode: CacheMode,
     /// The maximal number of concurrent requests.
@@ -41,7 +41,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            source_bookmark_files: Vec::new(),
+            sources: Vec::new(),
             cache_mode: CacheMode::default(),
             max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
             request_timeout: REQUEST_TIMEOUT_DEFAULT,
@@ -52,14 +52,14 @@ impl Default for Settings {
 
 impl Settings {
     pub fn new(
-        source_bookmark_files: Vec<Source>,
+        sources: Vec<Source>,
         cache_mode: CacheMode,
         max_concurrent_requests: usize,
         request_timeout: u64,
         request_throttling: u64,
     ) -> Self {
         Self {
-            source_bookmark_files,
+            sources,
             cache_mode,
             max_concurrent_requests,
             request_timeout,
@@ -93,7 +93,7 @@ impl Settings {
             debug!("Set source to {source_path}");
             let source_path = PathBuf::from(source_path);
             let source_file = Source::new(source_path, set_source.folders);
-            self.source_bookmark_files.push(source_file);
+            self.sources.push(source_file);
         }
     }
 
@@ -114,6 +114,7 @@ impl Settings {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Source {
     /// The path to the source file.
+    #[serde(rename = "source")]
     pub path: PathBuf,
     /// The folders to be imported.
     ///
@@ -145,7 +146,7 @@ mod tests {
         assert_eq!(
             settings,
             Settings {
-                source_bookmark_files: vec![Source {
+                sources: vec![Source {
                     path: PathBuf::from("path/to/source"),
                     folders: vec![String::from("dev,science,article")]
                 }],
@@ -183,7 +184,7 @@ mod tests {
         assert_eq!(
             settings,
             Settings {
-                source_bookmark_files: vec![Source {
+                sources: vec![Source {
                     path: PathBuf::from("path/to/source"),
                     folders: vec![String::from("dev,science,article")]
                 }],

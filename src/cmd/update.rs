@@ -1,5 +1,8 @@
 use super::fetch::fetch_and_add_urls;
-use crate::{args::UpdateArgs, Cache, Client, Config, SourceBookmarks, TargetBookmarks};
+use crate::{
+    args::UpdateArgs, bookmark_reader::SourceReader, utils, Cache, Client, Config, SourceBookmarks,
+    TargetBookmarks,
+};
 use chrono::Utc;
 use log::info;
 
@@ -9,9 +12,16 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     let cache = Cache::new(&config.cache_path, &args.mode)?;
     let client = Client::new(config)?;
 
-    let mut source_bookmarks = SourceBookmarks::new();
-    source_bookmarks.read(config)?;
-    let mut target_bookmarks = TargetBookmarks::read(config)?;
+    let mut source_reader = config
+        .settings
+        .sources
+        .iter()
+        .map(SourceReader::new)
+        .collect::<Result<Vec<_>, anyhow::Error>>()?;
+    let mut target_bookmark_file = utils::open_file_in_write_mode(&config.target_bookmark_file)?;
+
+    let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
+    let mut target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let now = Utc::now();
     let bookmarks_to_add = target_bookmarks.filter_to_add(&source_bookmarks);
     let bookmarks_to_remove = target_bookmarks.filter_to_remove(&source_bookmarks);
@@ -37,7 +47,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         )
         .await?;
 
-        target_bookmarks.write(config)?;
+        target_bookmarks.write(&mut target_bookmark_file)?;
 
         Ok(())
     }

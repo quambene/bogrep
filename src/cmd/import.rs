@@ -1,118 +1,40 @@
-use crate::{
-    json, utils, BookmarkReader, ChromeBookmarkReader, Config, FirefoxBookmarkReader,
-    SimpleBookmarkReader, Source, SourceBookmarks, TargetBookmarks,
-};
-use anyhow::{anyhow, Context};
-use log::{debug, info, trace};
+use crate::{bookmark_reader::SourceReader, utils, Config, SourceBookmarks, TargetBookmarks};
+use log::{info, trace};
 use std::io::{Read, Write};
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
 pub fn import(config: &Config) -> Result<(), anyhow::Error> {
-    let source_bookmarks_files = config
+    let source_reader = config
         .settings
-        .source_bookmark_files
+        .sources
         .iter()
-        .map(|source| utils::open_file(&source.path))
+        .map(SourceReader::new)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-    let target_bookmarks_files = utils::open_file(&config.target_bookmark_file)?;
+    let target_bookmark_file = utils::open_file_in_write_mode(&config.target_bookmark_file)?;
 
-    // TODO: impl BookmarkReader::open() -> fs::File and use as writer.
-
-    import_bookmarks(
-        config.verbosity,
-        &config.settings.source_bookmark_files,
-        source_bookmarks_files,
-        target_bookmarks_files,
-    )?;
+    import_bookmarks(source_reader, target_bookmark_file)?;
 
     Ok(())
 }
 
 fn import_bookmarks(
-    verbosity: u8,
-    source_bookmark_files: &[Source],
-    mut source_reader: Vec<impl Read>,
+    mut source_reader: Vec<SourceReader>,
     mut target_reader_writer: impl Read + Write,
 ) -> Result<(), anyhow::Error> {
-    let source_bookmarks = read_source_bookmarks(verbosity, source_bookmark_files, source_reader)?;
-    let mut target_bookmarks = read_target_bookmarks(&mut target_reader_writer)?;
+    let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
+    let mut target_bookmarks = TargetBookmarks::read(&mut target_reader_writer)?;
 
     target_bookmarks.update(source_bookmarks)?;
+    target_bookmarks.write(&mut target_reader_writer)?;
 
-    write_target_bookmarks(&mut target_reader_writer, &target_bookmarks)?;
-
-    log_import(source_bookmark_files, &target_bookmarks);
+    log_import(&source_reader, &target_bookmarks);
 
     Ok(())
 }
 
-fn read_source_bookmarks(
-    verbosity: u8,
-    sources: &[Source],
-    mut source_reader: Vec<impl Read>,
-) -> Result<SourceBookmarks, anyhow::Error> {
-    let mut bookmarks = SourceBookmarks::new();
-
-    for source in sources {
-        debug!("Read bookmarks from file '{}'", source.path.display());
-
-        if verbosity >= 1 {
-            info!("Read bookmarks from file '{}'", source.path.display());
-        }
-
-        let path_str = source.path.to_str().unwrap_or("");
-
-        if path_str.contains("firefox") {
-            let firefox_reader = FirefoxBookmarkReader {
-                path: source.path.clone(),
-            };
-            firefox_reader.read_and_parse(source, &mut bookmarks)?;
-        } else if path_str.contains("google-chrome") {
-            let chrome_reader = ChromeBookmarkReader {
-                path: source.path.clone(),
-            };
-            chrome_reader.read_and_parse(source, &mut bookmarks)?;
-        } else if source.path.extension().map(|path| path.to_str()) == Some(Some("txt")) {
-            let simple_reader = SimpleBookmarkReader {
-                path: source.path.clone(),
-            };
-            simple_reader.read_and_parse(source, &mut bookmarks)?;
-        } else {
-            return Err(anyhow!(
-                "Format not supported for bookmark file '{}'",
-                source.path.display()
-            ));
-        }
-    }
-
-    Ok(bookmarks)
-}
-
-fn read_target_bookmarks(
-    mut target_reader_writer: impl Read + Write,
-) -> Result<TargetBookmarks, anyhow::Error> {
-    let mut buf = String::new();
-    target_reader_writer
-        .read_to_string(&mut buf)
-        .context("Can't read from `bookmarks.json` file:")?;
-    let target_bookmarks = json::deserialize::<TargetBookmarks>(&buf)?;
-    Ok(target_bookmarks)
-}
-
-fn write_target_bookmarks(
-    mut target_reader_writer: impl Read + Write,
-    target_bookmarks: &TargetBookmarks,
-) -> Result<(), anyhow::Error> {
-    let bookmarks_json = json::serialize(target_bookmarks)?;
-    target_reader_writer
-        .write_all(&bookmarks_json)
-        .context("Can't write to `bookmarks.json` file")?;
-    Ok(())
-}
-
-fn log_import(source_bookmark_files: &[Source], target_bookmarks: &TargetBookmarks) {
-    let source = if source_bookmark_files.len() == 1 {
+fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks) {
+    let source = if source_reader.len() == 1 {
         "source"
     } else {
         "sources"
@@ -121,10 +43,10 @@ fn log_import(source_bookmark_files: &[Source], target_bookmarks: &TargetBookmar
     info!(
         "Imported {} bookmarks from {} {source}: {}",
         target_bookmarks.bookmarks.len(),
-        source_bookmark_files.len(),
-        source_bookmark_files
+        source_reader.len(),
+        source_reader
             .iter()
-            .map(|source| source.path.to_string_lossy())
+            .map(|source_reader| source_reader.source().path.to_string_lossy())
             .collect::<Vec<_>>()
             .join(", ")
     );

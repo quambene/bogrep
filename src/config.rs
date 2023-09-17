@@ -75,14 +75,14 @@ impl Config {
         let settings = Settings::init(settings_path)?;
 
         if !target_bookmark_path.exists() {
-            File::create(&target_bookmark_path).context(format!(
+            File::create(target_bookmark_path).context(format!(
                 "Can't create `bookmarks.json` file: {}",
                 target_bookmark_path.display()
             ))?;
         }
 
         if !cache_path.exists() {
-            fs::create_dir_all(&cache_path).context(format!(
+            fs::create_dir_all(cache_path).context(format!(
                 "Can't create cache directory: {}",
                 cache_path.display()
             ))?;

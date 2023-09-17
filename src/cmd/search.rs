@@ -17,7 +17,8 @@ pub fn search(
         info!("{pattern:?}");
     }
 
-    let target_bookmarks = TargetBookmarks::read(config)?;
+    let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
+    let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
 
     if target_bookmarks.bookmarks.is_empty() {
         Err(anyhow!("Missing bookmarks, run `bogrep update` first"))

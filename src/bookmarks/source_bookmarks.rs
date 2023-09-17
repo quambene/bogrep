@@ -1,9 +1,5 @@
-use crate::{
-    bookmark_reader::{ChromeBookmarkReader, FirefoxBookmarkReader},
-    BookmarkReader, Config, SimpleBookmarkReader,
-};
-use anyhow::anyhow;
-use log::{debug, info};
+use crate::bookmark_reader::SourceReader;
+use log::debug;
 use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
@@ -32,81 +28,32 @@ impl SourceBookmarks {
         }
     }
 
-    pub fn read(&mut self, config: &Config) -> Result<(), anyhow::Error> {
-        for source in &config.settings.source_bookmark_files {
-            debug!("Read bookmarks from file '{}'", source.path.display());
+    pub fn read(source_reader: &mut [SourceReader]) -> Result<SourceBookmarks, anyhow::Error> {
+        let mut bookmarks = SourceBookmarks::new();
 
-            if config.verbosity >= 1 {
-                info!("Read bookmarks from file '{}'", source.path.display());
-            }
-
-            let path_str = source.path.to_str().unwrap_or("");
-
-            if path_str.contains("firefox") {
-                let firefox_reader = FirefoxBookmarkReader {
-                    path: source.path.clone(),
-                };
-                firefox_reader.read_and_parse(source, self)?;
-            } else if path_str.contains("google-chrome") {
-                let chrome_reader = ChromeBookmarkReader {
-                    path: source.path.clone(),
-                };
-                chrome_reader.read_and_parse(source, self)?;
-            } else if source.path.extension().map(|path| path.to_str()) == Some(Some("txt")) {
-                let simple_reader = SimpleBookmarkReader {
-                    path: source.path.clone(),
-                };
-                simple_reader.read_and_parse(source, self)?;
-            } else {
-                return Err(anyhow!(
-                    "Format not supported for bookmark file '{}'",
-                    source.path.display()
-                ));
-            }
+        for reader in source_reader {
+            reader.read_and_parse(&mut bookmarks)?
         }
 
-        Ok(())
+        Ok(bookmarks)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Settings, Source};
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_read_empty() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
-        assert!(res.is_ok());
-        assert_eq!(source_bookmarks.bookmarks, HashSet::new());
-    }
+    use crate::{test_utils, Source};
+    use std::path::Path;
 
     #[test]
     fn test_read_firefox() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![Source {
-                path: PathBuf::from("test_data/source/bookmarks_firefox.json"),
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
+        let bookmark_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
+        test_utils::create_compressed_bookmarks(bookmark_path);
+        let source = Source::new(bookmark_path, vec![]);
+        let source_reader = SourceReader::new(&source).unwrap();
+        let res = SourceBookmarks::read(&mut [source_reader]);
         assert!(res.is_ok(), "{}", res.unwrap_err());
+        let source_bookmarks = res.unwrap();
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -117,20 +64,12 @@ mod tests {
 
     #[test]
     fn test_read_chrome() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![Source {
-                path: PathBuf::from("test_data/source/bookmarks_google-chrome.json"),
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
+        let bookmark_path = Path::new("test_data/source/bookmarks_google-chrome.json");
+        let source = Source::new(bookmark_path, vec![]);
+        let source_reader = SourceReader::new(&source).unwrap();
+        let res = SourceBookmarks::read(&mut [source_reader]);
         assert!(res.is_ok(), "{}", res.unwrap_err());
+        let source_bookmarks = res.unwrap();
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -141,20 +80,12 @@ mod tests {
 
     #[test]
     fn test_read_simple() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![Source {
-                path: PathBuf::from("test_data/source/bookmarks_simple.txt"),
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
+        let bookmark_path = Path::new("test_data/source/bookmarks_simple.txt");
+        let source = Source::new(bookmark_path, vec![]);
+        let source_reader = SourceReader::new(&source).unwrap();
+        let res = SourceBookmarks::read(&mut [source_reader]);
         assert!(res.is_ok(), "{}", res.unwrap_err());
+        let source_bookmarks = res.unwrap();
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
             String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
