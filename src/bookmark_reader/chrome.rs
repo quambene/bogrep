@@ -95,7 +95,11 @@ impl ReadBookmark for ChromeBookmarkReader {
         if path.exists() && path.is_file() {
             Ok(path.to_owned())
         } else {
-            Err(anyhow!("Missing file"))
+            Err(anyhow!(
+                "Missing source file for {}: {}",
+                self.name(),
+                path.display()
+            ))
         }
     }
 
@@ -134,9 +138,9 @@ mod tests {
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = Source::new(source_path, vec![]);
+        let source = Source::new(source_path, vec![]);
 
-        let res = bookmark_reader.parse(&bookmarks, &source_file, &mut source_bookmarks);
+        let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([

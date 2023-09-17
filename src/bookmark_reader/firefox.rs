@@ -143,7 +143,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
             Ok(bookmark_path)
         } else {
             Err(anyhow!(
-                "Unexpected format for bookmark file: {}",
+                "Unexpected format for source file: {}",
                 bookmark_path.display()
             ))
         }

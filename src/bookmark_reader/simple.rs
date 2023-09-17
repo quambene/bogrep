@@ -17,7 +17,11 @@ impl ReadBookmark for SimpleBookmarkReader {
         if path.exists() && path.is_file() {
             Ok(path.to_owned())
         } else {
-            Err(anyhow!("Missing file"))
+            Err(anyhow!(
+                "Missing source file for {}: {}",
+                self.name(),
+                path.display()
+            ))
         }
     }
 
