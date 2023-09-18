@@ -57,17 +57,12 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, Source};
+    use crate::{json, test_utils, Source};
     use std::{collections::HashSet, io::Cursor, path::Path};
 
-    #[test]
-    fn test_import_bookmarks_google_chrome() {
+    fn test_import_bookmarks(source: &Source, expected_bookmarks: HashSet<String>) {
         let target_bookmarks = TargetBookmarks::default();
         let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
-        let path = Path::new("test_data/source/bookmarks_google-chrome.json");
-        let folders = vec![];
-        let source = Source::new(path, folders);
-        let source_reader = SourceReader::new(&source).unwrap();
 
         let mut cursor = Cursor::new(Vec::new());
         cursor.write_all(&target_bookmarks).unwrap();
@@ -75,6 +70,7 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         cursor.set_position(0);
 
+        let source_reader = SourceReader::new(&source).unwrap();
         let res = import_bookmarks(vec![source_reader], &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
@@ -91,16 +87,56 @@ mod tests {
             .all(|bookmark| bookmark.last_cached == None));
         assert_eq!(
             actual_bookmarks
-            .bookmarks
-            .iter()
-            .map(|bookmark| bookmark.url.clone())
-            .collect::<HashSet<_>>(),
-            HashSet::from_iter([
-                String::from("https://www.deepl.com/translator"),
-                String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-                String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-                String::from("https://doc.rust-lang.org/book/title-page.html"),
-            ])
+                .bookmarks
+                .iter()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+            expected_bookmarks,
         );
+    }
+
+    #[test]
+    fn test_import_bookmarks_firefox() {
+        let source_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
+        let folders = vec![];
+        let source = Source::new(source_path, folders);
+        let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.mozilla.org/en-US/firefox/central/"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html")
+        ]);
+        test_utils::create_compressed_bookmarks(source_path);
+
+        test_import_bookmarks(&source, target_bookmarks);
+    }
+
+    #[test]
+    fn test_import_bookmarks_google_chrome() {
+        let source_path = Path::new("test_data/source/bookmarks_google-chrome.json");
+        let folders = vec![];
+        let source = Source::new(source_path, folders);
+        let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]);
+
+        test_import_bookmarks(&source, target_bookmarks);
+    }
+
+    #[test]
+    fn test_import_bookmarks_simple() {
+        let source_path = Path::new("test_data/source/bookmarks_simple.txt");
+        let folders = vec![];
+        let source = Source::new(source_path, folders);
+        let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
+            String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"),
+        ]);
+
+        test_import_bookmarks(&source, target_bookmarks);
     }
 }
