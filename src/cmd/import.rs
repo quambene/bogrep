@@ -98,8 +98,8 @@ mod tests {
     #[test]
     fn test_import_bookmarks_firefox() {
         let source_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
-        let folders = vec![];
-        let source = Source::new(source_path, folders);
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -114,8 +114,8 @@ mod tests {
     #[test]
     fn test_import_bookmarks_google_chrome() {
         let source_path = Path::new("test_data/source/bookmarks_google-chrome.json");
-        let folders = vec![];
-        let source = Source::new(source_path, folders);
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -129,8 +129,8 @@ mod tests {
     #[test]
     fn test_import_bookmarks_simple() {
         let source_path = Path::new("test_data/source/bookmarks_simple.txt");
-        let folders = vec![];
-        let source = Source::new(source_path, folders);
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
             String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
