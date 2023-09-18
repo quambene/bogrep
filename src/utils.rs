@@ -27,6 +27,15 @@ pub fn open_file(path: &Path) -> Result<File, anyhow::Error> {
     Ok(file)
 }
 
+pub fn open_file_in_read_write_mode(path: &Path) -> Result<File, anyhow::Error> {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .context(format!("Can't open file at {}", path.display()))?;
+    Ok(file)
+}
+
 /// Helper function to create a file that logs the path of the file in case of an error.
 pub fn create_file(path: &Path) -> Result<File, anyhow::Error> {
     let file = File::create(path).context(format!("Can't create file at {}", path.display()))?;

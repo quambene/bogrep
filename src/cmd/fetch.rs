@@ -1,4 +1,4 @@
-use crate::{html, Cache, Client, Config, FetchArgs, TargetBookmark, TargetBookmarks};
+use crate::{html, utils, Cache, Client, Config, FetchArgs, TargetBookmark, TargetBookmarks};
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
@@ -8,7 +8,9 @@ use std::path::Path;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
-    let mut bookmarks = TargetBookmarks::read(config)?;
+    let mut target_bookmark_file =
+        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
+    let mut bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache = Cache::init(config, &args.mode).await?;
     let client = Client::new(config)?;
 
@@ -21,7 +23,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     trace!("Fetched bookmarks: {bookmarks:#?}");
 
     // Write bookmarks with updated timestamps.
-    bookmarks.write(config)?;
+    bookmarks.write(&mut target_bookmark_file)?;
 
     Ok(())
 }
@@ -151,7 +153,8 @@ pub async fn fetch_and_add_urls(
 /// Fetch difference between cached and fetched website, and display changes.
 pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::Error> {
     debug!("Diff content for urls: {:#?}", args.urls);
-    let target_bookmarks = TargetBookmarks::read(config)?;
+    let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
+    let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache = Cache::new(&config.cache_path, &args.mode)?;
     let client = Client::new(config)?;
 

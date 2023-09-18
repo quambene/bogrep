@@ -1,4 +1,4 @@
-use crate::{config::Config, utils, SourceBookmarks};
+use crate::{json, SourceBookmarks};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use log::{info, trace};
@@ -32,55 +32,31 @@ impl TargetBookmark {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct TargetBookmarks {
     pub bookmarks: Vec<TargetBookmark>,
 }
 
 impl TargetBookmarks {
-    pub fn init(config: &Config) -> Result<TargetBookmarks, anyhow::Error> {
-        let bookmarks = if config.target_bookmark_file.exists() {
-            info!("Bookmarks already imported");
-            TargetBookmarks::read(config)?
-        } else {
-            let mut source_bookmarks = SourceBookmarks::new();
-            source_bookmarks.read(config)?;
-            let target_bookmarks = TargetBookmarks::from(source_bookmarks);
-            target_bookmarks.write(config)?;
-
-            info!(
-                "Imported {} bookmarks from {} sources: {}",
-                target_bookmarks.bookmarks.len(),
-                config.settings.source_bookmark_files.len(),
-                config
-                    .settings
-                    .source_bookmark_files
-                    .iter()
-                    .map(|bookmark_file| bookmark_file.source.to_string_lossy())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-
-            target_bookmarks
-        };
-
-        Ok(bookmarks)
+    pub fn read(
+        target_reader_writer: &mut (impl Read + Write),
+    ) -> Result<TargetBookmarks, anyhow::Error> {
+        let mut buf = Vec::new();
+        target_reader_writer
+            .read_to_end(&mut buf)
+            .context("Can't read from `bookmarks.json` file:")?;
+        let target_bookmarks = json::deserialize::<TargetBookmarks>(&buf)?;
+        Ok(target_bookmarks)
     }
 
-    pub fn read(config: &Config) -> Result<TargetBookmarks, anyhow::Error> {
-        let mut target_bookmarks_file = utils::open_file(&config.target_bookmark_file)?;
-        let mut buffer = String::new();
-        target_bookmarks_file
-            .read_to_string(&mut buffer)
-            .context("Can't read bookmark file")?;
-        let bookmarks = serde_json::from_str(&buffer)?;
-        Ok(bookmarks)
-    }
-
-    pub fn write(&self, config: &Config) -> Result<(), anyhow::Error> {
-        let json_bookmarks = serde_json::to_string_pretty(self)?;
-        let mut target_bookmarks_file = utils::create_file(&config.target_bookmark_file)?;
-        target_bookmarks_file.write_all(json_bookmarks.as_bytes())?;
+    pub fn write(
+        &self,
+        target_reader_writer: &mut (impl Read + Write),
+    ) -> Result<(), anyhow::Error> {
+        let bookmarks_json = json::serialize(self)?;
+        target_reader_writer
+            .write_all(&bookmarks_json)
+            .context("Can't write to `bookmarks.json` file")?;
         Ok(())
     }
 
@@ -125,14 +101,19 @@ impl TargetBookmarks {
             .collect()
     }
 
-    pub fn diff(
-        &mut self,
-        source_bookmarks: &SourceBookmarks,
-        config: &Config,
-    ) -> Result<(), anyhow::Error> {
+    /// Update target bookmarks.
+    ///
+    /// Determine the difference between source and target bookmarks and update
+    /// the target bookmarks.
+    pub fn update(&mut self, source_bookmarks: SourceBookmarks) -> Result<(), anyhow::Error> {
+        if self.bookmarks.is_empty() {
+            self.bookmarks = Self::from(source_bookmarks.clone()).bookmarks;
+            return Ok(());
+        }
+
         let now = Utc::now();
-        let bookmarks_to_add = self.filter_to_add(source_bookmarks);
-        let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
+        let bookmarks_to_add = self.filter_to_add(&source_bookmarks);
+        let bookmarks_to_remove = self.filter_to_remove(&source_bookmarks);
 
         for url in &bookmarks_to_add {
             let bookmark = TargetBookmark::new(*url, now, None);
@@ -144,13 +125,11 @@ impl TargetBookmarks {
         }
 
         if !bookmarks_to_add.is_empty() {
-            self.write(config)?;
             info!("Added {} new bookmarks", bookmarks_to_add.len());
             trace!("Added new bookmarks: {bookmarks_to_add:#?}");
         }
 
         if !bookmarks_to_remove.is_empty() {
-            self.write(config)?;
             info!("Removed {} bookmarks", bookmarks_to_remove.len());
             trace!("Removed bookmarks: {bookmarks_to_remove:#?}");
         }
@@ -188,160 +167,91 @@ impl From<SourceBookmarks> for TargetBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Settings, SourceFile};
-    use std::{collections::HashSet, path::PathBuf};
+    use crate::utils;
+    use std::{io::Cursor, path::Path};
 
     #[test]
-    fn test_init_target_empty() {
-        let settings = Settings {
-            source_bookmark_files: vec![],
-            ..Default::default()
-        };
-        let config = Config {
-            target_bookmark_file: PathBuf::from("test_data/target/bookmarks_empty.json"),
-            settings,
-            ..Default::default()
-        };
-        let res = TargetBookmarks::init(&config);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
+    fn test_read_target_bookmarks() {
+        let bookmark_path = Path::new("test_data/target/bookmarks.json");
+        let mut bookmark_file = utils::open_file(bookmark_path).unwrap();
+        let res = TargetBookmarks::read(&mut bookmark_file);
+        assert!(res.is_ok());
 
-        let target_bookmarks = res.unwrap();
-        assert_eq!(target_bookmarks.bookmarks, vec![]);
-    }
-
-    #[test]
-    fn test_init_target_simple() {
-        let source_path = PathBuf::from("test_data/source/bookmarks_simple.txt");
-        let target_path = PathBuf::from("test_data/target/bookmarks_simple.json");
-
-        // Prepare test
-        if target_path.exists() {
-            utils::remove_file(&target_path).unwrap();
-        }
-
-        let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: source_path,
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            target_bookmark_file: target_path,
-            settings,
-            ..Default::default()
-        };
-        let res = TargetBookmarks::init(&config);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-        let target_bookmarks = res.unwrap();
-
-        assert!(target_bookmarks
-            .bookmarks
-            .iter()
-            .all(|bookmark| bookmark.last_cached == None));
+        let bookmarks = res.unwrap();
         assert_eq!(
-            target_bookmarks
-            .bookmarks
-            .iter()
-            .map(|bookmark| bookmark.url.clone())
-            .collect::<HashSet<_>>(),
-            HashSet::from_iter([
-                String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-                String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
-                String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/")
-            ])
+            bookmarks.bookmarks,
+            vec![
+                TargetBookmark {
+                    id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
+                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                },
+                TargetBookmark {
+                    id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                    url: String::from("https://www.deepl.com/translator"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                }
+            ]
         );
     }
 
     #[test]
-    fn test_init_target_firefox() {
-        let source_path = PathBuf::from("test_data/source/bookmarks_firefox.json");
-        let target_path = PathBuf::from("test_data/target/bookmarks_firefox.json");
+    fn test_read_target_bookmarks_empty() {
+        let bookmark_path = Path::new("test_data/target/bookmarks_empty.json");
+        let mut bookmark_file = utils::open_file(bookmark_path).unwrap();
+        let res = TargetBookmarks::read(&mut bookmark_file);
+        assert!(res.is_ok());
 
-        // Prepare test
-        if target_path.exists() {
-            utils::remove_file(&target_path).unwrap();
-        }
+        let bookmarks = res.unwrap();
+        assert!(bookmarks.bookmarks.is_empty());
+    }
 
-        let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: source_path,
-                folders: vec![],
-            }],
-            ..Default::default()
+    #[test]
+    fn test_write_target_bookmarks() {
+        let bookmarks = TargetBookmarks {
+            bookmarks: vec![
+                TargetBookmark {
+                    id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
+                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                },
+                TargetBookmark {
+                    id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                    url: String::from("https://www.deepl.com/translator"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                },
+            ],
         };
-        let config = Config {
-            target_bookmark_file: target_path,
-            settings,
-            ..Default::default()
-        };
-        let res = TargetBookmarks::init(&config);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let mut cursor = Cursor::new(Vec::new());
+        let res = TargetBookmarks::write(&bookmarks, &mut cursor);
+        assert!(res.is_ok());
 
-        let target_bookmarks = res.unwrap();
-
-        assert!(target_bookmarks
-            .bookmarks
-            .iter()
-            .all(|bookmark| bookmark.last_cached == None));
+        let actual = cursor.into_inner();
+        let expected_path = Path::new("test_data/target/bookmarks.json");
+        let expected = utils::read_file(expected_path).unwrap();
         assert_eq!(
-            target_bookmarks
-            .bookmarks
-            .iter()
-            .map(|bookmark| bookmark.url.clone())
-            .collect::<HashSet<_>>(),
-            HashSet::from_iter([
-                String::from("https://www.mozilla.org/en-US/firefox/central/"),
-                String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-                String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-                String::from("https://doc.rust-lang.org/book/title-page.html")
-            ])
+            String::from_utf8(actual).unwrap(),
+            String::from_utf8(expected).unwrap()
         );
     }
 
     #[test]
-    fn test_init_target_chrome() {
-        let source_path = PathBuf::from("test_data/source/bookmarks_google-chrome.json");
-        let target_path = PathBuf::from("test_data/target/bookmarks_google-chrome.json");
+    fn test_write_target_bookmarks_empty() {
+        let bookmarks = TargetBookmarks::default();
+        let mut cursor = Cursor::new(Vec::new());
+        let res = TargetBookmarks::write(&bookmarks, &mut cursor);
+        assert!(res.is_ok());
 
-        // Prepare test
-        if target_path.exists() {
-            utils::remove_file(&target_path).unwrap();
-        }
-
-        let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: source_path,
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            target_bookmark_file: target_path,
-            settings,
-            ..Default::default()
-        };
-        let res = TargetBookmarks::init(&config);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-
-        let target_bookmarks = res.unwrap();
-
-        assert!(target_bookmarks
-            .bookmarks
-            .iter()
-            .all(|bookmark| bookmark.last_cached == None));
+        let actual = cursor.into_inner();
+        let expected_path = Path::new("test_data/target/bookmarks_empty.json");
+        let expected = utils::read_file(expected_path).unwrap();
         assert_eq!(
-            target_bookmarks
-            .bookmarks
-            .iter()
-            .map(|bookmark| bookmark.url.clone())
-            .collect::<HashSet<_>>(),
-            HashSet::from_iter([
-                String::from("https://www.deepl.com/translator"),
-                String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-                String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-                String::from("https://doc.rust-lang.org/book/title-page.html"),
-            ])
+            String::from_utf8(actual).unwrap(),
+            String::from_utf8(expected).unwrap()
         );
     }
 }

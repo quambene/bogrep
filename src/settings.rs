@@ -1,13 +1,13 @@
 use crate::{
     args::{SetCacheMode, SetSource},
     cache::CacheMode,
-    utils,
+    json,
 };
 use anyhow::Context;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, File},
+    fs::File,
     io::{Read, Write},
     path::{Path, PathBuf},
 };
@@ -27,7 +27,7 @@ pub struct Settings {
     ///
     /// Source could be Firefox or Chrome.
     #[serde(rename = "bookmark_files")]
-    pub source_bookmark_files: Vec<SourceFile>,
+    pub sources: Vec<Source>,
     /// The file extension used to cache websites.
     pub cache_mode: CacheMode,
     /// The maximal number of concurrent requests.
@@ -41,7 +41,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            source_bookmark_files: Vec::new(),
+            sources: Vec::new(),
             cache_mode: CacheMode::default(),
             max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
             request_timeout: REQUEST_TIMEOUT_DEFAULT,
@@ -52,14 +52,14 @@ impl Default for Settings {
 
 impl Settings {
     pub fn new(
-        source_bookmark_files: Vec<SourceFile>,
+        sources: Vec<Source>,
         cache_mode: CacheMode,
         max_concurrent_requests: usize,
         request_timeout: u64,
         request_throttling: u64,
     ) -> Self {
         Self {
-            source_bookmark_files,
+            sources,
             cache_mode,
             max_concurrent_requests,
             request_timeout,
@@ -67,14 +67,23 @@ impl Settings {
         }
     }
 
-    pub fn init(config_path: &Path, settings_path: &Path) -> Result<Settings, anyhow::Error> {
+    pub fn init(settings_path: &Path) -> Result<Settings, anyhow::Error> {
         if settings_path.exists() {
-            let settings = Settings::read(settings_path)?;
+            let mut buf = Vec::new();
+            let mut settings_file = File::open(settings_path)?;
+            settings_file
+                .read_to_end(&mut buf)
+                .context("Can't read `settings.json` file")?;
+            let settings = json::deserialize::<Settings>(&buf)?;
             Ok(settings)
         } else {
-            fs::create_dir_all(config_path).context("Can't create config directory at {}")?;
             let settings = Settings::default();
-            settings.write(settings_path)?;
+            let settings_json = json::serialize(&settings)?;
+            let mut settings_file = File::create(settings_path).context(format!(
+                "Can't create `settings.json` file: {}",
+                settings_path.display()
+            ))?;
+            settings_file.write_all(&settings_json)?;
             Ok(settings)
         }
     }
@@ -83,8 +92,8 @@ impl Settings {
         if let Some(source_path) = set_source.source {
             debug!("Set source to {source_path}");
             let source_path = PathBuf::from(source_path);
-            let source_file = SourceFile::new(source_path, set_source.folders);
-            self.source_bookmark_files.push(source_file);
+            let source_file = Source::new(source_path, set_source.folders);
+            self.sources.push(source_file);
         }
     }
 
@@ -99,33 +108,14 @@ impl Settings {
         self.set_source(set_source);
         self.set_cache_mode(set_cache_mode);
     }
-
-    fn read(settings_path: &Path) -> Result<Settings, anyhow::Error> {
-        let mut buffer = String::new();
-        let mut settings_file = File::open(settings_path)
-            .context("Missing settings file: Run `bogrep config <my_bookmarks_file>`")?;
-        settings_file
-            .read_to_string(&mut buffer)
-            .context("Can't read settings file")?;
-        let settings = serde_json::from_str(&buffer)?;
-        Ok(settings)
-    }
-
-    pub fn write(&self, settings_path: &Path) -> Result<(), anyhow::Error> {
-        let json = serde_json::to_string_pretty(&self)?;
-        let mut settings_file = utils::create_file(settings_path).context(format!(
-            "Can't create settings file at {}",
-            settings_path.display()
-        ))?;
-        settings_file.write_all(json.as_bytes())?;
-        Ok(())
-    }
 }
 
+/// The source of bookmarks.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct SourceFile {
-    /// The source file for bookmarks.
-    pub source: PathBuf,
+pub struct Source {
+    /// The path to the source file.
+    #[serde(rename = "source")]
+    pub path: PathBuf,
     /// The folders to be imported.
     ///
     /// If no folders are selected, all bookmarks in the source file will be
@@ -133,10 +123,10 @@ pub struct SourceFile {
     pub folders: Vec<String>,
 }
 
-impl SourceFile {
-    pub fn new(source: impl Into<PathBuf>, folders: Vec<String>) -> Self {
+impl Source {
+    pub fn new(path: impl Into<PathBuf>, folders: Vec<String>) -> Self {
         Self {
-            source: source.into(),
+            path: path.into(),
             folders,
         }
     }
@@ -156,8 +146,8 @@ mod tests {
         assert_eq!(
             settings,
             Settings {
-                source_bookmark_files: vec![SourceFile {
-                    source: PathBuf::from("path/to/source"),
+                sources: vec![Source {
+                    path: PathBuf::from("path/to/source"),
                     folders: vec![String::from("dev,science,article")]
                 }],
                 ..Default::default()
@@ -194,8 +184,8 @@ mod tests {
         assert_eq!(
             settings,
             Settings {
-                source_bookmark_files: vec![SourceFile {
-                    source: PathBuf::from("path/to/source"),
+                sources: vec![Source {
+                    path: PathBuf::from("path/to/source"),
                     folders: vec![String::from("dev,science,article")]
                 }],
                 cache_mode: CacheMode::Html,

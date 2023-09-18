@@ -1,8 +1,12 @@
-use super::BookmarkReader;
-use crate::{utils, SourceBookmarks, SourceFile};
+use super::ReadBookmark;
+use crate::{Source, SourceBookmarks};
+use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
-use std::path::Path;
+use std::{
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 pub struct ChromeBookmarkReader;
 
@@ -21,22 +25,22 @@ impl ChromeBookmarkReader {
         }
     }
 
-    fn traverse_json(value: &Value, bookmarks: &mut SourceBookmarks, source_file: &SourceFile) {
+    fn traverse_json(value: &Value, bookmarks: &mut SourceBookmarks, source: &Source) {
         match value {
             Value::Object(obj) => {
-                if source_file.folders.is_empty() {
+                if source.folders.is_empty() {
                     Self::select_bookmark(obj, bookmarks);
 
                     for (_, val) in obj {
-                        Self::traverse_json(val, bookmarks, source_file);
+                        Self::traverse_json(val, bookmarks, source);
                     }
                 } else {
                     if let Some(Value::String(type_value)) = obj.get("type") {
                         if type_value == "folder" {
                             if let Some(Value::String(name_value)) = obj.get("name") {
-                                if source_file.folders.contains(name_value) {
+                                if source.folders.contains(name_value) {
                                     for (_, val) in obj {
-                                        Self::traverse_children(val, bookmarks, source_file);
+                                        Self::traverse_children(val, bookmarks);
                                     }
                                 }
                             }
@@ -44,13 +48,13 @@ impl ChromeBookmarkReader {
                     }
 
                     for (_, val) in obj {
-                        Self::traverse_json(val, bookmarks, source_file);
+                        Self::traverse_json(val, bookmarks, source);
                     }
                 }
             }
             Value::Array(arr) => {
                 for (_index, val) in arr.iter().enumerate() {
-                    Self::traverse_json(val, bookmarks, source_file);
+                    Self::traverse_json(val, bookmarks, source);
                 }
             }
             Value::String(_) => (),
@@ -60,22 +64,18 @@ impl ChromeBookmarkReader {
         }
     }
 
-    fn traverse_children(
-        value: &Value,
-        bookmarks: &mut SourceBookmarks,
-        _source_file: &SourceFile,
-    ) {
+    fn traverse_children(value: &Value, bookmarks: &mut SourceBookmarks) {
         match value {
             Value::Object(obj) => {
                 Self::select_bookmark(obj, bookmarks);
 
                 for (_, val) in obj {
-                    Self::traverse_children(val, bookmarks, _source_file);
+                    Self::traverse_children(val, bookmarks);
                 }
             }
             Value::Array(arr) => {
                 for (_index, val) in arr.iter().enumerate() {
-                    Self::traverse_children(val, bookmarks, _source_file);
+                    Self::traverse_children(val, bookmarks);
                 }
             }
             Value::String(_) => (),
@@ -86,24 +86,39 @@ impl ChromeBookmarkReader {
     }
 }
 
-impl BookmarkReader for ChromeBookmarkReader {
-    const NAME: &'static str = "Google Chrome";
+impl ReadBookmark for ChromeBookmarkReader {
+    fn name(&self) -> &'static str {
+        "Google Chrome"
+    }
 
-    fn read(&self, bookmark_path: &Path) -> Result<String, anyhow::Error> {
-        debug!("Read bookmarks from {}", Self::NAME);
-        let bookmarks = utils::read_file(bookmark_path)?;
+    fn validate_path(&self, path: &Path) -> Result<PathBuf, anyhow::Error> {
+        if path.exists() && path.is_file() {
+            Ok(path.to_owned())
+        } else {
+            Err(anyhow!(
+                "Missing source file for {}: {}",
+                self.name(),
+                path.display()
+            ))
+        }
+    }
+
+    fn read(&self, reader: &mut dyn Read) -> Result<String, anyhow::Error> {
+        debug!("Read bookmarks from {}", self.name());
+        let mut bookmarks = Vec::new();
+        reader.read_to_end(&mut bookmarks)?;
         Ok(String::from_utf8(bookmarks)?)
     }
 
     fn parse(
         &self,
         raw_bookmarks: &str,
-        source_file: &SourceFile,
+        source: &Source,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        debug!("Parse bookmarks from {}", Self::NAME);
+        debug!("Parse bookmarks from {}", self.name());
         let value: Value = serde_json::from_str(raw_bookmarks)?;
-        Self::traverse_json(&value, bookmarks, source_file);
+        Self::traverse_json(&value, bookmarks, source);
         Ok(())
     }
 }
@@ -111,7 +126,7 @@ impl BookmarkReader for ChromeBookmarkReader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
+    use std::{collections::HashSet, path::Path};
 
     #[test]
     fn test_parse_all() {
@@ -119,11 +134,13 @@ mod tests {
         assert!(source_path.exists());
 
         let bookmark_reader = ChromeBookmarkReader;
-        let bookmarks = bookmark_reader.read(source_path).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![]);
+        let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
-        let res = bookmark_reader.parse(&bookmarks, &source_file, &mut source_bookmarks);
+        let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
+        let mut source_bookmarks = SourceBookmarks::new();
+        let source = Source::new(source_path, vec![]);
+
+        let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
@@ -140,11 +157,13 @@ mod tests {
         assert!(source_path.exists());
 
         let bookmark_reader = ChromeBookmarkReader;
-        let bookmarks = bookmark_reader.read(source_path).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![String::from("dev")]);
+        let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
-        let res = bookmark_reader.parse(&bookmarks, &source_file, &mut source_bookmarks);
+        let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
+        let mut source_bookmarks = SourceBookmarks::new();
+        let source = Source::new(source_path, vec![String::from("dev")]);
+
+        let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(

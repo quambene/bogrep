@@ -1,8 +1,10 @@
-use crate::Settings;
+use crate::{json, Settings, TargetBookmarks};
 use anyhow::Context;
 use log::info;
 use std::{
     env,
+    fs::{self, File},
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -58,13 +60,38 @@ impl Config {
         let settings_path = Path::new(&settings_path);
         let ignore_path = format!("{}/{}", config_path, IGNORE_FILE);
         let ignore_path = Path::new(&ignore_path);
-        let target_bookmark_file = format!("{}/{}", config_path, BOOKMARKS_FILE);
-        let target_bookmark_file = Path::new(&target_bookmark_file);
+        let target_bookmark_path = format!("{}/{}", config_path, BOOKMARKS_FILE);
+        let target_bookmark_path = Path::new(&target_bookmark_path);
         let cache_path = format!("{config_path}/cache");
         let cache_path = Path::new(&cache_path);
-
         let config_path = Path::new(&config_path);
-        let settings = Settings::init(config_path, settings_path)?;
+
+        if !config_path.exists() {
+            fs::create_dir_all(config_path).context(format!(
+                "Can't create config directory: {}",
+                config_path.display()
+            ))?;
+        }
+
+        let settings = Settings::init(settings_path)?;
+
+        if !target_bookmark_path.exists() {
+            let target_bookmarks = TargetBookmarks::default();
+            let json = json::serialize(target_bookmarks)?;
+            let mut bookmark_file = File::create(target_bookmark_path).context(format!(
+                "Can't create `bookmarks.json` file: {}",
+                target_bookmark_path.display()
+            ))?;
+            bookmark_file.write_all(&json)?;
+            bookmark_file.flush()?;
+        }
+
+        if !cache_path.exists() {
+            fs::create_dir_all(cache_path).context(format!(
+                "Can't create cache directory: {}",
+                cache_path.display()
+            ))?;
+        }
 
         if verbosity >= 1 {
             info!("Read config from {}", settings_path.display());
@@ -75,7 +102,7 @@ impl Config {
             settings_path,
             ignore_path,
             cache_path,
-            target_bookmark_file,
+            target_bookmark_path,
             settings,
         );
 
@@ -108,7 +135,7 @@ pub mod tests {
     fn test_config() {
         let verbosity = 0;
         let project_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
-        let config_path = format!("{}/test_data", project_dir.to_string_lossy());
+        let config_path = format!("{}/test_data/bogrep", project_dir.to_string_lossy());
 
         // Prepare test
         env::set_var("BOGREP_HOME", &config_path);
