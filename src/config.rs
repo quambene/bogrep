@@ -1,6 +1,6 @@
 use crate::{json, Settings, TargetBookmarks};
 use anyhow::Context;
-use log::info;
+use log::{debug, info};
 use std::{
     env,
     fs::{self, File},
@@ -67,6 +67,7 @@ impl Config {
         let config_path = Path::new(&config_path);
 
         if !config_path.exists() {
+            debug!("Create config at {}", config_path.display());
             fs::create_dir_all(config_path).context(format!(
                 "Can't create config directory: {}",
                 config_path.display()
@@ -76,6 +77,10 @@ impl Config {
         let settings = Settings::init(settings_path)?;
 
         if !target_bookmark_path.exists() {
+            debug!(
+                "Create bookmarks file at {}",
+                target_bookmark_path.display()
+            );
             let target_bookmarks = TargetBookmarks::default();
             let json = json::serialize(target_bookmarks)?;
             let mut bookmark_file = File::create(target_bookmark_path).context(format!(
@@ -87,9 +92,18 @@ impl Config {
         }
 
         if !cache_path.exists() {
+            debug!("Create cache at {}", cache_path.display());
             fs::create_dir_all(cache_path).context(format!(
-                "Can't create cache directory: {}",
+                "Can't create cache directory at {}",
                 cache_path.display()
+            ))?;
+        }
+
+        if !ignore_path.exists() {
+            debug!("Create ignore file at {}", ignore_path.display());
+            File::create(ignore_path).context(format!(
+                "Can't create `.bogrepignore` file: {}",
+                settings_path.display()
             ))?;
         }
 

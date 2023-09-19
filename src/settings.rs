@@ -69,6 +69,7 @@ impl Settings {
 
     pub fn init(settings_path: &Path) -> Result<Settings, anyhow::Error> {
         if settings_path.exists() {
+            debug!("Reading settings file at {}", settings_path.display());
             let mut buf = Vec::new();
             let mut settings_file = File::open(settings_path)?;
             settings_file
@@ -77,6 +78,7 @@ impl Settings {
             let settings = json::deserialize::<Settings>(&buf)?;
             Ok(settings)
         } else {
+            debug!("Create settings file at {}", settings_path.display());
             let settings = Settings::default();
             let settings_json = json::serialize(&settings)?;
             let mut settings_file = File::create(settings_path).context(format!(
