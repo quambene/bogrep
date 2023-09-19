@@ -18,7 +18,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
     let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
 
-    if target_bookmarks.bookmarks.len() > 0 {
+    if !target_bookmarks.bookmarks.is_empty() {
         info!("Bookmarks already imported");
     } else {
         let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
