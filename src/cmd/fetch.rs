@@ -28,6 +28,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     Ok(())
 }
 
+/// Fetch bookmarks and replace cached bookmarks.
 pub async fn fetch_and_replace_all(
     config: &Config,
     client: &Client,
@@ -70,6 +71,7 @@ async fn fetch_and_replace(
     Ok(())
 }
 
+/// Fetch bookmarks and add bookmarks to cache if they do not exist yet.
 pub async fn fetch_and_add_all(
     config: &Config,
     client: &Client,
