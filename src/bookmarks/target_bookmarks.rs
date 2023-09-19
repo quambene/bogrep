@@ -105,19 +105,24 @@ impl TargetBookmarks {
     ///
     /// Determine the difference between source and target bookmarks and update
     /// the target bookmarks.
-    pub fn update(&mut self, source_bookmarks: SourceBookmarks) -> Result<(), anyhow::Error> {
+    pub fn update(
+        &mut self,
+        source_bookmarks: SourceBookmarks,
+    ) -> Result<(Vec<TargetBookmark>, Vec<TargetBookmark>), anyhow::Error> {
         if self.bookmarks.is_empty() {
             self.bookmarks = Self::from(source_bookmarks.clone()).bookmarks;
-            return Ok(());
+            return Ok((vec![], vec![]));
         }
 
         let now = Utc::now();
-        let bookmarks_to_add = self.filter_to_add(&source_bookmarks);
+        let urls_to_add = self.filter_to_add(&source_bookmarks);
         let bookmarks_to_remove = self.filter_to_remove(&source_bookmarks);
+        let mut bookmarks_to_add = vec![];
 
-        for url in &bookmarks_to_add {
-            let bookmark = TargetBookmark::new(*url, now, None);
+        for url in urls_to_add {
+            let bookmark = TargetBookmark::new(url, now, None);
             self.add(&bookmark);
+            bookmarks_to_add.push(bookmark);
         }
 
         for bookmark in &bookmarks_to_remove {
@@ -126,7 +131,10 @@ impl TargetBookmarks {
 
         if !bookmarks_to_add.is_empty() {
             info!("Added {} new bookmarks", bookmarks_to_add.len());
-            trace!("Added new bookmarks: {bookmarks_to_add:#?}");
+            trace!(
+                "Added new bookmarks: {:#?}",
+                bookmarks_to_add.iter().map(|bookmark| &bookmark.url)
+            );
         }
 
         if !bookmarks_to_remove.is_empty() {
@@ -138,7 +146,7 @@ impl TargetBookmarks {
             info!("Bookmarks are already up to date");
         }
 
-        Ok(())
+        Ok((bookmarks_to_add, bookmarks_to_remove))
     }
 }
 

@@ -15,9 +15,9 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let client = Client::new(config)?;
 
     if args.all {
-        fetch_and_replace_all(config, &client, &cache, &mut bookmarks).await?;
+        fetch_and_replace_all(config, &client, &cache, &mut bookmarks.bookmarks).await?;
     } else {
-        fetch_and_add_all(config, &client, &cache, &bookmarks).await?;
+        fetch_and_add_all(config, &client, &cache, &bookmarks.bookmarks).await?;
     }
 
     trace!("Fetched bookmarks: {bookmarks:#?}");
@@ -32,9 +32,8 @@ pub async fn fetch_and_replace_all(
     config: &Config,
     client: &Client,
     cache: &Cache,
-    bookmarks: &mut TargetBookmarks,
+    bookmarks: &mut [TargetBookmark],
 ) -> Result<(), anyhow::Error> {
-    let bookmarks = bookmarks.bookmarks.as_mut_slice();
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| fetch_and_replace(client, cache, bookmark))
         .buffer_unordered(config.settings.max_concurrent_requests);
@@ -75,9 +74,8 @@ pub async fn fetch_and_add_all(
     config: &Config,
     client: &Client,
     cache: &Cache,
-    bookmarks: &TargetBookmarks,
+    bookmarks: &[TargetBookmark],
 ) -> Result<(), anyhow::Error> {
-    let bookmarks = &bookmarks.bookmarks;
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| fetch_and_add(client, cache, bookmark))
         .buffer_unordered(config.settings.max_concurrent_requests);
@@ -117,33 +115,6 @@ async fn fetch_and_add(
             Err(err) => {
                 error!("Can't fetch website from '{}': {}", bookmark.url, err);
             }
-        }
-    }
-
-    Ok(())
-}
-
-pub async fn fetch_and_add_urls(
-    config: &Config,
-    client: &Client,
-    cache: &Cache,
-    urls: &[&str],
-    bookmarks: &mut TargetBookmarks,
-    now: chrono::DateTime<Utc>,
-) -> Result<(), anyhow::Error> {
-    for url in urls {
-        let bookmark = TargetBookmark::new(*url, now, None);
-        bookmarks.add(&bookmark);
-    }
-
-    let bookmarks = &bookmarks.bookmarks;
-    let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_add(client, cache, bookmark))
-        .buffer_unordered(config.settings.max_concurrent_requests);
-
-    while let Some(item) = stream.next().await {
-        if let Err(err) = item {
-            error!("Can't fetch bookmark: {err}");
         }
     }
 
