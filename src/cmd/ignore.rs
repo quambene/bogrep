@@ -8,16 +8,18 @@ use std::io::Write;
 /// Ignored urls can be configured by `bogrep ignore <url>` or by adding them to
 /// the `.bogrepignore` file.
 pub fn ignore(config: &Config, ignore_args: IgnoreArgs) -> Result<(), anyhow::Error> {
-    if !config.ignore_path.exists() {
-        utils::create_file(&config.ignore_path)?;
-    }
-
     let mut ignore_file = utils::append_file(&config.ignore_path)?;
 
-    for url in ignore_args.urls {
+    ignore_urls(&mut ignore_file, &ignore_args.urls)?;
+
+    Ok(())
+}
+
+fn ignore_urls(writer: &mut impl Write, urls: &[String]) -> Result<(), anyhow::Error> {
+    for url in urls {
         match Url::parse(&url) {
             Ok(url) => {
-                writeln!(ignore_file, "{url}")?;
+                writeln!(writer, "{url}")?;
             }
             Err(err) => {
                 warn!("Invalid url {url} is ignored: {err}");
