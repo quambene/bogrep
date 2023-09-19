@@ -11,7 +11,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
     let mut bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
-    let cache = Cache::init(config, &args.mode).await?;
+    let cache = Cache::new(&config.cache_path, &args.mode);
     let client = Client::new(config)?;
 
     if args.all {
@@ -155,7 +155,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
     debug!("Diff content for urls: {:#?}", args.urls);
     let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
     let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
-    let cache = Cache::new(&config.cache_path, &args.mode)?;
+    let cache = Cache::new(&config.cache_path, &args.mode);
     let client = Client::new(config)?;
 
     for url in args.urls {

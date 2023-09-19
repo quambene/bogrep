@@ -40,7 +40,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         target_bookmarks
     };
 
-    let cache = Cache::init(config, &args.mode).await?;
+    let cache = Cache::new(&config.cache_path, &args.mode);
     let client = Client::new(config)?;
     fetch_and_add_all(config, &client, &cache, &bookmarks).await?;
     Ok(())
