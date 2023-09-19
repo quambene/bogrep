@@ -10,7 +10,6 @@ use std::{
 
 const CONFIG_PATH: &str = ".config/bogrep";
 const SETTINGS_FILE: &str = "settings.json";
-const IGNORE_FILE: &str = ".bogrepignore";
 const BOOKMARKS_FILE: &str = "bookmarks.json";
 
 #[derive(Debug, PartialEq)]
@@ -19,8 +18,6 @@ pub struct Config {
     pub verbosity: u8,
     /// The path of the settings file.
     pub settings_path: PathBuf,
-    /// The path to the ignored urls.
-    pub ignore_path: PathBuf,
     /// The path to the cached websites.
     pub cache_path: PathBuf,
     /// The path to the generated bookmark file.
@@ -33,7 +30,6 @@ impl Config {
     fn new(
         verbosity: u8,
         settings_path: &Path,
-        ignore_path: &Path,
         cache_path: &Path,
         target_bookmark_file: &Path,
         settings: Settings,
@@ -41,7 +37,6 @@ impl Config {
         Self {
             verbosity,
             settings_path: settings_path.to_owned(),
-            ignore_path: ignore_path.to_owned(),
             cache_path: cache_path.to_owned(),
             target_bookmark_file: target_bookmark_file.to_owned(),
             settings,
@@ -58,8 +53,6 @@ impl Config {
 
         let settings_path = format!("{}/{}", config_path, SETTINGS_FILE);
         let settings_path = Path::new(&settings_path);
-        let ignore_path = format!("{}/{}", config_path, IGNORE_FILE);
-        let ignore_path = Path::new(&ignore_path);
         let target_bookmark_path = format!("{}/{}", config_path, BOOKMARKS_FILE);
         let target_bookmark_path = Path::new(&target_bookmark_path);
         let cache_path = format!("{config_path}/cache");
@@ -99,14 +92,6 @@ impl Config {
             ))?;
         }
 
-        if !ignore_path.exists() {
-            debug!("Create ignore file at {}", ignore_path.display());
-            File::create(ignore_path).context(format!(
-                "Can't create `.bogrepignore` file: {}",
-                settings_path.display()
-            ))?;
-        }
-
         if verbosity >= 1 {
             info!("Read config from {}", settings_path.display());
         }
@@ -114,7 +99,6 @@ impl Config {
         let config = Config::new(
             verbosity,
             settings_path,
-            ignore_path,
             cache_path,
             target_bookmark_path,
             settings,
@@ -137,7 +121,6 @@ pub mod tests {
             Self {
                 verbosity: u8::default(),
                 settings_path: PathBuf::default(),
-                ignore_path: PathBuf::default(),
                 cache_path: PathBuf::default(),
                 target_bookmark_file: PathBuf::default(),
                 settings: Settings::default(),
@@ -163,7 +146,6 @@ pub mod tests {
             Config {
                 verbosity: 0,
                 settings_path: PathBuf::from(format!("{config_path}/settings.json")),
-                ignore_path: PathBuf::from(format!("{config_path}/.bogrepignore")),
                 cache_path: PathBuf::from(format!("{config_path}/cache")),
                 target_bookmark_file: PathBuf::from(format!("{config_path}/bookmarks.json")),
                 settings: Settings::default()
