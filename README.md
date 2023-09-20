@@ -120,9 +120,6 @@ usually don't include relevant text to grep.
 bogrep ignore <url1> <url2> ...
 ```
 
-Ignored urls will be added to the file `~/.config/bogrep/.bogrepignore`, which
-can be edited manually as well.
-
 ## Diff websites
 
 Fetch difference between cached and fetched website for multiple urls, and display changes:
