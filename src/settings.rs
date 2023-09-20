@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::Context;
 use log::debug;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -28,6 +29,8 @@ pub struct Settings {
     /// Source could be Firefox or Chrome.
     #[serde(rename = "bookmark_files")]
     pub sources: Vec<Source>,
+    /// The urls which are ignored and not imported.
+    pub ignored_urls: Vec<String>,
     /// The file extension used to cache websites.
     pub cache_mode: CacheMode,
     /// The maximal number of concurrent requests.
@@ -42,6 +45,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             sources: Vec::new(),
+            ignored_urls: Vec::new(),
             cache_mode: CacheMode::default(),
             max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
             request_timeout: REQUEST_TIMEOUT_DEFAULT,
@@ -53,6 +57,7 @@ impl Default for Settings {
 impl Settings {
     pub fn new(
         sources: Vec<Source>,
+        ignored_urls: Vec<String>,
         cache_mode: CacheMode,
         max_concurrent_requests: usize,
         request_timeout: u64,
@@ -60,6 +65,7 @@ impl Settings {
     ) -> Self {
         Self {
             sources,
+            ignored_urls,
             cache_mode,
             max_concurrent_requests,
             request_timeout,
@@ -69,6 +75,7 @@ impl Settings {
 
     pub fn init(settings_path: &Path) -> Result<Settings, anyhow::Error> {
         if settings_path.exists() {
+            debug!("Reading settings file at {}", settings_path.display());
             let mut buf = Vec::new();
             let mut settings_file = File::open(settings_path)?;
             settings_file
@@ -77,6 +84,7 @@ impl Settings {
             let settings = json::deserialize::<Settings>(&buf)?;
             Ok(settings)
         } else {
+            debug!("Create settings file at {}", settings_path.display());
             let settings = Settings::default();
             let settings_json = json::serialize(&settings)?;
             let mut settings_file = File::create(settings_path).context(format!(
@@ -86,6 +94,15 @@ impl Settings {
             settings_file.write_all(&settings_json)?;
             Ok(settings)
         }
+    }
+
+    pub fn add_url(&mut self, url: String) -> Result<(), anyhow::Error> {
+        if !self.ignored_urls.contains(&url) {
+            let url = Url::parse(&url).context(format!("Invalid url {url}"))?;
+            self.ignored_urls.push(url.to_string());
+        }
+
+        Ok(())
     }
 
     pub fn set_source(&mut self, set_source: SetSource) {

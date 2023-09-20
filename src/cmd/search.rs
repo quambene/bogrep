@@ -38,7 +38,7 @@ fn search_bookmarks(
     let max_columns = 1000;
     let re = format!("(?i){pattern}");
     let regex = Regex::new(&re)?;
-    let cache = Cache::new(cache_path, cache_mode)?;
+    let cache = Cache::new(cache_path, cache_mode);
 
     for bookmark in &bookmarks.bookmarks {
         let cache_path = cache.get_path(bookmark);

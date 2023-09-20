@@ -1,7 +1,7 @@
 use crate::{
     bookmarks::TargetBookmark,
     utils::{self, read_file},
-    Config, TargetBookmarks,
+    TargetBookmarks,
 };
 use anyhow::anyhow;
 use clap::ValueEnum;
@@ -52,35 +52,11 @@ pub struct Cache {
 
 impl Cache {
     /// Create new cache.
-    pub fn new(cache_path: &Path, cache_mode: &Option<CacheMode>) -> Result<Self, anyhow::Error> {
-        if cache_path.exists() {
-            Ok(Self {
-                path: cache_path.to_owned(),
-                mode: cache_mode.clone().unwrap_or_default(),
-            })
-        } else {
-            Err(anyhow!("Missing cache directory, run `bogrep fetch` first"))
+    pub fn new(cache_path: &Path, cache_mode: &Option<CacheMode>) -> Self {
+        Self {
+            path: cache_path.to_owned(),
+            mode: cache_mode.clone().unwrap_or_default(),
         }
-    }
-
-    /// Init cache.
-    ///
-    /// Creates cache directory, usually at ~/.config/bogrep/cache.
-    pub async fn init(
-        config: &Config,
-        cache_mode: &Option<CacheMode>,
-    ) -> Result<Cache, anyhow::Error> {
-        let cache_path = &config.cache_path;
-
-        let cache = if cache_path.exists() {
-            Cache::new(cache_path, cache_mode)
-        } else {
-            debug!("Create cache at {}", cache_path.display());
-            fs::create_dir_all(&cache_path).await?;
-            Cache::new(cache_path, cache_mode)
-        }?;
-
-        Ok(cache)
     }
 
     /// Get the path of a cached website.
