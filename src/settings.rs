@@ -154,6 +154,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_add_urls() {
+        let mut settings = Settings::default();
+        assert!(settings.ignored_urls.is_empty());
+        let urls = vec![
+            String::from("https://youtube.com/"),
+            String::from("https://youtube.com/"),
+            String::from("https://soundcloud.com/"),
+        ];
+
+        for url in urls {
+            let res = settings.add_url(url);
+            assert!(res.is_ok());
+        }
+
+        assert_eq!(
+            settings.ignored_urls,
+            vec![
+                String::from("https://youtube.com/"),
+                String::from("https://soundcloud.com/"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_add_url_invalid() {
+        let mut settings = Settings::default();
+        let url = String::from("youtube.com/");
+        let res = settings.add_url(url);
+        assert!(res.is_err());
+    }
+
+    #[test]
     fn test_set_source() {
         let mut settings = Settings::default();
         settings.set_source(SetSource {

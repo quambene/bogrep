@@ -1,0 +1,11 @@
+{
+    "bookmark_files": [],
+    "ignored_urls": [
+        "https://youtube.com/",
+        "https://soundcloud.com/"
+    ],
+    "cache_mode": "text",
+    "max_concurrent_requests": 100,
+    "request_timeout": 60000,
+    "request_throttling": 3000
+}
