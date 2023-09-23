@@ -1,4 +1,4 @@
-use crate::{cache::CacheMode, utils, Cache, Config, TargetBookmarks};
+use crate::{cache::CacheMode, utils, Cache, Caching, Config, TargetBookmarks};
 use anyhow::{anyhow, Context};
 use colored::Colorize;
 use log::info;

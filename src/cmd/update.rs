@@ -1,7 +1,7 @@
 use super::fetch_and_add_all;
 use crate::{
-    args::UpdateArgs, bookmark_reader::SourceReader, utils, Cache, Client, Config, SourceBookmarks,
-    TargetBookmarks,
+    args::UpdateArgs, bookmark_reader::SourceReader, utils, Cache, Caching, Client, Config,
+    SourceBookmarks, TargetBookmarks,
 };
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for

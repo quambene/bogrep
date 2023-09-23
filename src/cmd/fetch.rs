@@ -1,4 +1,6 @@
-use crate::{html, utils, Cache, Client, Config, FetchArgs, TargetBookmark, TargetBookmarks};
+use crate::{
+    html, utils, Cache, Caching, Client, Config, FetchArgs, TargetBookmark, TargetBookmarks,
+};
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
@@ -51,7 +53,7 @@ pub async fn fetch_and_replace_all(
 /// Fetch bookmark and replace cached bookmark.
 async fn fetch_and_replace(
     client: &Client,
-    cache: &Cache,
+    cache: &impl Caching,
     bookmark: &mut TargetBookmark,
 ) -> Result<(), anyhow::Error> {
     match client.fetch(bookmark).await {
