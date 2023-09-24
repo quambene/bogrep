@@ -3,7 +3,10 @@ use anyhow::anyhow;
 use colored::Colorize;
 use log::info;
 use regex::{Captures, Regex};
-use std::io::{self, BufRead};
+use std::{
+    borrow::Cow,
+    io::{self, BufRead},
+};
 
 /// Maximum number of characters per line displayed in the search result.
 const MAX_COLUMNS: usize = 1000;
@@ -50,7 +53,7 @@ fn search_bookmarks(
             }
 
             for matched_line in &matched_lines {
-                println!("{matched_line}");
+                println!("{}", color_line(matched_line, &regex));
             }
         }
     }
@@ -81,15 +84,18 @@ fn find_matches(reader: impl BufRead, regex: &Regex) -> Result<Vec<String>, anyh
             }
 
             let truncated_line = &line[start_index..end_index];
-            let colored_line = regex.replace_all(truncated_line, |caps: &Captures| {
-                caps[0].bold().red().to_string()
-            });
 
-            matched_lines.push(colored_line.into_owned());
+            matched_lines.push(truncated_line.to_owned());
         }
     }
 
     Ok(matched_lines)
+}
+
+fn color_line<'a>(matched_line: &'a str, regex: &Regex) -> Cow<'a, str> {
+    regex.replace_all(matched_line, |caps: &Captures| {
+        caps[0].bold().red().to_string()
+    })
 }
 
 #[cfg(test)]
@@ -108,8 +114,8 @@ mod tests {
         assert!(res.is_ok());
         let matched_lines = res.unwrap();
         assert_eq!(
-            format!(r#"{}"#, matched_lines[0]),
-            "— 1,000 numbers. The less efficient code would require sending 2,000 numbers to identify an error, and 3,000 to correct it. But if you use the code that involves interpolating a polynomial through given points, you only need 1,001 numbers to find the error, and 1,002 to correct it. (You can add more points to identify and correct more potential errors.) As the length of your message increases, the difference in efficiency between the two codes grows starker.The more efficient code is called a \u{1b}[1;31mReed-Solomon code\u{1b}[0m. Since its introduction in 1960, mathematicians have made further breakthroughs, developing algorithms that can correct more errors with greater efficiency. “It’s very elegant, clean, concrete,” saidSwastik Kopparty, a mathematician and computer scientist at the University of Toronto. “It can be taught to a second-year undergraduate in half an hour.”\u{1b}[1;31mReed-Solomon code\u{1b}[0ms have been particularly useful for storing and transmitting information electronically. But the same concept has also b".to_owned()
+            matched_lines,
+            vec!["— 1,000 numbers. The less efficient code would require sending 2,000 numbers to identify an error, and 3,000 to correct it. But if you use the code that involves interpolating a polynomial through given points, you only need 1,001 numbers to find the error, and 1,002 to correct it. (You can add more points to identify and correct more potential errors.) As the length of your message increases, the difference in efficiency between the two codes grows starker.The more efficient code is called a Reed-Solomon code. Since its introduction in 1960, mathematicians have made further breakthroughs, developing algorithms that can correct more errors with greater efficiency. “It’s very elegant, clean, concrete,” saidSwastik Kopparty, a mathematician and computer scientist at the University of Toronto. “It can be taught to a second-year undergraduate in half an hour.”Reed-Solomon codes have been particularly useful for storing and transmitting information electronically. But the same concept has also b".to_owned()]
         );
     }
 }
