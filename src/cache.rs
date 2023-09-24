@@ -50,6 +50,7 @@ pub trait Caching {
     fn exists(&self, bookmark_id: &TargetBookmark) -> bool;
 
     /// Open the cached file for a bookmark.
+    // TODO: return `Result<Option<impl Read>, anyhow::Error>` (see <https://github.com/rust-lang/rust/issues/91611>).
     fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, anyhow::Error>;
 
     /// Get the content of a bookmark from cache.
@@ -211,7 +212,7 @@ impl Caching for Cache {
 /// The cache to store fetched bookmarks.
 #[derive(Debug, Default)]
 pub struct MockCache {
-    /// Mock the files system.
+    /// Mock the file system.
     cache_map: Mutex<HashMap<String, String>>,
 }
 
