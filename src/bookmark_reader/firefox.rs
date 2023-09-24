@@ -183,22 +183,15 @@ impl ReadBookmark for FirefoxBookmarkReader {
 mod tests {
     use super::*;
     use crate::{test_utils, utils};
-    use std::collections::HashSet;
+    use std::{collections::HashSet, io::Cursor};
 
     #[test]
     fn test_read() {
         let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
-        assert!(decompressed_bookmark_path.exists());
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
-
-        let compressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
-
-        if !compressed_bookmark_path.exists() {
-            test_utils::compress_bookmarks(&decompressed_bookmarks, compressed_bookmark_path);
-        }
-
+        let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
         let bookmark_reader = FirefoxBookmarkReader;
-        let mut bookmark_file = bookmark_reader.open(compressed_bookmark_path).unwrap();
+        let mut bookmark_file = Cursor::new(compressed_bookmarks);
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file);
         assert!(bookmarks.is_ok(), "{}", bookmarks.unwrap_err());
@@ -212,15 +205,15 @@ mod tests {
 
     #[test]
     fn test_parse_all() {
-        let source_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
-        test_utils::create_compressed_bookmarks(source_path);
-
+        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
+        let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
         let bookmark_reader = FirefoxBookmarkReader;
-        let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
+        let mut bookmark_file = Cursor::new(compressed_bookmarks);
 
         let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
-        let source = Source::new(source_path, vec![]);
+        let source = Source::new("dummy_path", vec![]);
 
         let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -235,15 +228,15 @@ mod tests {
 
     #[test]
     fn test_parse_folder() {
-        let source_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
-        test_utils::create_compressed_bookmarks(source_path);
-
+        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
+        let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
         let bookmark_reader = FirefoxBookmarkReader;
-        let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
+        let mut bookmark_file = Cursor::new(compressed_bookmarks);
 
         let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
         let mut source_bookmarks = SourceBookmarks::new();
-        let source = Source::new(source_path, vec![String::from("dev")]);
+        let source = Source::new("dummy_path", vec![String::from("dev")]);
 
         let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
