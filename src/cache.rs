@@ -1,17 +1,17 @@
 use crate::{
     bookmarks::TargetBookmark,
     html,
-    utils::{self, read_file},
+    utils::{self},
     TargetBookmarks,
 };
-use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use clap::ValueEnum;
-use log::{debug, warn};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
+    io::Read,
     path::{Path, PathBuf},
     sync::Mutex,
 };
@@ -103,12 +103,10 @@ impl Caching for Cache {
 
     fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, anyhow::Error> {
         let cache_path = self.get_path(&bookmark.id);
+        debug!("Open website: {}", cache_path.display());
 
         if cache_path.exists() {
-            let cache_file = utils::open_file(&cache_path).context(format!(
-                "Can't open cached file at {}",
-                cache_path.display()
-            ))?;
+            let cache_file = utils::open_file(&cache_path)?;
             Ok(Some(cache_file))
         } else {
             Ok(None)
@@ -116,35 +114,16 @@ impl Caching for Cache {
     }
 
     fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error> {
-        let cache_path = &self.path;
-
-        if cache_path.is_dir() {
-            match std::fs::read_dir(cache_path) {
-                Ok(entries) => {
-                    for entry in entries.flatten() {
-                        if let Some(file_name) = entry.file_name().to_str() {
-                            if let Some(file_name) = file_name.strip_suffix(self.mode.suffix()) {
-                                if file_name == bookmark.id {
-                                    let bookmark_path = self.get_path(&bookmark.id);
-                                    debug!("Found website in cache: {}", bookmark_path.display());
-                                    let file = read_file(&bookmark_path)?;
-                                    return Ok(Some(String::from_utf8(file)?));
-                                }
-                            }
-                        }
-                    }
-
-                    warn!("Can't find cached website for {}", bookmark.url);
-                    Ok(None)
-                }
-                Err(err) => Err(anyhow!(
-                    "Can't read directoy '{}': {}",
-                    cache_path.display(),
-                    err
-                )),
-            }
+        if let Some(mut cache_file) = self.open(bookmark)? {
+            debug!(
+                "Get website from cache: {}",
+                self.get_path(&bookmark.id).display()
+            );
+            let mut buf = String::new();
+            cache_file.read_to_string(&mut buf)?;
+            Ok(Some(buf))
         } else {
-            Err(anyhow!("Cache path is not a directory"))
+            Ok(None)
         }
     }
 
