@@ -37,7 +37,7 @@ fn search_bookmarks(
     let regex = Regex::new(&re)?;
 
     for bookmark in &bookmarks.bookmarks {
-        if let Some(cache_file) = cache.open(&bookmark)? {
+        if let Some(cache_file) = cache.open(bookmark)? {
             let reader = io::BufReader::new(cache_file);
             let mut matched_lines = vec![];
 

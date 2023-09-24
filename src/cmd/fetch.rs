@@ -98,7 +98,7 @@ async fn fetch_and_add(
     cache: &impl Caching,
     bookmark: &TargetBookmark,
 ) -> Result<(), anyhow::Error> {
-    if !cache.exists(&bookmark) {
+    if !cache.exists(bookmark) {
         debug!("Fetch bookmark and add to cache");
 
         match client.fetch(bookmark).await {

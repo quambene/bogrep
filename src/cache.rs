@@ -209,6 +209,7 @@ impl Caching for Cache {
 }
 
 /// The cache to store fetched bookmarks.
+#[derive(Debug, Default)]
 pub struct MockCache {
     /// Mock the files system.
     cache_map: Mutex<HashMap<String, String>>,
