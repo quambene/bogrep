@@ -1,4 +1,4 @@
-use crate::{args::CleanArgs, utils, Cache, Config, TargetBookmarks};
+use crate::{args::CleanArgs, utils, Cache, Caching, Config, TargetBookmarks};
 
 /// Clean up cache for removed bookmarks.
 pub async fn clean(config: &Config, args: &CleanArgs) -> Result<(), anyhow::Error> {

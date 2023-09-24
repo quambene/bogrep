@@ -160,6 +160,7 @@ name = "bogrep"
 version = "0.1.3"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "clap",
  "colored",

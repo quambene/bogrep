@@ -12,8 +12,6 @@ categories = ["command-line-utilities", "text-processing"]
 readme = "README.md"
 license = "Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 anyhow = "1.0.72"
 log = "0.4.19"
@@ -33,3 +31,4 @@ tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "ti
 futures = "0.3.28"
 html2md = "0.2.14"
 readability = "0.2.0"
+async-trait = "0.1.73"

@@ -1,5 +1,6 @@
 use crate::{bookmarks::TargetBookmark, Config};
 use anyhow::anyhow;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use log::debug;
 use reqwest::{Client as ReqwestClient, Url};
@@ -8,6 +9,12 @@ use std::{
     sync::Mutex,
 };
 use tokio::time::{self, Duration};
+
+#[async_trait]
+pub trait Fetch {
+    /// Fetch content of a website as HTML.
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error>;
+}
 
 pub struct Client {
     client: ReqwestClient,
@@ -28,8 +35,11 @@ impl Client {
         let throttler = Some(Throttler::new(request_throttling));
         Ok(Self { client, throttler })
     }
+}
 
-    pub async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
+#[async_trait]
+impl Fetch for Client {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
         debug!("Fetch bookmark: {}", bookmark.url);
 
         if let Some(throttler) = &self.throttler {

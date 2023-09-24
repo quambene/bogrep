@@ -12,13 +12,18 @@ pub fn create_compressed_bookmarks(compressed_bookmark_path: &Path) {
         assert!(decompressed_bookmark_path.exists());
 
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
-        compress_bookmarks(&decompressed_bookmarks, compressed_bookmark_path);
+        let compressed_bookmarks = compress_bookmarks(&decompressed_bookmarks);
+
+        let mut file = utils::create_file(compressed_bookmark_path).unwrap();
+        file.write_all(&compressed_bookmarks).unwrap();
+        file.flush().unwrap();
+
         assert!(compressed_bookmark_path.exists());
     }
 }
 
 #[cfg(test)]
-pub fn compress_bookmarks(decompressed_bookmarks: &[u8], compressed_bookmark_path: &Path) {
+pub fn compress_bookmarks(decompressed_bookmarks: &[u8]) -> Vec<u8> {
     let compressed_data = block::compress(decompressed_bookmarks, None, true).unwrap();
 
     // Add non-standard header to data
@@ -27,7 +32,5 @@ pub fn compress_bookmarks(decompressed_bookmarks: &[u8], compressed_bookmark_pat
     compressed_data_with_header.extend_from_slice(prefix);
     compressed_data_with_header.extend_from_slice(&compressed_data);
 
-    let mut file = utils::create_file(compressed_bookmark_path).unwrap();
-    file.write_all(&compressed_data_with_header).unwrap();
-    file.flush().unwrap();
+    compressed_data_with_header
 }
