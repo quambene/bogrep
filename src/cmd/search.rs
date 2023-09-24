@@ -53,7 +53,7 @@ fn search_bookmarks(
             }
 
             for matched_line in &matched_lines {
-                println!("{}", color_line(matched_line, &regex));
+                println!("{}", color_matches(matched_line, &regex));
             }
         }
     }
@@ -92,7 +92,8 @@ fn find_matches(reader: impl BufRead, regex: &Regex) -> Result<Vec<String>, anyh
     Ok(matched_lines)
 }
 
-fn color_line<'a>(matched_line: &'a str, regex: &Regex) -> Cow<'a, str> {
+/// Display search pattern in bold red.
+fn color_matches<'a>(matched_line: &'a str, regex: &Regex) -> Cow<'a, str> {
     regex.replace_all(matched_line, |caps: &Captures| {
         caps[0].bold().red().to_string()
     })
