@@ -17,6 +17,6 @@ pub use bookmark_reader::{
 };
 pub use bookmarks::{SourceBookmarks, TargetBookmark, TargetBookmarks};
 pub use cache::{Cache, Caching, MockCache};
-pub use client::Client;
+pub use client::{Client, Fetch};
 pub use config::Config;
 pub use settings::{Settings, Source};

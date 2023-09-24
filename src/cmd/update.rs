@@ -26,7 +26,13 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
 
     if !bookmarks_to_add.is_empty() {
         // Fetch and cache new bookmarks.
-        fetch_and_add_all(config, &client, &cache, &bookmarks_to_add).await?;
+        fetch_and_add_all(
+            config.settings.max_concurrent_requests,
+            &client,
+            &cache,
+            &bookmarks_to_add,
+        )
+        .await?;
     }
 
     // Clean up cache for missing bookmarks.

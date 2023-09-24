@@ -1,5 +1,5 @@
 use crate::{
-    html, utils, Cache, Caching, Client, Config, FetchArgs, TargetBookmark, TargetBookmarks,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
@@ -16,9 +16,21 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let client = Client::new(config)?;
 
     if args.all {
-        fetch_and_replace_all(config, &client, &cache, &mut bookmarks.bookmarks).await?;
+        fetch_and_replace_all(
+            config.settings.max_concurrent_requests,
+            &client,
+            &cache,
+            &mut bookmarks.bookmarks,
+        )
+        .await?;
     } else {
-        fetch_and_add_all(config, &client, &cache, &bookmarks.bookmarks).await?;
+        fetch_and_add_all(
+            config.settings.max_concurrent_requests,
+            &client,
+            &cache,
+            &bookmarks.bookmarks,
+        )
+        .await?;
     }
 
     trace!("Fetched bookmarks: {bookmarks:#?}");
@@ -31,14 +43,14 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 
 /// Fetch bookmarks and replace cached bookmarks.
 pub async fn fetch_and_replace_all(
-    config: &Config,
-    client: &Client,
+    max_concurrent_requests: usize,
+    client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: &mut [TargetBookmark],
 ) -> Result<(), anyhow::Error> {
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| fetch_and_replace(client, cache, bookmark))
-        .buffer_unordered(config.settings.max_concurrent_requests);
+        .buffer_unordered(max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
         if let Err(err) = item {
@@ -51,7 +63,7 @@ pub async fn fetch_and_replace_all(
 
 /// Fetch bookmark and replace cached bookmark.
 async fn fetch_and_replace(
-    client: &Client,
+    client: &impl Fetch,
     cache: &impl Caching,
     bookmark: &mut TargetBookmark,
 ) -> Result<(), anyhow::Error> {
@@ -74,14 +86,14 @@ async fn fetch_and_replace(
 
 /// Fetch bookmarks and add bookmarks to cache if they do not exist yet.
 pub async fn fetch_and_add_all(
-    config: &Config,
-    client: &Client,
+    max_concurrent_requests: usize,
+    client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: &[TargetBookmark],
 ) -> Result<(), anyhow::Error> {
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| fetch_and_add(client, cache, bookmark))
-        .buffer_unordered(config.settings.max_concurrent_requests);
+        .buffer_unordered(max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
         if let Err(err) = item {
@@ -94,7 +106,7 @@ pub async fn fetch_and_add_all(
 
 /// Fetch bookmark and add bookmark to cache if it does not exist yet.
 async fn fetch_and_add(
-    client: &Client,
+    client: &impl Fetch,
     cache: &impl Caching,
     bookmark: &TargetBookmark,
 ) -> Result<(), anyhow::Error> {
