@@ -1,12 +1,9 @@
 use crate::{cache::CacheMode, utils, Cache, Caching, Config, TargetBookmarks};
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use colored::Colorize;
 use log::info;
 use regex::Regex;
-use std::{
-    io::{self, BufRead},
-    path::Path,
-};
+use std::io::{self, BufRead};
 
 pub fn search(
     pattern: String,
@@ -19,11 +16,12 @@ pub fn search(
 
     let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
     let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
+    let cache = Cache::new(&config.cache_path, cache_mode);
 
     if target_bookmarks.bookmarks.is_empty() {
-        Err(anyhow!("Missing bookmarks, run `bogrep update` first"))
+        Err(anyhow!("Missing bookmarks, run `bogrep import` first"))
     } else {
-        search_bookmarks(pattern, &target_bookmarks, &config.cache_path, cache_mode)?;
+        search_bookmarks(pattern, &target_bookmarks, &cache)?;
         Ok(())
     }
 }
@@ -32,24 +30,15 @@ pub fn search(
 fn search_bookmarks(
     pattern: String,
     bookmarks: &TargetBookmarks,
-    cache_path: &Path,
-    cache_mode: &Option<CacheMode>,
+    cache: &impl Caching,
 ) -> Result<(), anyhow::Error> {
     let max_columns = 1000;
     let re = format!("(?i){pattern}");
     let regex = Regex::new(&re)?;
-    let cache = Cache::new(cache_path, cache_mode);
 
     for bookmark in &bookmarks.bookmarks {
-        let cache_path = cache.get_path(bookmark);
-
-        if cache_path.exists() {
-            let cache_file = utils::open_file(&cache_path).context(format!(
-                "Can't open cached file at {}",
-                cache_path.display()
-            ))?;
+        if let Some(cache_file) = cache.open(&bookmark)? {
             let reader = io::BufReader::new(cache_file);
-
             let mut matched_lines = vec![];
 
             for line in reader.lines() {

@@ -6,7 +6,6 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, error, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::path::Path;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -34,7 +33,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 pub async fn fetch_and_replace_all(
     config: &Config,
     client: &Client,
-    cache: &Cache,
+    cache: &impl Caching,
     bookmarks: &mut [TargetBookmark],
 ) -> Result<(), anyhow::Error> {
     let mut stream = stream::iter(bookmarks)
@@ -77,7 +76,7 @@ async fn fetch_and_replace(
 pub async fn fetch_and_add_all(
     config: &Config,
     client: &Client,
-    cache: &Cache,
+    cache: &impl Caching,
     bookmarks: &[TargetBookmark],
 ) -> Result<(), anyhow::Error> {
     let mut stream = stream::iter(bookmarks)
@@ -96,18 +95,11 @@ pub async fn fetch_and_add_all(
 /// Fetch bookmark and add bookmark to cache if it does not exist yet.
 async fn fetch_and_add(
     client: &Client,
-    cache: &Cache,
+    cache: &impl Caching,
     bookmark: &TargetBookmark,
 ) -> Result<(), anyhow::Error> {
-    let cache_path = cache.get_path(bookmark);
-    let cache_file = Path::new(&cache_path);
-
-    if !cache_file.exists() {
-        debug!(
-            "Fetch bookmark {} and add to cache at {}",
-            bookmark.url,
-            cache_file.display()
-        );
+    if !cache.exists(&bookmark) {
+        debug!("Fetch bookmark and add to cache");
 
         match client.fetch(bookmark).await {
             Ok(website) => {
