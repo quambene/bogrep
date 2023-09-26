@@ -22,15 +22,16 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
     let mut target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
 
-    let (bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(source_bookmarks)?;
+    let (mut bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(source_bookmarks)?;
 
     if !bookmarks_to_add.is_empty() {
         // Fetch and cache new bookmarks.
         fetch_and_add_all(
-            config.settings.max_concurrent_requests,
             &client,
             &cache,
-            &bookmarks_to_add,
+            &mut bookmarks_to_add,
+            config.settings.max_concurrent_requests,
+            false,
         )
         .await?;
     }

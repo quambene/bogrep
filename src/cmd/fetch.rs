@@ -1,3 +1,5 @@
+use std::io::{Read, Write};
+
 use crate::{
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
@@ -11,88 +13,54 @@ use similar::{ChangeTag, TextDiff};
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
-    let mut bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache = Cache::new(&config.cache_path, &args.mode);
     let client = Client::new(config)?;
+    fetch_and_cache(
+        &mut target_bookmark_file,
+        &cache,
+        &client,
+        config.settings.max_concurrent_requests,
+        args.all,
+    )
+    .await?;
+    Ok(())
+}
 
-    if args.all {
-        fetch_and_replace_all(
-            config.settings.max_concurrent_requests,
-            &client,
-            &cache,
-            &mut bookmarks.bookmarks,
-        )
-        .await?;
-    } else {
-        fetch_and_add_all(
-            config.settings.max_concurrent_requests,
-            &client,
-            &cache,
-            &bookmarks.bookmarks,
-        )
-        .await?;
-    }
+pub async fn fetch_and_cache(
+    target_bookmark_file: &mut (impl Read + Write),
+    cache: &impl Caching,
+    client: &impl Fetch,
+    max_concurrent_requests: usize,
+    fetch_all: bool,
+) -> Result<(), anyhow::Error> {
+    let mut bookmarks = TargetBookmarks::read(target_bookmark_file)?;
+
+    fetch_and_add_all(
+        client,
+        cache,
+        &mut bookmarks.bookmarks,
+        max_concurrent_requests,
+        fetch_all,
+    )
+    .await?;
 
     trace!("Fetched bookmarks: {bookmarks:#?}");
 
     // Write bookmarks with updated timestamps.
-    bookmarks.write(&mut target_bookmark_file)?;
-
+    bookmarks.write(target_bookmark_file)?;
     Ok(())
 }
 
-/// Fetch bookmarks and replace cached bookmarks.
-pub async fn fetch_and_replace_all(
-    max_concurrent_requests: usize,
+/// Fetch all bookmarks and add them to cache.
+pub async fn fetch_and_add_all(
     client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: &mut [TargetBookmark],
-) -> Result<(), anyhow::Error> {
-    let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_replace(client, cache, bookmark))
-        .buffer_unordered(max_concurrent_requests);
-
-    while let Some(item) = stream.next().await {
-        if let Err(err) = item {
-            error!("Can't fetch bookmark: {err}");
-        }
-    }
-
-    Ok(())
-}
-
-/// Fetch bookmark and replace cached bookmark.
-async fn fetch_and_replace(
-    client: &impl Fetch,
-    cache: &impl Caching,
-    bookmark: &mut TargetBookmark,
-) -> Result<(), anyhow::Error> {
-    match client.fetch(bookmark).await {
-        Ok(website) => {
-            let website = html::filter_html(&website)?;
-            if let Err(err) = cache.replace(website, bookmark).await {
-                error!("Can't replace website {} in cache: {}", bookmark.url, err);
-            } else {
-                bookmark.last_cached = Some(Utc::now().timestamp_millis());
-            }
-        }
-        Err(err) => {
-            error!("Can't fetch website: {}", err);
-        }
-    }
-
-    Ok(())
-}
-
-/// Fetch bookmarks and add bookmarks to cache if they do not exist yet.
-pub async fn fetch_and_add_all(
     max_concurrent_requests: usize,
-    client: &impl Fetch,
-    cache: &impl Caching,
-    bookmarks: &[TargetBookmark],
+    fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
     let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_add(client, cache, bookmark))
+        .map(|bookmark| fetch_and_add(client, cache, bookmark, fetch_all))
         .buffer_unordered(max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
@@ -104,15 +72,28 @@ pub async fn fetch_and_add_all(
     Ok(())
 }
 
-/// Fetch bookmark and add bookmark to cache if it does not exist yet.
+/// Fetch and add bookmark to cache.
 async fn fetch_and_add(
     client: &impl Fetch,
     cache: &impl Caching,
-    bookmark: &TargetBookmark,
+    bookmark: &mut TargetBookmark,
+    fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
-    if !cache.exists(bookmark) {
-        debug!("Fetch bookmark and add to cache");
-
+    if fetch_all {
+        match client.fetch(bookmark).await {
+            Ok(website) => {
+                let website = html::filter_html(&website)?;
+                if let Err(err) = cache.replace(website, bookmark).await {
+                    error!("Can't replace website {} in cache: {}", bookmark.url, err);
+                } else {
+                    bookmark.last_cached = Some(Utc::now().timestamp_millis());
+                }
+            }
+            Err(err) => {
+                error!("Can't fetch website: {}", err);
+            }
+        }
+    } else if !cache.exists(bookmark) {
         match client.fetch(bookmark).await {
             Ok(website) => {
                 let website = html::filter_html(&website)?;
