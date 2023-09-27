@@ -118,6 +118,38 @@ impl Throttler {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct MockClient {
+    /// Mock the the HTML content.
+    client_map: Mutex<HashMap<String, String>>,
+}
+
+impl MockClient {
+    pub fn new() -> Self {
+        let client_map = Mutex::new(HashMap::new());
+        Self { client_map }
+    }
+
+    pub fn add(&self, html: String, bookmark: &TargetBookmark) -> Result<(), anyhow::Error> {
+        let mut client_map = self.client_map.lock().unwrap();
+        client_map.insert(bookmark.url.clone(), html);
+        Ok(())
+    }
+
+    pub fn get(&self, bookmark: &TargetBookmark) -> String {
+        let client_map = self.client_map.lock().unwrap();
+        client_map.get(&bookmark.url).unwrap().to_owned()
+    }
+}
+
+#[async_trait]
+impl Fetch for MockClient {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
+        let html = self.get(bookmark);
+        Ok(html.to_owned())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

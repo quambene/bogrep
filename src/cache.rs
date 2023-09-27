@@ -200,6 +200,11 @@ impl MockCache {
         let cache_map = Mutex::new(HashMap::new());
         Self { cache_map }
     }
+
+    pub fn cache_map(&self) -> HashMap<String, String> {
+        let cache_map = self.cache_map.lock().unwrap();
+        cache_map.clone()
+    }
 }
 
 #[async_trait]
