@@ -1,5 +1,3 @@
-use std::io::{Read, Write};
-
 use crate::{
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
@@ -8,6 +6,7 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, error, trace, warn};
 use similar::{ChangeTag, TextDiff};
+use std::io::{Read, Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
