@@ -176,7 +176,42 @@ impl From<SourceBookmarks> for TargetBookmarks {
 mod tests {
     use super::*;
     use crate::utils;
-    use std::{io::Cursor, path::Path};
+    use std::{collections::HashSet, io::Cursor, path::Path};
+
+    #[test]
+    fn test_update() {
+        let now = Utc::now();
+        let expected_bookmarks = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]);
+        let source_bookmarks = SourceBookmarks {
+            bookmarks: expected_bookmarks.clone(),
+        };
+        let mut target_bookmarks = TargetBookmarks {
+            bookmarks: vec![TargetBookmark::new(
+                "https://www.deepl.com/translator",
+                now,
+                None,
+            ), TargetBookmark::new(
+                "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
+                now,
+                None,
+            )],
+        };
+        let res = target_bookmarks.update(source_bookmarks);
+        assert!(res.is_ok());
+        assert_eq!(
+            target_bookmarks
+                .bookmarks
+                .iter()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+            expected_bookmarks,
+        );
+    }
 
     #[test]
     fn test_read_target_bookmarks() {
