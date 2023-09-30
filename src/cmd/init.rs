@@ -111,10 +111,6 @@ mod tests {
         assert!(res.is_ok());
 
         let target_bookmarks = res.unwrap();
-        assert!(target_bookmarks
-            .bookmarks
-            .iter()
-            .all(|bookmark| bookmark.last_cached.is_some()));
         assert_eq!(
             target_bookmarks
                 .bookmarks
@@ -123,6 +119,10 @@ mod tests {
                 .collect::<HashSet<_>>(),
             expected_bookmarks,
         );
+        assert!(target_bookmarks
+            .bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached.is_some()));
         assert_eq!(
             cache.cache_map(),
             target_bookmarks
