@@ -98,6 +98,8 @@ async fn fetch_and_add(
                 let website = html::filter_html(&website)?;
                 if let Err(err) = cache.add(website, bookmark).await {
                     error!("Can't add website '{}' to cache: {}", bookmark.url, err);
+                } else {
+                    bookmark.last_cached = Some(Utc::now().timestamp_millis());
                 }
             }
             Err(err) => {
@@ -186,7 +188,7 @@ mod tests {
                 .add(
                     "<html><head></head><body><img></img><p>Test content</p></body></html>"
                         .to_owned(),
-                    bookmark,
+                    &bookmark.url,
                 )
                 .unwrap();
         }
@@ -235,7 +237,7 @@ mod tests {
                 .add(
                     "<html><head></head><body><img></img><p>Test content (fetched)</p></body></html>"
                         .to_owned(),
-                    bookmark,
+                    &bookmark.url,
                 )
                 .unwrap();
         }
@@ -265,6 +267,6 @@ mod tests {
                         .to_owned()
                 )
             ])
-        )
+        );
     }
 }

@@ -47,7 +47,7 @@ impl CacheMode {
 #[async_trait]
 pub trait Caching {
     /// Check if content of bookmark exists in cache.
-    fn exists(&self, bookmark_id: &TargetBookmark) -> bool;
+    fn exists(&self, bookmark: &TargetBookmark) -> bool;
 
     /// Open the cached file for a bookmark.
     // TODO: return `Result<Option<impl Read>, anyhow::Error>` (see <https://github.com/rust-lang/rust/issues/91611>).

@@ -130,23 +130,27 @@ impl MockClient {
         Self { client_map }
     }
 
-    pub fn add(&self, html: String, bookmark: &TargetBookmark) -> Result<(), anyhow::Error> {
+    pub fn add(&self, html: String, bookmark_url: &str) -> Result<(), anyhow::Error> {
         let mut client_map = self.client_map.lock().unwrap();
-        client_map.insert(bookmark.url.clone(), html);
+        client_map.insert(bookmark_url.to_owned(), html);
         Ok(())
     }
 
-    pub fn get(&self, bookmark: &TargetBookmark) -> String {
+    pub fn get(&self, bookmark_url: &str) -> Option<String> {
         let client_map = self.client_map.lock().unwrap();
-        client_map.get(&bookmark.url).unwrap().to_owned()
+        client_map
+            .get(bookmark_url)
+            .map(|content| content.to_owned())
     }
 }
 
 #[async_trait]
 impl Fetch for MockClient {
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
-        let html = self.get(bookmark);
-        Ok(html.to_owned())
+        let html = self
+            .get(&bookmark.url)
+            .ok_or(anyhow!("Can't fetch bookmark"))?;
+        Ok(html)
     }
 }
 
