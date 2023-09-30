@@ -42,7 +42,7 @@ async fn update_bookmarks(
     target_bookmarks: &mut TargetBookmarks,
     max_concurrent_requests: usize,
 ) -> Result<(), anyhow::Error> {
-    let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
+    let source_bookmarks = SourceBookmarks::read(source_reader)?;
 
     // TODO: fixed `last_cached` for `bookmarks_to_add`.
     let (mut bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(source_bookmarks)?;
