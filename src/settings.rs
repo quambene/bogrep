@@ -190,6 +190,25 @@ mod tests {
         let mut settings = Settings::default();
         settings.set_source(SetSource {
             source: Some(String::from("path/to/source")),
+            folders: vec![],
+        });
+        assert_eq!(
+            settings,
+            Settings {
+                sources: vec![Source {
+                    path: PathBuf::from("path/to/source"),
+                    folders: vec![]
+                }],
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn test_set_source_and_folders() {
+        let mut settings = Settings::default();
+        settings.set_source(SetSource {
+            source: Some(String::from("path/to/source")),
             folders: vec![String::from("dev,science,article")],
         });
         assert_eq!(
