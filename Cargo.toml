@@ -12,6 +12,9 @@ categories = ["command-line-utilities", "text-processing"]
 readme = "README.md"
 license = "Apache-2.0"
 
+[features]
+integration-test = []
+
 [dependencies]
 anyhow = "1.0.72"
 log = "0.4.19"

@@ -22,6 +22,7 @@ bogrep "reed-solomon code"
 - [Diff websites](#diff-websites)
 - [Request throttling](#request-throttling)
 - [Supported operating systems](#supported-operating-systems)
+- [Testing](#testing)
 
 ## Install Bogrep
 
@@ -152,3 +153,13 @@ Bogrep assumes a configuration path at `~/.config/bogrep` in your home directory
 for storing the `settings.json`, `bookmarks.json`, and `cache` folder. This
 should work for most Linux derivatives. Feel free to open an issue if you need
 support for macOS or Windows.
+
+## Testing
+
+``` bash
+# Run unit tests
+cargo run
+
+# Run integration tests
+cargo test --test '*' --features integration-test
+```
