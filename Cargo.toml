@@ -35,3 +35,6 @@ futures = "0.3.28"
 html2md = "0.2.14"
 readability = "0.2.0"
 async-trait = "0.1.73"
+
+[dev-dependencies]
+tempfile = "3.8.0"
