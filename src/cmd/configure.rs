@@ -11,7 +11,7 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
         info!("{args:?}");
     }
 
-    let settings_file = utils::open_file(&config.settings_path)?;
+    let settings_file = utils::open_file_in_read_write_mode(&config.settings_path)?;
 
     configure_settings(
         config.settings,
