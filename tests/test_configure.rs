@@ -14,7 +14,6 @@ fn test_configure() {
     let source = "./test_data/source/bookmarks_simple.txt";
     let source_path = fs::canonicalize(&source).unwrap();
 
-    // Use `assert_cmd::Command::cargo_bin()` instead of `std::process::Command::new()`.
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["config", "--source", source]);
