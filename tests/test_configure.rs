@@ -13,32 +13,50 @@ fn test_configure() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     let project_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
-    let source_path = format!(
+    let source = format!(
         "{}/test_data/source/bookmarks_simple.txt",
         project_dir.to_string_lossy()
+    );
+    let source_path = Path::new(&source);
+    assert!(
+        source_path.exists(),
+        "Missing path: {}",
+        source_path.display()
     );
 
     let mut cmd = Command::new("target/debug/bogrep");
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", &source_path]);
+    cmd.args(["config", "--source", &source]);
 
     let res = cmd.output();
     assert!(res.is_ok(), "{}", res.unwrap_err());
 
     let settings_path = temp_dir.path().join("settings.json");
-    assert!(settings_path.exists(), "{}", settings_path.display());
+    assert!(
+        settings_path.exists(),
+        "Missing path: {}",
+        settings_path.display()
+    );
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
-    assert!(bookmarks_path.exists(), "{}", bookmarks_path.display());
+    assert!(
+        bookmarks_path.exists(),
+        "Missing path: {}",
+        bookmarks_path.display()
+    );
 
     let cache_path = temp_dir.path().join("cache");
-    assert!(cache_path.exists(), "{}", cache_path.display());
+    assert!(
+        cache_path.exists(),
+        "Missing path: {}",
+        cache_path.display()
+    );
 
     let (actual_settings, expected_settings) = common::compare_files(
         &settings_path,
         Path::new("test_data/configure/settings.json"),
     );
-    let expected_settings = expected_settings.replace("path/to/bookmarks", &source_path);
+    let expected_settings = expected_settings.replace("path/to/bookmarks", &source);
     assert_eq!(actual_settings, expected_settings);
 
     let (actual_bookmarks, expected_bookmarks) = common::compare_files(
