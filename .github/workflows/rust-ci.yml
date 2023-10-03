@@ -68,4 +68,5 @@ jobs:
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
+          files: lcov.info
           fail_ci_if_error: true

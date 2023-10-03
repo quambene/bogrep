@@ -1,6 +1,7 @@
 mod common;
 
-use std::{fs, path::Path, process::Command};
+use assert_cmd::Command;
+use std::{fs, path::Path};
 use tempfile::tempdir;
 
 #[test]
@@ -13,7 +14,8 @@ fn test_configure() {
     let source = "./test_data/source/bookmarks_simple.txt";
     let source_path = fs::canonicalize(&source).unwrap();
 
-    let mut cmd = Command::new("bogrep");
+    // Use `assert_cmd::Command::cargo_bin()` instead of `std::process::Command::new()`.
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["config", "--source", source]);
 
