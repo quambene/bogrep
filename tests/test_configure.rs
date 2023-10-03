@@ -1,6 +1,6 @@
 mod common;
 
-use std::{path::Path, process::Command};
+use std::{fs, path::Path, process::Command};
 use tempfile::tempdir;
 
 #[test]
@@ -11,12 +11,7 @@ fn test_configure() {
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
     let source = "test_data/source/bookmarks_simple.txt";
-    let source_path = Path::new(&source);
-    assert!(
-        source_path.exists(),
-        "Missing path: {}",
-        source_path.display()
-    );
+    let source_path = fs::canonicalize(&source).unwrap();
 
     let mut cmd = Command::new("target/debug/bogrep");
     cmd.env("BOGREP_HOME", temp_path);
@@ -50,7 +45,8 @@ fn test_configure() {
         &settings_path,
         Path::new("test_data/configure/settings.json"),
     );
-    let expected_settings = expected_settings.replace("path/to/bookmarks", &source);
+    let expected_settings =
+        expected_settings.replace("path/to/bookmarks", source_path.to_str().unwrap());
     assert_eq!(actual_settings, expected_settings);
 
     let (actual_bookmarks, expected_bookmarks) = common::compare_files(

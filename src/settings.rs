@@ -1,8 +1,4 @@
-use crate::{
-    args::{SetCacheMode, SetSource},
-    cache::CacheMode,
-    json,
-};
+use crate::{cache::CacheMode, json};
 use anyhow::Context;
 use log::debug;
 use reqwest::Url;
@@ -105,25 +101,27 @@ impl Settings {
         Ok(())
     }
 
-    pub fn set_source(&mut self, set_source: SetSource) {
-        if let Some(source_path) = set_source.source {
-            debug!("Set source to {source_path}");
-            let source_path = PathBuf::from(source_path);
-            let source_file = Source::new(source_path, set_source.folders);
-            self.sources.push(source_file);
-        }
+    pub fn set_source(&mut self, source: Source) -> Result<(), anyhow::Error> {
+        debug!("Set source to {}", source.path.display());
+        self.sources.push(source);
+        Ok(())
     }
 
-    pub fn set_cache_mode(&mut self, set_cache_mode: SetCacheMode) {
-        if let Some(cache_mode) = set_cache_mode.cache_mode {
+    pub fn set_cache_mode(&mut self, cache_mode: Option<CacheMode>) {
+        if let Some(cache_mode) = cache_mode {
             debug!("Set cache mode to {:#?}", cache_mode);
             self.cache_mode = cache_mode;
         }
     }
 
-    pub fn configure(&mut self, set_source: SetSource, set_cache_mode: SetCacheMode) {
-        self.set_source(set_source);
-        self.set_cache_mode(set_cache_mode);
+    pub fn configure(
+        &mut self,
+        source: Source,
+        cache_mode: Option<CacheMode>,
+    ) -> Result<(), anyhow::Error> {
+        self.set_source(source)?;
+        self.set_cache_mode(cache_mode);
+        Ok(())
     }
 }
 
@@ -188,10 +186,12 @@ mod tests {
     #[test]
     fn test_set_source() {
         let mut settings = Settings::default();
-        settings.set_source(SetSource {
-            source: Some(String::from("path/to/source")),
-            folders: vec![],
-        });
+        settings
+            .set_source(Source {
+                path: PathBuf::from("path/to/source"),
+                folders: vec![],
+            })
+            .unwrap();
         assert_eq!(
             settings,
             Settings {
@@ -207,10 +207,12 @@ mod tests {
     #[test]
     fn test_set_source_and_folders() {
         let mut settings = Settings::default();
-        settings.set_source(SetSource {
-            source: Some(String::from("path/to/source")),
-            folders: vec![String::from("dev,science,article")],
-        });
+        settings
+            .set_source(Source {
+                path: PathBuf::from("path/to/source"),
+                folders: vec![String::from("dev,science,article")],
+            })
+            .unwrap();
         assert_eq!(
             settings,
             Settings {
@@ -226,9 +228,7 @@ mod tests {
     #[test]
     fn test_set_cache_mode() {
         let mut settings = Settings::default();
-        settings.set_cache_mode(SetCacheMode {
-            cache_mode: Some(CacheMode::Html),
-        });
+        settings.set_cache_mode(Some(CacheMode::Html));
         assert_eq!(
             settings,
             Settings {
@@ -241,14 +241,11 @@ mod tests {
     #[test]
     fn test_configure() {
         let mut settings = Settings::default();
-        let set_source = SetSource {
-            source: Some(String::from("path/to/source")),
+        let source = Source {
+            path: PathBuf::from("path/to/source"),
             folders: vec![String::from("dev,science,article")],
         };
-        let set_cache_mode = SetCacheMode {
-            cache_mode: Some(CacheMode::Html),
-        };
-        settings.configure(set_source, set_cache_mode);
+        settings.configure(source, Some(CacheMode::Html)).unwrap();
         assert_eq!(
             settings,
             Settings {

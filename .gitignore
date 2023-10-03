@@ -12,8 +12,6 @@
 # Test data
 **/*.jsonlz4
 **/*.html
-test_data/bogrep
-
 
 # Performance
 perf.data

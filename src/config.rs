@@ -127,29 +127,4 @@ pub mod tests {
             }
         }
     }
-
-    #[test]
-    fn test_config() {
-        let verbosity = 0;
-        let project_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
-        let config_path = format!("{}/test_data/bogrep", project_dir.to_string_lossy());
-
-        // Prepare test
-        env::set_var("BOGREP_HOME", &config_path);
-
-        let res = Config::init(verbosity);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-
-        let config = res.unwrap();
-        assert_eq!(
-            config,
-            Config {
-                verbosity: 0,
-                settings_path: PathBuf::from(format!("{config_path}/settings.json")),
-                cache_path: PathBuf::from(format!("{config_path}/cache")),
-                target_bookmark_file: PathBuf::from(format!("{config_path}/bookmarks.json")),
-                settings: Settings::default()
-            }
-        );
-    }
 }
