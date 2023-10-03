@@ -8,6 +8,8 @@ use tempfile::tempdir;
 fn test_configure() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
+    assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
     let source = "test_data/source/bookmarks_simple.txt";
     let source_path = Path::new(&source);
     assert!(
