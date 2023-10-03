@@ -13,9 +13,9 @@ fn test_configure() {
     let source = "./test_data/source/bookmarks_simple.txt";
     let source_path = fs::canonicalize(&source).unwrap();
 
-    let mut cmd = Command::new("target/debug/bogrep");
+    let mut cmd = Command::new("bogrep");
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", &source_path.to_str().unwrap()]);
+    cmd.args(["config", "--source", source]);
 
     let res = cmd.output();
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
