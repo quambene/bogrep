@@ -1,5 +1,5 @@
 use crate::{cache::CacheMode, json, utils, Config, ConfigArgs, Settings, Source};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use log::info;
 use std::{fs, io::Write};
 
@@ -13,7 +13,7 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
     let source_path = args
         .set_source
         .source
-        .map(|source_path| fs::canonicalize(source_path))
+        .map(|source_path| fs::canonicalize(source_path).context("Missing source path"))
         .transpose()?
         .ok_or(anyhow!("Missing source path"))?;
     let source_folders = args.set_source.folders;
