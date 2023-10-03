@@ -1,10 +1,6 @@
 mod common;
 
-use std::{
-    env::{self},
-    path::Path,
-    process::Command,
-};
+use std::{path::Path, process::Command};
 use tempfile::tempdir;
 
 #[test]
@@ -12,11 +8,7 @@ use tempfile::tempdir;
 fn test_configure() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
-    let project_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
-    let source = format!(
-        "{}/test_data/source/bookmarks_simple.txt",
-        project_dir.to_string_lossy()
-    );
+    let source = "test_data/source/bookmarks_simple.txt";
     let source_path = Path::new(&source);
     assert!(
         source_path.exists(),
