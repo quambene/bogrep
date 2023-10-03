@@ -10,7 +10,7 @@ fn test_configure() {
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    let source = "test_data/source/bookmarks_simple.txt";
+    let source = "./test_data/source/bookmarks_simple.txt";
     let source_path = fs::canonicalize(&source).unwrap();
 
     let mut cmd = Command::new("target/debug/bogrep");
