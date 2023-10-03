@@ -15,10 +15,10 @@ fn test_configure() {
 
     let mut cmd = Command::new("target/debug/bogrep");
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", &source]);
+    cmd.args(["config", "--source", &source_path.to_str().unwrap()]);
 
     let res = cmd.output();
-    assert!(res.is_ok(), "{}", res.unwrap_err());
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let settings_path = temp_dir.path().join("settings.json");
     assert!(
