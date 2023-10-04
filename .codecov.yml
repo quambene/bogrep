@@ -1,6 +1,6 @@
 coverage:
-  # We are aiming for >75% coverage
-  range: 75..100
+  # We are aiming for >60% coverage
+  range: 60..80
 ignore:
   - "tests"
   - "benches"
