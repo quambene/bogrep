@@ -6,11 +6,10 @@ use tempfile::tempdir;
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import() {
+    let source = "./test_data/source/bookmarks_simple.txt";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
-
-    let source = "./test_data/source/bookmarks_simple.txt";
 
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
