@@ -1,6 +1,6 @@
 use crate::{bookmark_reader::SourceReader, utils, Config, SourceBookmarks, TargetBookmarks};
 use log::{info, trace};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
@@ -21,11 +21,13 @@ pub fn import(config: &Config) -> Result<(), anyhow::Error> {
 
 fn import_bookmarks(
     mut source_reader: Vec<SourceReader>,
-    target_reader_writer: &mut (impl Read + Write),
+    target_reader_writer: &mut (impl Read + Write + Seek),
 ) -> Result<(), anyhow::Error> {
     let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
     let mut target_bookmarks = TargetBookmarks::read(target_reader_writer)?;
-
+    // Rewind after reading the content from the file and overwrite it with the
+    // updated content.
+    target_reader_writer.rewind()?;
     target_bookmarks.update(source_bookmarks)?;
     target_bookmarks.write(target_reader_writer)?;
 
@@ -66,7 +68,6 @@ mod tests {
 
         let mut cursor = Cursor::new(Vec::new());
         cursor.write_all(&target_bookmarks).unwrap();
-        let curser_after_read = cursor.position() as usize;
         // Set cursor position to the start again to prepare cursor for reading.
         cursor.set_position(0);
 
@@ -74,13 +75,8 @@ mod tests {
         let res = import_bookmarks(vec![source_reader], &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        let cursor_after_write = cursor.position() as usize;
-
-        let actual =
-            String::from_utf8(cursor.get_ref()[curser_after_read..cursor_after_write].to_vec())
-                .unwrap();
-        println!("actual: {actual}");
-        let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual.as_bytes()).unwrap();
+        let actual = cursor.into_inner();
+        let actual_bookmarks = json::deserialize::<TargetBookmarks>(&actual).unwrap();
         assert!(actual_bookmarks
             .bookmarks
             .iter()
