@@ -12,6 +12,9 @@ categories = ["command-line-utilities", "text-processing"]
 readme = "README.md"
 license = "Apache-2.0"
 
+[features]
+integration-test = []
+
 [dependencies]
 anyhow = "1.0.72"
 log = "0.4.19"
@@ -32,3 +35,8 @@ futures = "0.3.28"
 html2md = "0.2.14"
 readability = "0.2.0"
 async-trait = "0.1.73"
+
+[dev-dependencies]
+assert_cmd = "2.0.12"
+predicates = "3.0.4"
+tempfile = "3.8.0"

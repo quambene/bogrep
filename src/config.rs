@@ -11,6 +11,7 @@ use std::{
 const CONFIG_PATH: &str = ".config/bogrep";
 const SETTINGS_FILE: &str = "settings.json";
 const BOOKMARKS_FILE: &str = "bookmarks.json";
+const CACHE_DIR: &str = "cache";
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
@@ -50,14 +51,10 @@ impl Config {
         } else {
             format!("{}/{}", home_dir, CONFIG_PATH)
         };
-
-        let settings_path = format!("{}/{}", config_path, SETTINGS_FILE);
-        let settings_path = Path::new(&settings_path);
-        let target_bookmark_path = format!("{}/{}", config_path, BOOKMARKS_FILE);
-        let target_bookmark_path = Path::new(&target_bookmark_path);
-        let cache_path = format!("{config_path}/cache");
-        let cache_path = Path::new(&cache_path);
         let config_path = Path::new(&config_path);
+        let settings_path = config_path.join(SETTINGS_FILE);
+        let target_bookmark_path = config_path.join(BOOKMARKS_FILE);
+        let cache_path = config_path.join(CACHE_DIR);
 
         if !config_path.exists() {
             debug!("Create config at {}", config_path.display());
@@ -67,7 +64,7 @@ impl Config {
             ))?;
         }
 
-        let settings = Settings::init(settings_path)?;
+        let settings = Settings::init(&settings_path)?;
 
         if !target_bookmark_path.exists() {
             debug!(
@@ -76,7 +73,7 @@ impl Config {
             );
             let target_bookmarks = TargetBookmarks::default();
             let json = json::serialize(target_bookmarks)?;
-            let mut bookmark_file = File::create(target_bookmark_path).context(format!(
+            let mut bookmark_file = File::create(&target_bookmark_path).context(format!(
                 "Can't create `bookmarks.json` file: {}",
                 target_bookmark_path.display()
             ))?;
@@ -86,7 +83,7 @@ impl Config {
 
         if !cache_path.exists() {
             debug!("Create cache at {}", cache_path.display());
-            fs::create_dir_all(cache_path).context(format!(
+            fs::create_dir_all(&cache_path).context(format!(
                 "Can't create cache directory at {}",
                 cache_path.display()
             ))?;
@@ -98,9 +95,9 @@ impl Config {
 
         let config = Config::new(
             verbosity,
-            settings_path,
-            cache_path,
-            target_bookmark_path,
+            &settings_path,
+            &cache_path,
+            &target_bookmark_path,
             settings,
         );
 
@@ -126,30 +123,5 @@ pub mod tests {
                 settings: Settings::default(),
             }
         }
-    }
-
-    #[test]
-    fn test_config() {
-        let verbosity = 0;
-        let project_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
-        let config_path = format!("{}/test_data/bogrep", project_dir.to_string_lossy());
-
-        // Prepare test
-        env::set_var("BOGREP_HOME", &config_path);
-
-        let res = Config::init(verbosity);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-
-        let config = res.unwrap();
-        assert_eq!(
-            config,
-            Config {
-                verbosity: 0,
-                settings_path: PathBuf::from(format!("{config_path}/settings.json")),
-                cache_path: PathBuf::from(format!("{config_path}/cache")),
-                target_bookmark_file: PathBuf::from(format!("{config_path}/bookmarks.json")),
-                settings: Settings::default()
-            }
-        );
     }
 }

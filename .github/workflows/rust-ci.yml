@@ -42,8 +42,15 @@ jobs:
     steps:
         - uses: actions/checkout@v3
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo test
-          run: cargo test
+        - name: cargo test --locked
+          run: cargo test --locked
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+        - name: cargo test --locked --test '*' --features integration-test
+          run: cargo test --locked --test '*' --features integration-test
   coverage:
     runs-on: ubuntu-latest
     steps:
@@ -61,4 +68,5 @@ jobs:
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
+          files: lcov.info
           fail_ci_if_error: true
