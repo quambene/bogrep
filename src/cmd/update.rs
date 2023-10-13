@@ -3,6 +3,7 @@ use crate::{
     args::UpdateArgs, bookmark_reader::SourceReader, utils, Cache, Caching, Client, Config, Fetch,
     SourceBookmarks, TargetBookmarks,
 };
+use std::io::Seek;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
@@ -20,6 +21,9 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     let client = Client::new(config)?;
 
     let mut target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
+    // Rewind after reading the content from the file and overwrite it with the
+    // updated content.
+    target_bookmark_file.rewind()?;
 
     update_bookmarks(
         &client,
