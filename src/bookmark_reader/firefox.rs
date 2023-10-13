@@ -109,7 +109,9 @@ impl FirefoxBookmarkReader {
         if let Some(most_recent_entry) = most_recent_entry {
             let bookmark_path = most_recent_entry.path();
 
-            if bookmark_path.is_file() {
+            if bookmark_path.is_file()
+                && bookmark_path.extension().map(|path| path.to_str()) == Some(Some("jsonlz4"))
+            {
                 Ok(bookmark_path)
             } else {
                 Err(anyhow!(

@@ -109,9 +109,7 @@ impl SourceReader {
     fn select_source(source_path: &Path) -> Result<SourceType, anyhow::Error> {
         let path_str = source_path.to_str().unwrap();
 
-        if path_str.contains("firefox")
-            && source_path.extension().map(|path| path.to_str()) == Some(Some("jsonlz4"))
-        {
+        if path_str.contains("firefox") {
             Ok(SourceType::Firefox)
         } else if path_str.contains("google-chrome") {
             Ok(SourceType::GoogleChrome)
