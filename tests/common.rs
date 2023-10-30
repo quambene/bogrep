@@ -1,5 +1,12 @@
-use std::{fs::File, io::Read, path::Path};
+use bogrep::{json, utils, TargetBookmarks};
+use std::{collections::HashMap, fs::File, io::Read, path::Path};
+use tempfile::TempDir;
+use wiremock::{
+    matchers::{method, path},
+    Mock, MockServer, ResponseTemplate,
+};
 
+#[allow(dead_code)]
 pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, String) {
     let mut actual_file = File::open(&actual_path).unwrap();
     let mut actual = String::new();
@@ -10,4 +17,49 @@ pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, Strin
     expected_file.read_to_string(&mut expected).unwrap();
 
     (actual, expected)
+}
+
+#[allow(dead_code)]
+pub fn test_bookmarks(temp_dir: &TempDir) -> TargetBookmarks {
+    let bookmarks_path = temp_dir.path().join("bookmarks.json");
+    assert!(
+        bookmarks_path.exists(),
+        "Missing path: {}",
+        bookmarks_path.display()
+    );
+    let bookmarks = utils::read_file(&bookmarks_path).unwrap();
+    let res = json::deserialize::<TargetBookmarks>(&bookmarks);
+    assert!(
+        res.is_ok(),
+        "Can't deserialize bookmarks: {}\n{}",
+        res.unwrap_err(),
+        String::from_utf8(bookmarks).unwrap(),
+    );
+
+    let bookmarks = res.unwrap();
+    println!("Bookmarks:  {bookmarks:#?}");
+    bookmarks
+}
+
+pub async fn start_mock_server(num_mocks: u32) -> HashMap<String, String> {
+    let mock_server = MockServer::start().await;
+    let bind_url = mock_server.uri();
+    println!("Mock server running at {}", bind_url);
+
+    let mut mocks = HashMap::new();
+
+    for i in 0..num_mocks {
+        let endpoint = format!("endpoint_{}", i);
+        let url = format!("{}/{}", bind_url, endpoint);
+        let content = format!("Test content {}", i);
+        let response = format!("<!DOCTYPE html><html><body>{}</body></html>", content);
+        mocks.insert(url.clone(), content.clone());
+        Mock::given(method("GET"))
+            .and(path(endpoint))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+    }
+
+    mocks
 }
