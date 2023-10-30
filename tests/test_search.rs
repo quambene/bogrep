@@ -1,19 +1,34 @@
+mod common;
+
 use assert_cmd::Command;
 use predicates::str;
+use std::{
+    fs::{self, File},
+    io::Write,
+};
 use tempfile::tempdir;
 
-#[test]
+#[tokio::test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
-fn test_search() {
-    let source = "./test_data/source/bookmarks_simple.txt";
+async fn test_search() {
+    let mocks = common::start_mock_server(3).await;
+
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+    let source_path = temp_path.join("test_data/source/");
+    let source = &source_path.join("bookmarks_simple.txt");
+    fs::create_dir_all(&source_path).unwrap();
+    let mut file = File::create(source).unwrap();
 
-    println!("Execute 'bogrep config --source {source}'");
+    for url in mocks.keys() {
+        writeln!(file, "{}", url).unwrap();
+    }
+
+    println!("Execute 'bogrep config --source {}'", source.display());
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", source]);
+    cmd.args(["config", "--source", source.to_str().unwrap()]);
     cmd.output().unwrap();
 
     println!("Execute 'bogrep import'");
@@ -32,8 +47,14 @@ fn test_search() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.arg("test content 1");
-    // Info messages are logged to stderr.
     cmd.assert()
         .success()
-        .stderr(str::contains("Match in bookmark"));
+        .stdout(str::contains("Match in bookmark"))
+        .stderr("");
+
+    println!("Execute 'bogrep \"test content 4\"'");
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.env("BOGREP_HOME", temp_path);
+    cmd.arg("test content 4");
+    cmd.assert().success().stdout("").stderr("");
 }

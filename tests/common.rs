@@ -19,6 +19,7 @@ pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, Strin
     (actual, expected)
 }
 
+#[allow(dead_code)]
 pub fn test_bookmarks(temp_dir: &TempDir) -> TargetBookmarks {
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     assert!(
