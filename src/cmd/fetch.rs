@@ -6,7 +6,7 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, error, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -28,11 +28,14 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 pub async fn fetch_and_cache(
     client: &impl Fetch,
     cache: &impl Caching,
-    target_bookmark_file: &mut (impl Read + Write),
+    target_bookmark_file: &mut (impl Read + Write + Seek),
     max_concurrent_requests: usize,
     fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
     let mut bookmarks = TargetBookmarks::read(target_bookmark_file)?;
+    // Rewind after reading the content from the file and overwrite it with the
+    // updated content.
+    target_bookmark_file.rewind()?;
 
     fetch_and_add_all(
         client,

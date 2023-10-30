@@ -4,6 +4,7 @@ use crate::{
     SourceBookmarks, TargetBookmarks,
 };
 use log::info;
+use std::io::Seek;
 
 /// Import bookmarks, fetch bookmarks from url, and save fetched websites in
 /// cache if bookmarks were not imported yet.
@@ -30,6 +31,9 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
             config.settings.max_concurrent_requests,
         )
         .await?;
+        // Rewind after reading the content from the file and overwrite it with the
+        // updated content.
+        target_bookmark_file.rewind()?;
         target_bookmarks.write(&mut target_bookmark_file)?;
     }
 

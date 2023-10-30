@@ -162,7 +162,7 @@ support for macOS or Windows.
 
 ``` bash
 # Run unit tests
-cargo run
+cargo test
 
 # Run integration tests
 cargo test --test '*' --features integration-test
