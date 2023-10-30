@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use predicates::str;
 use tempfile::tempdir;
 
 #[test]
@@ -21,10 +22,18 @@ fn test_search() {
     cmd.args(["import"]);
     cmd.output().unwrap();
 
-    println!("Execute 'bogrep search \"reed-solomon code\"'");
+    println!("Execute 'bogrep fetch'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["search", "reed-solomon code"]);
-    // TODO: test success case
-    cmd.assert().failure();
+    cmd.args(["fetch"]);
+    cmd.output().unwrap();
+
+    println!("Execute 'bogrep \"test content 1\"'");
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.env("BOGREP_HOME", temp_path);
+    cmd.arg("test content 1");
+    // Info messages are logged to stderr.
+    cmd.assert()
+        .success()
+        .stderr(str::contains("Match in bookmark"));
 }
