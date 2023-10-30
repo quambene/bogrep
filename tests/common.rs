@@ -37,8 +37,9 @@ pub fn test_bookmarks(temp_dir: &TempDir) -> TargetBookmarks {
     let res = json::deserialize::<TargetBookmarks>(&bookmarks);
     assert!(
         res.is_ok(),
-        "Can't deserialize bookmarks: {}",
-        res.unwrap_err()
+        "Can't deserialize bookmarks: {}\n{}",
+        res.unwrap_err(),
+        String::from_utf8(bookmarks).unwrap(),
     );
 
     let bookmarks = res.unwrap();
