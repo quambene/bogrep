@@ -35,7 +35,10 @@ impl ReadBookmark for SimpleBookmarkReader {
 
         for line in buf_reader.lines() {
             let url = line?;
-            bookmarks.insert(&url);
+
+            if !url.is_empty() {
+                bookmarks.insert(&url);
+            }
         }
 
         Ok(())
