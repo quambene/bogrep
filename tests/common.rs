@@ -1,17 +1,10 @@
 use bogrep::{json, utils, TargetBookmarks};
-use std::{fs::File, io::Read, path::Path};
+use std::{collections::HashMap, fs::File, io::Read, path::Path};
 use tempfile::TempDir;
 use wiremock::{
     matchers::{method, path},
     Mock, MockServer, ResponseTemplate,
 };
-
-const TEST_URL_1: &str = "/how-mathematical-curves-power-cryptography-20220919";
-const TEST_URL_2: &str = "/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803";
-const TEST_URL_3: &str = "/computing-expert-says-programmers-need-more-math-20220517";
-const TEST_CONTENT_1: &str = "<html>Test content 1</html>";
-const TEST_CONTENT_2: &str = "<html>Test content 2</html>";
-const TEST_CONTENT_3: &str = "<html>Test content 3</html>";
 
 #[allow(dead_code)]
 pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, String) {
@@ -47,21 +40,25 @@ pub fn test_bookmarks(temp_dir: &TempDir) -> TargetBookmarks {
     bookmarks
 }
 
-pub async fn start_mock_server() {
+pub async fn start_mock_server(num_mocks: u32) -> HashMap<String, String> {
     let mock_server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .and(path(TEST_URL_1))
-        .respond_with(ResponseTemplate::new(200).set_body_string(TEST_CONTENT_1))
-        .mount(&mock_server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path(TEST_URL_2))
-        .respond_with(ResponseTemplate::new(200).set_body_string(TEST_CONTENT_2))
-        .mount(&mock_server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path(TEST_URL_3))
-        .respond_with(ResponseTemplate::new(200).set_body_string(TEST_CONTENT_3))
-        .mount(&mock_server)
-        .await;
+    let bind_url = mock_server.uri();
+    println!("Mock server running at {}", bind_url);
+
+    let mut mocks = HashMap::new();
+
+    for i in 0..num_mocks {
+        let endpoint = format!("endpoint_{}", i);
+        let url = format!("{}/{}", bind_url, endpoint);
+        let content = format!("Test content {}", i);
+        let response = format!("<!DOCTYPE html><html><body>{}</body></html>", content);
+        mocks.insert(url.clone(), content.clone());
+        Mock::given(method("GET"))
+            .and(path(endpoint))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response))
+            .mount(&mock_server)
+            .await;
+    }
+
+    mocks
 }
