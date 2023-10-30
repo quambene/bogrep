@@ -10,6 +10,7 @@ fn test_configure() {
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
+    println!("Execute 'bogrep config --source {source}'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["config", "--source", source]);
