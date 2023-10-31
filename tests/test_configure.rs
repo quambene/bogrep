@@ -2,10 +2,7 @@ use assert_cmd::Command;
 use bogrep::{json, utils, Settings, TargetBookmarks};
 use tempfile::tempdir;
 
-#[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
-fn test_configure() {
-    let source = "./test_data/source/bookmarks_simple.txt";
+fn test_configure(source: &str) {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -52,4 +49,25 @@ fn test_configure() {
 
     let bookmarks = res.unwrap();
     assert!(bookmarks.bookmarks.is_empty());
+}
+
+#[test]
+#[cfg_attr(not(feature = "integration-test"), ignore)]
+fn test_configure_simple() {
+    let source = "./test_data/source/bookmarks_simple.txt";
+    test_configure(source);
+}
+
+#[test]
+#[cfg_attr(not(feature = "integration-test"), ignore)]
+fn test_configure_firefox() {
+    let source = "./test_data/source/bookmarks_firefox.json";
+    test_configure(source);
+}
+
+#[test]
+#[cfg_attr(not(feature = "integration-test"), ignore)]
+fn test_configure_chrome() {
+    let source = "./test_data/source/bookmarks_google-chrome.json";
+    test_configure(source);
 }

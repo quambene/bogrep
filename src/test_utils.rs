@@ -1,11 +1,7 @@
-#[cfg(test)]
 use crate::utils;
-#[cfg(test)]
 use lz4::block;
-#[cfg(test)]
 use std::{io::Write, path::Path};
 
-#[cfg(test)]
 pub fn create_compressed_bookmarks(compressed_bookmark_path: &Path) {
     if !compressed_bookmark_path.exists() {
         let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
@@ -22,7 +18,6 @@ pub fn create_compressed_bookmarks(compressed_bookmark_path: &Path) {
     }
 }
 
-#[cfg(test)]
 pub fn compress_bookmarks(decompressed_bookmarks: &[u8]) -> Vec<u8> {
     let compressed_data = block::compress(decompressed_bookmarks, None, true).unwrap();
 

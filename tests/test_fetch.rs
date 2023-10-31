@@ -11,7 +11,6 @@ use tempfile::tempdir;
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_fetch() {
     let mocks = common::start_mock_server(3).await;
-
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
