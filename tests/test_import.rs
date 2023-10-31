@@ -1,8 +1,7 @@
-use std::path::Path;
-
 use assert_cmd::Command;
 use bogrep::{json, test_utils, utils, TargetBookmarks};
 use predicates::str;
+use std::path::Path;
 use tempfile::tempdir;
 
 #[test]
