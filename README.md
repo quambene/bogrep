@@ -22,6 +22,7 @@ bogrep "reed-solomon code"
 - [Import bookmarks](#import-bookmarks)
   - [Firefox](#firefox)
   - [Chrome](#chrome)
+  - [Chromium](#chromium)
 - [Ignore URLs](#ignore-urls)
 - [Diff websites](#diff-websites)
 - [Request throttling](#request-throttling)
@@ -102,7 +103,16 @@ choose the most recent bookmarks file.
 Configure Chrome as source for bookmarks:
 
 ``` bash
-bogrep config --source ~/.config/google-chrome/Default/bookmarks
+bogrep config --source ~/.config/google-chrome/Default/Bookmarks
+```
+
+### Chromium
+
+Configure Chromium as source for bookmarks:
+
+``` bash
+# snap package
+bogrep config --source ~/snap/chromium/common/chromium/Default/Bookmarks
 ```
 
 ### Specify bookmark folders
