@@ -1,15 +1,19 @@
-use crate::{bookmark_reader::SourceReader, utils, Config, SourceBookmarks, TargetBookmarks};
+use crate::{
+    bookmark_reader::{BookmarkReaders, SourceReader},
+    utils, Config, SourceBookmarks, TargetBookmarks,
+};
 use log::{info, trace};
 use std::io::{Read, Seek, Write};
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
 pub fn import(config: &Config) -> Result<(), anyhow::Error> {
+    let bookmark_readers = BookmarkReaders::new();
     let source_reader = config
         .settings
         .sources
         .iter()
-        .map(SourceReader::new)
+        .map(|source| SourceReader::new(source, &bookmark_readers.0))
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
@@ -71,7 +75,8 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         cursor.set_position(0);
 
-        let source_reader = SourceReader::new(&source).unwrap();
+        let bookmark_readers = BookmarkReaders::new();
+        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
         let res = import_bookmarks(vec![source_reader], &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 

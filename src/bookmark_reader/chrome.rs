@@ -1,13 +1,11 @@
 use super::ReadBookmark;
 use crate::{Source, SourceBookmarks};
-use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
-use std::{
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::io::Read;
 
+/// Bookmark reader to read bookmarks from Chromium or Google Chrome.
+#[derive(Clone, Copy)]
 pub struct ChromeBookmarkReader;
 
 impl ChromeBookmarkReader {
@@ -88,18 +86,32 @@ impl ChromeBookmarkReader {
 
 impl ReadBookmark for ChromeBookmarkReader {
     fn name(&self) -> &'static str {
-        "Google Chrome"
+        "Chrome/Chromium"
     }
 
-    fn validate_path(&self, path: &Path) -> Result<PathBuf, anyhow::Error> {
-        if path.exists() && path.is_file() {
-            Ok(path.to_owned())
-        } else {
-            Err(anyhow!(
-                "Missing source file for {}: {}",
-                self.name(),
-                path.display()
-            ))
+    fn extension(&self) -> Option<&str> {
+        None
+    }
+
+    fn select(
+        &self,
+        reader: &mut dyn Read,
+    ) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+        let raw_bookmarks = self.read(reader)?;
+        let value: Value = serde_json::from_str(&raw_bookmarks)?;
+
+        match value {
+            Value::Object(obj) => {
+                if obj.get("checksum").is_some()
+                    && obj.get("roots").is_some()
+                    && obj.get("version").is_some()
+                {
+                    Ok(Some(Box::new(*self)))
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Ok(None),
         }
     }
 

@@ -1,11 +1,8 @@
 use super::ReadBookmark;
 use crate::{Source, SourceBookmarks};
-use anyhow::anyhow;
-use std::{
-    io::{BufRead, BufReader, Read},
-    path::{Path, PathBuf},
-};
+use std::io::{BufRead, BufReader, Read};
 
+#[derive(Clone, Copy)]
 pub struct SimpleBookmarkReader;
 
 impl ReadBookmark for SimpleBookmarkReader {
@@ -13,16 +10,15 @@ impl ReadBookmark for SimpleBookmarkReader {
         "text file"
     }
 
-    fn validate_path(&self, path: &Path) -> Result<PathBuf, anyhow::Error> {
-        if path.exists() && path.is_file() {
-            Ok(path.to_owned())
-        } else {
-            Err(anyhow!(
-                "Missing source file for {}: {}",
-                self.name(),
-                path.display()
-            ))
-        }
+    fn extension(&self) -> Option<&str> {
+        Some("txt")
+    }
+
+    fn select(
+        &self,
+        _reader: &mut dyn Read,
+    ) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+        Ok(Some(Box::new(*self)))
     }
 
     fn read_and_parse(
