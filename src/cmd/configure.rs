@@ -1,4 +1,8 @@
-use crate::{cache::CacheMode, json, utils, Config, ConfigArgs, Settings, Source};
+use crate::{
+    bookmark_reader::{BookmarkReaders, SourceReader},
+    cache::CacheMode,
+    json, utils, Config, ConfigArgs, Settings, Source,
+};
 use anyhow::{anyhow, Context};
 use log::info;
 use std::{fs, io::Write};
@@ -13,9 +17,9 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
     let source_path = args
         .set_source
         .source
-        .map(|source_path| fs::canonicalize(source_path).context("Missing source path"))
+        .map(|source_path| fs::canonicalize(source_path).context("Invalid source path"))
         .transpose()?
-        .ok_or(anyhow!("Missing source path"))?;
+        .ok_or(anyhow!("Invalid source path"))?;
     let source_folders = args.set_source.folders;
     let source = Source::new(source_path, source_folders);
     let settings_file = utils::open_file_in_read_write_mode(&config.settings_path)?;
@@ -33,7 +37,9 @@ fn configure_settings(
 ) -> Result<(), anyhow::Error> {
     let mut settings = settings;
     let settings_read = settings.clone();
-
+    let bookmark_readers = BookmarkReaders::new();
+    // Validate source file
+    let _ = SourceReader::select_reader(&source.path, &bookmark_readers.0)?;
     settings.configure(source, cache_mode)?;
 
     if settings_read != settings {
@@ -47,18 +53,14 @@ fn configure_settings(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        fs::File,
-        io::{Cursor, Read},
-        path::PathBuf,
-    };
+    use std::{io::Cursor, path::PathBuf};
 
     #[test]
     fn test_configure_settings() {
         let mut cursor = Cursor::new(Vec::new());
         let settings = Settings::default();
         let source = Source {
-            path: PathBuf::from("path/to/bookmarks"),
+            path: PathBuf::from("test_data/source/bookmarks_simple.txt"),
             folders: vec![],
         };
         let cache_mode = None;
@@ -66,11 +68,19 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
 
-        let mut expected_settings = String::new();
-        let mut expected_file = File::open("test_data/configure/settings.json").unwrap();
-        expected_file
-            .read_to_string(&mut expected_settings)
-            .unwrap();
+        let expected_settings = r#"{
+    "bookmark_files": [
+        {
+            "source": "test_data/source/bookmarks_simple.txt",
+            "folders": []
+        }
+    ],
+    "ignored_urls": [],
+    "cache_mode": "text",
+    "max_concurrent_requests": 100,
+    "request_timeout": 60000,
+    "request_throttling": 3000
+}"#;
         assert_eq!(actual_settings, expected_settings);
     }
 }

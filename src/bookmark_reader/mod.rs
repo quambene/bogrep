@@ -115,7 +115,7 @@ impl SourceReader {
         Ok(())
     }
 
-    fn select_reader(
+    pub fn select_reader(
         source_path: &Path,
         bookmark_readers: &[Box<dyn ReadBookmark>],
     ) -> Result<(Box<dyn ReadBookmark>, impl Read, PathBuf), anyhow::Error> {
