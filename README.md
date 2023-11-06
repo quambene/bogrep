@@ -183,10 +183,10 @@ should work for most Linux derivatives. Feel free to open an issue if you need
 support for Windows.
 
 You can configure the configuration path via the environment variable
-`BOGREP_HOME`. For example,
+`BOGREP_HOME`. For example, create an alias:
 
 ``` bash
-BOGREP_HOME="my/config/path" bogrep config --source bookmarks.json
+alias bogrep='BOGREP_HOME="my/config/path" bogrep'
 ```
 
 ## Testing
