@@ -73,6 +73,12 @@ impl BookmarkReaders {
     }
 }
 
+impl Default for BookmarkReaders {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct SourceReader {
     source: Source,
     bookmarks_path: PathBuf,
