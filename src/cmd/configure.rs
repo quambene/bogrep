@@ -39,7 +39,7 @@ fn configure_settings(
     let settings_read = settings.clone();
     let bookmark_readers = BookmarkReaders::new();
     // Validate source file
-    let _ = SourceReader::select_reader(&source.path, &bookmark_readers.0)?;
+    let _ = SourceReader::select_reader(&source.path, bookmark_readers)?;
     settings.configure(source, cache_mode)?;
 
     if settings_read != settings {

@@ -126,7 +126,6 @@ impl Firefox {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct FirefoxBookmarkReader;
 
 impl ReadBookmark for FirefoxBookmarkReader {
@@ -138,22 +137,22 @@ impl ReadBookmark for FirefoxBookmarkReader {
         Some("json")
     }
 
-    fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+    fn is_selected(&self, raw_bookmarks: &str) -> Result<bool, anyhow::Error> {
         let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
             Value::Object(obj) => {
                 if let Some(Value::String(type_value)) = obj.get("type") {
                     if type_value == "text/x-moz-place-container" {
-                        Ok(Some(Box::new(*self)))
+                        Ok(true)
                     } else {
-                        Ok(None)
+                        Ok(false)
                     }
                 } else {
-                    Ok(None)
+                    Ok(false)
                 }
             }
-            _ => Ok(None),
+            _ => Ok(false),
         }
     }
 
@@ -203,7 +202,6 @@ impl ReadBookmark for FirefoxBookmarkReader {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct FirefoxCompressedBookmarkReader;
 
 impl ReadBookmark for FirefoxCompressedBookmarkReader {
@@ -215,22 +213,22 @@ impl ReadBookmark for FirefoxCompressedBookmarkReader {
         Some("jsonlz4")
     }
 
-    fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+    fn is_selected(&self, raw_bookmarks: &str) -> Result<bool, anyhow::Error> {
         let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
             Value::Object(obj) => {
                 if let Some(Value::String(type_value)) = obj.get("type") {
                     if type_value == "text/x-moz-place-container" {
-                        Ok(Some(Box::new(*self)))
+                        Ok(true)
                     } else {
-                        Ok(None)
+                        Ok(false)
                     }
                 } else {
-                    Ok(None)
+                    Ok(false)
                 }
             }
-            _ => Ok(None),
+            _ => Ok(false),
         }
     }
 

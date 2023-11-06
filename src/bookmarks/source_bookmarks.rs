@@ -50,7 +50,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
         assert_eq!(source_reader.bookmark_reader().name(), "Firefox");
     }
 
@@ -60,7 +60,7 @@ mod tests {
         test_utils::create_compressed_bookmarks(bookmark_path);
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
         assert_eq!(
             source_reader.bookmark_reader().name(),
             "Firefox (compressed)"
@@ -72,7 +72,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
         assert_eq!(source_reader.bookmark_reader().name(), "Chrome/Chromium");
     }
 
@@ -81,7 +81,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_chrome_no_extension");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
         assert_eq!(
             source_reader.bookmark_reader().name(),
             "Chrome/Chromium (no extension)"
@@ -93,7 +93,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_simple.txt");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
         assert_eq!(source_reader.bookmark_reader().name(), "simple");
     }
 }

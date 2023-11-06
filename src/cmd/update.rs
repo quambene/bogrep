@@ -9,12 +9,14 @@ use std::io::Seek;
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
 pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
-    let bookmark_readers = BookmarkReaders::new();
     let mut source_reader = config
         .settings
         .sources
         .iter()
-        .map(|source| SourceReader::new(source, &bookmark_readers.0))
+        .map(|source| {
+            let bookmark_readers = BookmarkReaders::new();
+            SourceReader::new(source, bookmark_readers)
+        })
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
@@ -88,7 +90,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
         let source = Source::new(bookmark_path, vec![]);
         let bookmark_readers = BookmarkReaders::new();
-        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),

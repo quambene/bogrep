@@ -8,12 +8,14 @@ use std::io::{Read, Seek, Write};
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
 pub fn import(config: &Config) -> Result<(), anyhow::Error> {
-    let bookmark_readers = BookmarkReaders::new();
     let source_reader = config
         .settings
         .sources
         .iter()
-        .map(|source| SourceReader::new(source, &bookmark_readers.0))
+        .map(|source| {
+            let bookmark_readers = BookmarkReaders::new();
+            SourceReader::new(source, bookmark_readers)
+        })
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
@@ -76,7 +78,7 @@ mod tests {
         cursor.set_position(0);
 
         let bookmark_readers = BookmarkReaders::new();
-        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
         let res = import_bookmarks(vec![source_reader], &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 

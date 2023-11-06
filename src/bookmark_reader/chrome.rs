@@ -83,7 +83,6 @@ impl Chrome {
 }
 
 /// Bookmark reader to read bookmarks from Chromium or Google Chrome.
-#[derive(Clone, Copy)]
 pub struct ChromeBookmarkReader;
 
 impl ReadBookmark for ChromeBookmarkReader {
@@ -95,7 +94,7 @@ impl ReadBookmark for ChromeBookmarkReader {
         Some("json")
     }
 
-    fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+    fn is_selected(&self, raw_bookmarks: &str) -> Result<bool, anyhow::Error> {
         let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
@@ -104,12 +103,12 @@ impl ReadBookmark for ChromeBookmarkReader {
                     && obj.get("roots").is_some()
                     && obj.get("version").is_some()
                 {
-                    Ok(Some(Box::new(*self)))
+                    Ok(true)
                 } else {
-                    Ok(None)
+                    Ok(false)
                 }
             }
-            _ => Ok(None),
+            _ => Ok(false),
         }
     }
 
@@ -133,7 +132,6 @@ impl ReadBookmark for ChromeBookmarkReader {
     }
 }
 
-#[derive(Clone, Copy)]
 pub struct ChromeNoExtensionBookmarkReader;
 
 impl ReadBookmark for ChromeNoExtensionBookmarkReader {
@@ -145,7 +143,7 @@ impl ReadBookmark for ChromeNoExtensionBookmarkReader {
         None
     }
 
-    fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+    fn is_selected(&self, raw_bookmarks: &str) -> Result<bool, anyhow::Error> {
         let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
@@ -154,12 +152,12 @@ impl ReadBookmark for ChromeNoExtensionBookmarkReader {
                     && obj.get("roots").is_some()
                     && obj.get("version").is_some()
                 {
-                    Ok(Some(Box::new(*self)))
+                    Ok(true)
                 } else {
-                    Ok(None)
+                    Ok(false)
                 }
             }
-            _ => Ok(None),
+            _ => Ok(false),
         }
     }
 

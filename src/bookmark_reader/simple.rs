@@ -2,7 +2,6 @@ use super::ReadBookmark;
 use crate::{Source, SourceBookmarks};
 use std::io::{BufRead, BufReader, Read};
 
-#[derive(Clone, Copy)]
 pub struct SimpleBookmarkReader;
 
 impl ReadBookmark for SimpleBookmarkReader {
@@ -14,8 +13,8 @@ impl ReadBookmark for SimpleBookmarkReader {
         Some("txt")
     }
 
-    fn select(&self, _raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
-        Ok(Some(Box::new(*self)))
+    fn is_selected(&self, _raw_bookmarks: &str) -> Result<bool, anyhow::Error> {
+        Ok(true)
     }
 
     fn read_and_parse(

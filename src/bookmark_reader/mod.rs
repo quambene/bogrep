@@ -19,7 +19,7 @@ pub trait ReadBookmark {
 
     fn extension(&self) -> Option<&str>;
 
-    fn select(&self, bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error>;
+    fn is_selected(&self, bookmarks: &str) -> Result<bool, anyhow::Error>;
 
     fn select_path(&self, _path: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         Ok(None)
@@ -81,10 +81,7 @@ pub struct SourceReader {
 }
 
 impl SourceReader {
-    pub fn new(
-        source: &Source,
-        bookmark_readers: &[Box<dyn ReadBookmark>],
-    ) -> Result<Self, anyhow::Error> {
+    pub fn new(source: &Source, bookmark_readers: BookmarkReaders) -> Result<Self, anyhow::Error> {
         let (bookmark_reader, reader, bookmarks_path) =
             Self::select_reader(&source.path, bookmark_readers)?;
 
@@ -117,9 +114,9 @@ impl SourceReader {
 
     pub fn select_reader(
         source_path: &Path,
-        bookmark_readers: &[Box<dyn ReadBookmark>],
+        bookmark_readers: BookmarkReaders,
     ) -> Result<(Box<dyn ReadBookmark>, impl Read, PathBuf), anyhow::Error> {
-        for bookmark_reader in bookmark_readers {
+        for bookmark_reader in bookmark_readers.0 {
             if source_path.is_file()
                 && bookmark_reader.extension()
                     == source_path.extension().and_then(|path| path.to_str())
@@ -128,9 +125,8 @@ impl SourceReader {
                     let mut bookmark_file = utils::open_file(source_path)?;
                     let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
                     bookmark_file.rewind()?;
-                    let bookmark_reader = bookmark_reader.select(&bookmarks)?;
 
-                    if let Some(bookmark_reader) = bookmark_reader {
+                    if bookmark_reader.is_selected(&bookmarks)? {
                         return Ok((bookmark_reader, bookmark_file, source_path.to_owned()));
                     }
                 }
@@ -143,9 +139,8 @@ impl SourceReader {
                         let mut bookmark_file = utils::open_file(&bookmarks_path)?;
                         let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
                         bookmark_file.rewind()?;
-                        let bookmark_reader = bookmark_reader.select(&bookmarks)?;
 
-                        if let Some(bookmark_reader) = bookmark_reader {
+                        if bookmark_reader.is_selected(&bookmarks)? {
                             return Ok((bookmark_reader, bookmark_file, bookmarks_path));
                         }
                     }
