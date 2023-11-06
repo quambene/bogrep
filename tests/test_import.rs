@@ -38,7 +38,7 @@ fn test_import(source: &str, temp_path: &Path) {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_simple() {
-    let source = "./test_data/source/bookmarks_simple.txt";
+    let source = "./test_data/bookmarks_simple.txt";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -49,7 +49,7 @@ fn test_import_simple() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox() {
-    let source = "./test_data/source/bookmarks_firefox.json";
+    let source = "./test_data/bookmarks_firefox.json";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -60,7 +60,7 @@ fn test_import_firefox() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_compressed() {
-    let source = "./test_data/source/bookmarks_firefox.jsonlz4";
+    let source = "./test_data/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source));
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
@@ -72,7 +72,7 @@ fn test_import_firefox_compressed() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_bookmark_folder_ubuntu() {
-    let source_path = "./test_data/source/bookmarks_firefox.jsonlz4";
+    let source_path = "./test_data/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source_path));
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
@@ -90,7 +90,7 @@ fn test_import_firefox_bookmark_folder_ubuntu() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_bookmark_folder_macos() {
-    let source_path = "./test_data/source/bookmarks_firefox.jsonlz4";
+    let source_path = "./test_data/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source_path));
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
@@ -108,7 +108,7 @@ fn test_import_firefox_bookmark_folder_macos() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_chrome() {
-    let source = "./test_data/source/bookmarks_chrome.json";
+    let source = "./test_data/bookmarks_chrome.json";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());

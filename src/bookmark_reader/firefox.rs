@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_read() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let bookmark_reader = FirefoxBookmarkReader;
         let mut bookmark_file = Cursor::new(decompressed_bookmarks.clone());
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_read_compressed() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
         let bookmark_reader = FirefoxCompressedBookmarkReader;
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_parse_all() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let bookmark_reader = FirefoxBookmarkReader;
         let mut bookmark_file = Cursor::new(decompressed_bookmarks);
@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_parse_all_compressed() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
         let bookmark_reader = FirefoxCompressedBookmarkReader;
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_parse_folder() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let bookmark_reader = FirefoxBookmarkReader;
         let mut bookmark_file = Cursor::new(decompressed_bookmarks);
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_parse_folder_compressed() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
         let bookmark_reader = FirefoxCompressedBookmarkReader;

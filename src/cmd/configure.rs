@@ -60,7 +60,7 @@ mod tests {
         let mut cursor = Cursor::new(Vec::new());
         let settings = Settings::default();
         let source = Source {
-            path: PathBuf::from("test_data/source/bookmarks_simple.txt"),
+            path: PathBuf::from("test_data/bookmarks_simple.txt"),
             folders: vec![],
         };
         let cache_mode = None;
@@ -71,7 +71,7 @@ mod tests {
         let expected_settings = r#"{
     "bookmark_files": [
         {
-            "source": "test_data/source/bookmarks_simple.txt",
+            "source": "test_data/bookmarks_simple.txt",
             "folders": []
         }
     ],

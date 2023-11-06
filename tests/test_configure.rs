@@ -54,27 +54,27 @@ fn test_configure(source: &str) {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_simple() {
-    let source = "./test_data/source/bookmarks_simple.txt";
+    let source = "./test_data/bookmarks_simple.txt";
     test_configure(source);
 }
 
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_firefox() {
-    let source = "./test_data/source/bookmarks_firefox.json";
+    let source = "./test_data/bookmarks_firefox.json";
     test_configure(source);
 }
 
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_chrome() {
-    let source = "./test_data/source/bookmarks_chrome.json";
+    let source = "./test_data/bookmarks_chrome.json";
     test_configure(source);
 }
 
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_chrome_no_extension() {
-    let source = "./test_data/source/bookmarks_chrome_no_extension";
+    let source = "./test_data/bookmarks_chrome_no_extension";
     test_configure(source);
 }

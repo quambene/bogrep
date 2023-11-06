@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_parse_all() {
-        let source_path = Path::new("test_data/source/bookmarks_chrome.json");
+        let source_path = Path::new("test_data/bookmarks_chrome.json");
         assert!(source_path.exists());
 
         let bookmark_reader = ChromeBookmarkReader;
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_parse_all_no_extension() {
-        let source_path = Path::new("test_data/source/bookmarks_chrome_no_extension");
+        let source_path = Path::new("test_data/bookmarks_chrome_no_extension");
         assert!(source_path.exists());
 
         let bookmark_reader = ChromeNoExtensionBookmarkReader;
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_parse_folder() {
-        let source_path = Path::new("test_data/source/bookmarks_chrome.json");
+        let source_path = Path::new("test_data/bookmarks_chrome.json");
         assert!(source_path.exists());
 
         let bookmark_reader = ChromeBookmarkReader;
@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_parse_folder_no_extension() {
-        let source_path = Path::new("test_data/source/bookmarks_chrome_no_extension");
+        let source_path = Path::new("test_data/bookmarks_chrome_no_extension");
         assert!(source_path.exists());
 
         let bookmark_reader = ChromeNoExtensionBookmarkReader;

@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn test_import_bookmarks_firefox_uncompressed() {
-        let source_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_import_bookmarks_firefox_compressed() {
-        let source_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
+        let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_import_bookmarks_chrome() {
-        let source_path = Path::new("test_data/source/bookmarks_chrome.json");
+        let source_path = Path::new("test_data/bookmarks_chrome.json");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_import_bookmarks_chrome_no_extension() {
-        let source_path = Path::new("test_data/source/bookmarks_chrome_no_extension");
+        let source_path = Path::new("test_data/bookmarks_chrome_no_extension");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_import_bookmarks_simple() {
-        let source_path = Path::new("test_data/source/bookmarks_simple.txt");
+        let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([

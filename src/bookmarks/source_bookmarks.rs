@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn test_read_firefox() {
-        let bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
         let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_read_firefox_compressed() {
-        let bookmark_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
+        let bookmark_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         test_utils::create_compressed_bookmarks(bookmark_path);
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn test_read_chrome() {
-        let bookmark_path = Path::new("test_data/source/bookmarks_chrome.json");
+        let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
         let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_read_chrome_no_extension() {
-        let bookmark_path = Path::new("test_data/source/bookmarks_chrome_no_extension");
+        let bookmark_path = Path::new("test_data/bookmarks_chrome_no_extension");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
         let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_read_simple() {
-        let bookmark_path = Path::new("test_data/source/bookmarks_simple.txt");
+        let bookmark_path = Path::new("test_data/bookmarks_simple.txt");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
         let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();

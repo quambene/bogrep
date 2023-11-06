@@ -15,7 +15,7 @@ async fn test_search() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
-    let source_path = temp_path.join("test_data/source/");
+    let source_path = temp_path.join("test_data");
     let source = &source_path.join("bookmarks_simple.txt");
     fs::create_dir_all(&source_path).unwrap();
     let mut file = File::create(source).unwrap();

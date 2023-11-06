@@ -175,8 +175,28 @@ impl From<SourceBookmarks> for TargetBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils;
-    use std::{collections::HashSet, io::Cursor, path::Path};
+    use std::{collections::HashSet, io::Cursor};
+
+    const EXPECTED_BOOKMARKS: &str = r#"{
+    "bookmarks": [
+        {
+            "id": "a87f7024-a7f5-4f9c-8a71-f64880b2f275",
+            "url": "https://doc.rust-lang.org/book/title-page.html",
+            "last_imported": 1694989714351,
+            "last_cached": null
+        },
+        {
+            "id": "511b1590-e6de-4989-bca4-96dc61730508",
+            "url": "https://www.deepl.com/translator",
+            "last_imported": 1694989714351,
+            "last_cached": null
+        }
+    ]
+}"#;
+
+    const EXPECTED_BOOKMARKS_EMPTY: &str = r#"{
+    "bookmarks": []
+}"#;
 
     #[test]
     fn test_update() {
@@ -215,9 +235,9 @@ mod tests {
 
     #[test]
     fn test_read_target_bookmarks() {
-        let bookmark_path = Path::new("test_data/target/bookmarks.json");
-        let mut bookmark_file = utils::open_file(bookmark_path).unwrap();
-        let res = TargetBookmarks::read(&mut bookmark_file);
+        let bookmarks = EXPECTED_BOOKMARKS.as_bytes().to_vec();
+        let mut cursor = Cursor::new(bookmarks);
+        let res = TargetBookmarks::read(&mut cursor);
         assert!(res.is_ok());
 
         let bookmarks = res.unwrap();
@@ -242,9 +262,9 @@ mod tests {
 
     #[test]
     fn test_read_target_bookmarks_empty() {
-        let bookmark_path = Path::new("test_data/target/bookmarks_empty.json");
-        let mut bookmark_file = utils::open_file(bookmark_path).unwrap();
-        let res = TargetBookmarks::read(&mut bookmark_file);
+        let bookmarks = EXPECTED_BOOKMARKS_EMPTY.as_bytes().to_vec();
+        let mut cursor = Cursor::new(bookmarks);
+        let res = TargetBookmarks::read(&mut cursor);
         assert!(res.is_ok());
 
         let bookmarks = res.unwrap();
@@ -274,12 +294,7 @@ mod tests {
         assert!(res.is_ok());
 
         let actual = cursor.into_inner();
-        let expected_path = Path::new("test_data/target/bookmarks.json");
-        let expected = utils::read_file(expected_path).unwrap();
-        assert_eq!(
-            String::from_utf8(actual).unwrap(),
-            String::from_utf8(expected).unwrap()
-        );
+        assert_eq!(String::from_utf8(actual).unwrap(), EXPECTED_BOOKMARKS);
     }
 
     #[test]
@@ -290,11 +305,6 @@ mod tests {
         assert!(res.is_ok());
 
         let actual = cursor.into_inner();
-        let expected_path = Path::new("test_data/target/bookmarks_empty.json");
-        let expected = utils::read_file(expected_path).unwrap();
-        assert_eq!(
-            String::from_utf8(actual).unwrap(),
-            String::from_utf8(expected).unwrap()
-        );
+        assert_eq!(String::from_utf8(actual).unwrap(), EXPECTED_BOOKMARKS_EMPTY);
     }
 }

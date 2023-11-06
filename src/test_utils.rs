@@ -4,7 +4,7 @@ use std::{io::Write, path::Path};
 
 pub fn create_compressed_bookmarks(compressed_bookmark_path: &Path) {
     if !compressed_bookmark_path.exists() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         assert!(decompressed_bookmark_path.exists());
 
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();

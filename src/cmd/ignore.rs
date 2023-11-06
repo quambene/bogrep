@@ -32,10 +32,7 @@ fn ignore_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        fs::File,
-        io::{Cursor, Read},
-    };
+    use std::io::Cursor;
 
     #[test]
     fn test_ignore_urls() {
@@ -50,11 +47,17 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
 
-        let mut expected_settings = String::new();
-        let mut expected_file = File::open("test_data/ignore/settings.json").unwrap();
-        expected_file
-            .read_to_string(&mut expected_settings)
-            .unwrap();
+        let expected_settings = r#"{
+    "bookmark_files": [],
+    "ignored_urls": [
+        "https://youtube.com/",
+        "https://soundcloud.com/"
+    ],
+    "cache_mode": "text",
+    "max_concurrent_requests": 100,
+    "request_timeout": 60000,
+    "request_throttling": 3000
+}"#;
         assert_eq!(actual_settings, expected_settings);
     }
 }
