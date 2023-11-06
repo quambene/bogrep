@@ -97,7 +97,22 @@ mod tests {
     }
 
     #[test]
-    fn test_import_bookmarks_firefox() {
+    fn test_import_bookmarks_firefox_uncompressed() {
+        let source_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
+        let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.mozilla.org/en-US/firefox/central/"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html")
+        ]);
+
+        test_import_bookmarks(&source, target_bookmarks);
+    }
+
+    #[test]
+    fn test_import_bookmarks_firefox_compressed() {
         let source_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
@@ -113,8 +128,23 @@ mod tests {
     }
 
     #[test]
-    fn test_import_bookmarks_google_chrome() {
-        let source_path = Path::new("test_data/source/bookmarks_google-chrome.json");
+    fn test_import_bookmarks_chrome() {
+        let source_path = Path::new("test_data/source/bookmarks_chrome.json");
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
+        let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]);
+
+        test_import_bookmarks(&source, target_bookmarks);
+    }
+
+    #[test]
+    fn test_import_bookmarks_chrome_no_extension() {
+        let source_path = Path::new("test_data/source/bookmarks_chrome_no_extension");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
@@ -137,7 +167,6 @@ mod tests {
             String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
             String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"),
         ]);
-
         test_import_bookmarks(&source, target_bookmarks);
     }
 }

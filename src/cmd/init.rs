@@ -86,7 +86,7 @@ mod tests {
     async fn test_init_bookmarks() {
         let client = MockClient::new();
         let cache = MockCache::new();
-        let bookmark_path = Path::new("test_data/source/bookmarks_google-chrome.json");
+        let bookmark_path = Path::new("test_data/source/bookmarks_chrome.json");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
         let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();

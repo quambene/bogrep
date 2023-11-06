@@ -1,18 +1,16 @@
 mod chrome;
 mod firefox;
-mod firefox_compressed;
 mod simple;
 
 use crate::{utils, Source, SourceBookmarks};
 use anyhow::anyhow;
-pub use chrome::ChromeBookmarkReader;
-pub use firefox::FirefoxBookmarkReader;
-pub use firefox_compressed::FirefoxCompressedBookmarkReader;
+pub use chrome::{ChromeBookmarkReader, ChromeNoExtensionBookmarkReader};
+pub use firefox::{FirefoxBookmarkReader, FirefoxCompressedBookmarkReader};
 use log::debug;
 pub use simple::SimpleBookmarkReader;
 use std::{
     fs::File,
-    io::Read,
+    io::{Read, Seek},
     path::{Path, PathBuf},
 };
 
@@ -21,8 +19,7 @@ pub trait ReadBookmark {
 
     fn extension(&self) -> Option<&str>;
 
-    fn select(&self, reader: &mut dyn Read)
-        -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error>;
+    fn select(&self, bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error>;
 
     fn select_path(&self, _path: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         Ok(None)
@@ -70,6 +67,7 @@ impl BookmarkReaders {
             Box::new(FirefoxBookmarkReader),
             Box::new(FirefoxCompressedBookmarkReader),
             Box::new(ChromeBookmarkReader),
+            Box::new(ChromeNoExtensionBookmarkReader),
             Box::new(SimpleBookmarkReader),
         ])
     }
@@ -102,6 +100,10 @@ impl SourceReader {
         &self.source
     }
 
+    pub fn bookmark_reader(&self) -> &Box<dyn ReadBookmark> {
+        &self.bookmark_reader
+    }
+
     pub fn read_and_parse(&mut self, bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
         debug!(
             "Read bookmarks from file '{}'",
@@ -123,7 +125,9 @@ impl SourceReader {
                     == source_path.extension().map(|path| path.to_str()).flatten()
                 {
                     let mut bookmark_file = utils::open_file(source_path)?;
-                    let bookmark_reader = bookmark_reader.select(&mut bookmark_file)?;
+                    let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
+                    bookmark_file.rewind()?;
+                    let bookmark_reader = bookmark_reader.select(&bookmarks)?;
 
                     if let Some(bookmark_reader) = bookmark_reader {
                         return Ok((bookmark_reader, bookmark_file, source_path.to_owned()));
@@ -133,7 +137,9 @@ impl SourceReader {
                 if let Some(bookmarks_path) = bookmark_reader.select_path(source_path)? {
                     if bookmarks_path.is_file() {
                         let mut bookmark_file = utils::open_file(&bookmarks_path)?;
-                        let bookmark_reader = bookmark_reader.select(&mut bookmark_file)?;
+                        let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
+                        bookmark_file.rewind()?;
+                        let bookmark_reader = bookmark_reader.select(&bookmarks)?;
 
                         if let Some(bookmark_reader) = bookmark_reader {
                             return Ok((bookmark_reader, bookmark_file, bookmarks_path));

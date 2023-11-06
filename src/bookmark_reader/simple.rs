@@ -7,17 +7,14 @@ pub struct SimpleBookmarkReader;
 
 impl ReadBookmark for SimpleBookmarkReader {
     fn name(&self) -> &str {
-        "text file"
+        "simple"
     }
 
     fn extension(&self) -> Option<&str> {
         Some("txt")
     }
 
-    fn select(
-        &self,
-        _reader: &mut dyn Read,
-    ) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+    fn select(&self, _raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
         Ok(Some(Box::new(*self)))
     }
 
