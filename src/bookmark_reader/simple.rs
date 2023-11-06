@@ -1,28 +1,21 @@
 use super::ReadBookmark;
 use crate::{Source, SourceBookmarks};
-use anyhow::anyhow;
-use std::{
-    io::{BufRead, BufReader, Read},
-    path::{Path, PathBuf},
-};
+use std::io::{BufRead, BufReader, Read};
 
+#[derive(Clone, Copy)]
 pub struct SimpleBookmarkReader;
 
 impl ReadBookmark for SimpleBookmarkReader {
     fn name(&self) -> &str {
-        "text file"
+        "simple"
     }
 
-    fn validate_path(&self, path: &Path) -> Result<PathBuf, anyhow::Error> {
-        if path.exists() && path.is_file() {
-            Ok(path.to_owned())
-        } else {
-            Err(anyhow!(
-                "Missing source file for {}: {}",
-                self.name(),
-                path.display()
-            ))
-        }
+    fn extension(&self) -> Option<&str> {
+        Some("txt")
+    }
+
+    fn select(&self, _raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
+        Ok(Some(Box::new(*self)))
     }
 
     fn read_and_parse(
@@ -69,9 +62,10 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
-            String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]))
     }
 }

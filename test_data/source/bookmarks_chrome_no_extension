@@ -1,0 +1,136 @@
+{
+    "checksum": "e2705e418121331a0ffe03bce57caee6",
+    "roots": {
+        "bookmark_bar": {
+            "children": [
+                {
+                    "date_added": "13304517445919306",
+                    "date_last_used": "0",
+                    "guid": "66695d21-75a1-4694-9797-5d1e2e622f4e",
+                    "id": "52",
+                    "name": "",
+                    "type": "url",
+                    "url": "https://www.deepl.com/translator"
+                }
+            ],
+            "date_added": "13168232800859755",
+            "date_last_used": "0",
+            "date_modified": "13335879124666685",
+            "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+            "id": "1",
+            "name": "Bookmarks bar",
+            "type": "folder"
+        },
+        "other": {
+            "children": [
+                {
+                    "children": [
+                        {
+                            "date_added": "13324763142450572",
+                            "date_last_used": "0",
+                            "guid": "1a4aafcd-40a5-4c42-9e87-18d848abc408",
+                            "id": "436",
+                            "name": "Bookmarks",
+                            "type": "url",
+                            "url": "chrome://bookmarks/?id=2"
+                        }
+                    ],
+                    "date_added": "13324763142449938",
+                    "date_last_used": "0",
+                    "date_modified": "13324763142466146",
+                    "guid": "d60ec3a8-a779-4605-b836-8fdde6fb536e",
+                    "id": "435",
+                    "name": "open bookmarks",
+                    "type": "folder"
+                },
+                {
+                    "children": [
+                        {
+                            "date_added": "13314135360023081",
+                            "date_last_used": "0",
+                            "guid": "bd04bef8-4e9b-4e3a-95d1-8a13c25503d8",
+                            "id": "244",
+                            "meta_info": {
+                                "power_bookmark_meta": ""
+                            },
+                            "name": "How Mathematical Curves Enable Advanced Communication",
+                            "type": "url",
+                            "url": "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
+                        }
+                    ],
+                    "date_added": "13314135173855100",
+                    "date_last_used": "0",
+                    "date_modified": "13317162757894190",
+                    "guid": "b48bf1ec-d641-47ee-9137-f751a7397399",
+                    "id": "241",
+                    "name": "science",
+                    "type": "folder"
+                },
+                {
+                    "children": [
+                        {
+                            "children": [
+                                {
+                                    "date_added": "13314135360023081",
+                                    "date_last_used": "0",
+                                    "guid": "0a091c07-d863-462f-8f46-a3215320bb2e",
+                                    "id": "242",
+                                    "meta_info": {
+                                        "power_bookmark_meta": ""
+                                    },
+                                    "name": "The Rust Programming Language - The Rust Programming Language",
+                                    "type": "url",
+                                    "url": "https://doc.rust-lang.org/book/title-page.html"
+                                }
+                            ],
+                            "date_added": "13314135173855100",
+                            "date_last_used": "0",
+                            "date_modified": "13317162757894190",
+                            "guid": "94eb6463-afd6-4b18-9b43-3b97881a3572",
+                            "id": "243",
+                            "name": "rust",
+                            "type": "folder"
+                        },
+                        {
+                            "date_added": "13314370416558523",
+                            "date_last_used": "13314552307881302",
+                            "guid": "32d8b5a7-10cc-4fe6-93ce-8ae96c41805b",
+                            "id": "244",
+                            "meta_info": {
+                                "power_bookmark_meta": ""
+                            },
+                            "name": "Design Patterns - Wikipedia",
+                            "type": "url",
+                            "url": "https://en.wikipedia.org/wiki/Design_Patterns"
+                        }
+                    ],
+                    "date_added": "13312340072739851",
+                    "date_last_used": "0",
+                    "date_modified": "13324593494522505",
+                    "guid": "4e8dcd73-022b-4d38-92f5-c715134631d9",
+                    "id": "179",
+                    "name": "dev",
+                    "type": "folder"
+                }
+            ],
+            "date_added": "13168232800859761",
+            "date_last_used": "0",
+            "date_modified": "13326039780495335",
+            "guid": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+            "id": "2",
+            "name": "Other bookmarks",
+            "type": "folder"
+        },
+        "synced": {
+            "children": [],
+            "date_added": "13168232800859762",
+            "date_last_used": "0",
+            "date_modified": "0",
+            "guid": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+            "id": "3",
+            "name": "Mobile bookmarks",
+            "type": "folder"
+        }
+    },
+    "version": 1
+}

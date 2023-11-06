@@ -1,15 +1,19 @@
-use crate::{bookmark_reader::SourceReader, utils, Config, SourceBookmarks, TargetBookmarks};
+use crate::{
+    bookmark_reader::{BookmarkReaders, SourceReader},
+    utils, Config, SourceBookmarks, TargetBookmarks,
+};
 use log::{info, trace};
 use std::io::{Read, Seek, Write};
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
 pub fn import(config: &Config) -> Result<(), anyhow::Error> {
+    let bookmark_readers = BookmarkReaders::new();
     let source_reader = config
         .settings
         .sources
         .iter()
-        .map(SourceReader::new)
+        .map(|source| SourceReader::new(source, &bookmark_readers.0))
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
@@ -71,7 +75,8 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         cursor.set_position(0);
 
-        let source_reader = SourceReader::new(&source).unwrap();
+        let bookmark_readers = BookmarkReaders::new();
+        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
         let res = import_bookmarks(vec![source_reader], &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
@@ -92,7 +97,22 @@ mod tests {
     }
 
     #[test]
-    fn test_import_bookmarks_firefox() {
+    fn test_import_bookmarks_firefox_uncompressed() {
+        let source_path = Path::new("test_data/source/bookmarks_firefox.json");
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
+        let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.mozilla.org/en-US/firefox/central/"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html")
+        ]);
+
+        test_import_bookmarks(&source, target_bookmarks);
+    }
+
+    #[test]
+    fn test_import_bookmarks_firefox_compressed() {
         let source_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
@@ -108,8 +128,23 @@ mod tests {
     }
 
     #[test]
-    fn test_import_bookmarks_google_chrome() {
-        let source_path = Path::new("test_data/source/bookmarks_google-chrome.json");
+    fn test_import_bookmarks_chrome() {
+        let source_path = Path::new("test_data/source/bookmarks_chrome.json");
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
+        let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]);
+
+        test_import_bookmarks(&source, target_bookmarks);
+    }
+
+    #[test]
+    fn test_import_bookmarks_chrome_no_extension() {
+        let source_path = Path::new("test_data/source/bookmarks_chrome_no_extension");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
@@ -128,11 +163,11 @@ mod tests {
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let target_bookmarks = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
-            String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
-
         test_import_bookmarks(&source, target_bookmarks);
     }
 }

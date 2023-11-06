@@ -2,29 +2,28 @@ mod chrome;
 mod firefox;
 mod simple;
 
-use crate::{Source, SourceBookmarks};
+use crate::{utils, Source, SourceBookmarks};
 use anyhow::anyhow;
-pub use chrome::ChromeBookmarkReader;
-pub use firefox::FirefoxBookmarkReader;
+pub use chrome::{ChromeBookmarkReader, ChromeNoExtensionBookmarkReader};
+pub use firefox::{FirefoxBookmarkReader, FirefoxCompressedBookmarkReader};
 use log::debug;
 pub use simple::SimpleBookmarkReader;
 use std::{
     fs::File,
-    io::Read,
+    io::{Read, Seek},
     path::{Path, PathBuf},
 };
-
-#[derive(Debug, Clone)]
-pub enum SourceType {
-    Firefox,
-    GoogleChrome,
-    TextFile,
-}
 
 pub trait ReadBookmark {
     fn name(&self) -> &str;
 
-    fn validate_path(&self, path: &Path) -> Result<PathBuf, anyhow::Error>;
+    fn extension(&self) -> Option<&str>;
+
+    fn select(&self, bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error>;
+
+    fn select_path(&self, _path: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+        Ok(None)
+    }
 
     fn open(&self, path: &Path) -> Result<File, anyhow::Error> {
         let file = File::open(path)?;
@@ -60,25 +59,39 @@ pub trait ReadBookmark {
     }
 }
 
+pub struct BookmarkReaders(pub Vec<Box<dyn ReadBookmark>>);
+
+impl BookmarkReaders {
+    pub fn new() -> Self {
+        BookmarkReaders(vec![
+            Box::new(FirefoxBookmarkReader),
+            Box::new(FirefoxCompressedBookmarkReader),
+            Box::new(ChromeBookmarkReader),
+            Box::new(ChromeNoExtensionBookmarkReader),
+            Box::new(SimpleBookmarkReader),
+        ])
+    }
+}
+
 pub struct SourceReader {
     source: Source,
-    bookmark_path: PathBuf,
+    bookmarks_path: PathBuf,
     reader: Box<dyn Read>,
     bookmark_reader: Box<dyn ReadBookmark>,
 }
 
 impl SourceReader {
-    pub fn new(source: &Source) -> Result<Self, anyhow::Error> {
-        let source_type = Self::select_source(&source.path)?;
-        let bookmark_reader = Self::select_reader(&source_type);
-        let bookmark_path = bookmark_reader.validate_path(&source.path)?;
-        let file = bookmark_reader.open(&bookmark_path)?;
-        let reader = Box::new(file);
+    pub fn new(
+        source: &Source,
+        bookmark_readers: &[Box<dyn ReadBookmark>],
+    ) -> Result<Self, anyhow::Error> {
+        let (bookmark_reader, reader, bookmarks_path) =
+            Self::select_reader(&source.path, bookmark_readers)?;
 
         Ok(Self {
             source: source.to_owned(),
-            bookmark_path,
-            reader,
+            bookmarks_path,
+            reader: Box::new(reader),
             bookmark_reader,
         })
     }
@@ -87,10 +100,14 @@ impl SourceReader {
         &self.source
     }
 
+    pub fn bookmark_reader(&self) -> &dyn ReadBookmark {
+        self.bookmark_reader.as_ref()
+    }
+
     pub fn read_and_parse(&mut self, bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
         debug!(
             "Read bookmarks from file '{}'",
-            self.bookmark_path.display()
+            self.bookmarks_path.display()
         );
 
         self.bookmark_reader
@@ -98,28 +115,47 @@ impl SourceReader {
         Ok(())
     }
 
-    fn select_reader(source_type: &SourceType) -> Box<dyn ReadBookmark> {
-        match source_type {
-            SourceType::Firefox => Box::new(FirefoxBookmarkReader),
-            SourceType::GoogleChrome => Box::new(ChromeBookmarkReader),
-            SourceType::TextFile => Box::new(SimpleBookmarkReader),
-        }
-    }
+    fn select_reader(
+        source_path: &Path,
+        bookmark_readers: &[Box<dyn ReadBookmark>],
+    ) -> Result<(Box<dyn ReadBookmark>, impl Read, PathBuf), anyhow::Error> {
+        for bookmark_reader in bookmark_readers {
+            if source_path.is_file()
+                && bookmark_reader.extension()
+                    == source_path.extension().and_then(|path| path.to_str())
+            {
+                {
+                    let mut bookmark_file = utils::open_file(source_path)?;
+                    let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
+                    bookmark_file.rewind()?;
+                    let bookmark_reader = bookmark_reader.select(&bookmarks)?;
 
-    fn select_source(source_path: &Path) -> Result<SourceType, anyhow::Error> {
-        let path_str = source_path.to_str().unwrap();
+                    if let Some(bookmark_reader) = bookmark_reader {
+                        return Ok((bookmark_reader, bookmark_file, source_path.to_owned()));
+                    }
+                }
+            } else if source_path.is_dir() {
+                if let Some(bookmarks_path) = bookmark_reader.select_path(source_path)? {
+                    if bookmarks_path.is_file()
+                        && bookmark_reader.extension()
+                            == bookmarks_path.extension().and_then(|path| path.to_str())
+                    {
+                        let mut bookmark_file = utils::open_file(&bookmarks_path)?;
+                        let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
+                        bookmark_file.rewind()?;
+                        let bookmark_reader = bookmark_reader.select(&bookmarks)?;
 
-        if path_str.contains("firefox") {
-            Ok(SourceType::Firefox)
-        } else if path_str.contains("google-chrome") {
-            Ok(SourceType::GoogleChrome)
-        } else if source_path.extension().map(|path| path.to_str()) == Some(Some("txt")) {
-            Ok(SourceType::TextFile)
-        } else {
-            Err(anyhow!(
-                "Format not supported for bookmark file '{}'",
-                source_path.display()
-            ))
+                        if let Some(bookmark_reader) = bookmark_reader {
+                            return Ok((bookmark_reader, bookmark_file, bookmarks_path));
+                        }
+                    }
+                }
+            }
         }
+
+        Err(anyhow!(
+            "Format not supported for bookmark file '{}'",
+            source_path.display()
+        ))
     }
 }

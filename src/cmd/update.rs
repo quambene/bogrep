@@ -1,18 +1,20 @@
 use super::fetch_and_add_all;
 use crate::{
-    args::UpdateArgs, bookmark_reader::SourceReader, utils, Cache, Caching, Client, Config, Fetch,
-    SourceBookmarks, TargetBookmarks,
+    args::UpdateArgs,
+    bookmark_reader::{BookmarkReaders, SourceReader},
+    utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
 use std::io::Seek;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
 pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
+    let bookmark_readers = BookmarkReaders::new();
     let mut source_reader = config
         .settings
         .sources
         .iter()
-        .map(SourceReader::new)
+        .map(|source| SourceReader::new(source, &bookmark_readers.0))
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
@@ -83,9 +85,10 @@ mod tests {
         let now = Utc::now();
         let client = MockClient::new();
         let cache = MockCache::new();
-        let bookmark_path = Path::new("test_data/source/bookmarks_google-chrome.json");
+        let bookmark_path = Path::new("test_data/source/bookmarks_chrome.json");
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source).unwrap();
+        let bookmark_readers = BookmarkReaders::new();
+        let source_reader = SourceReader::new(&source, &bookmark_readers.0).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
