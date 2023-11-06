@@ -176,4 +176,7 @@ cargo test
 
 # Run integration tests
 cargo test --test '*' --features integration-test
+
+# Run unit and integration tests
+cargo test --features integration-test
 ```
