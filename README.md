@@ -86,7 +86,7 @@ bogrep fetch --help
 ## Import bookmarks
 
 Currently, bookmarks in JSON format for Firefox, Chrome, and Chromium are
-supported.
+supported. Bookmark files in HTML format are not supported yet.
 
 The path of bookmarks may be different for your operating system.
 
@@ -106,7 +106,7 @@ bogrep config --source ~/Library/Application Support/Firefox/Profiles/<my_profil
 ```
 
 Directory `bookmarkbackups` contains multiple compressed backup files (in
-format`.jsonlz4`), and `bogrep` will choose the most recent bookmarks file.
+format `.jsonlz4`), and `bogrep` will choose the most recent bookmarks file.
 
 ### Chrome
 
