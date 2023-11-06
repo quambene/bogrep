@@ -108,7 +108,15 @@ impl Firefox {
 
         if let Some(most_recent_entry) = most_recent_entry {
             let bookmark_path = most_recent_entry.path();
-            Ok(bookmark_path)
+
+            if bookmark_path.is_file() {
+                Ok(bookmark_path)
+            } else {
+                Err(anyhow!(
+                    "Unexpected format for bookmark file: {}",
+                    bookmark_path.display()
+                ))
+            }
         } else {
             Err(anyhow!(
                 "Unexpected format for bookmark file: {}",
@@ -154,11 +162,10 @@ impl ReadBookmark for FirefoxBookmarkReader {
             .to_str()
             .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
 
-        // On Linux, the path contains lowercase identifier; on macOS uppercase
-        // identifier is required.
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
         if path_str.contains("firefox") || path_str.contains("Firefox") {
-            // The Firefox bookmarks directory contains multiple bookmark file.
-            // Check if a specific file or a directory of files is given.
+            // The Firefox bookmarks directory contains multiple bookmark files.
             let bookmark_path = Firefox::find_most_recent_file(source_path)?;
             Ok(Some(bookmark_path))
         } else {
@@ -232,11 +239,10 @@ impl ReadBookmark for FirefoxCompressedBookmarkReader {
             .to_str()
             .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
 
-        // On Linux, the path contains lowercase identifier; on macOS uppercase
-        // identifier is required.
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
         if path_str.contains("firefox") || path_str.contains("Firefox") {
-            // The Firefox bookmarks directory contains multiple bookmark file.
-            // Check if a specific file or a directory of files is given.
+            // The Firefox bookmarks directory contains multiple bookmark files.
             let bookmark_path = Firefox::find_most_recent_file(source_path)?;
             Ok(Some(bookmark_path))
         } else {

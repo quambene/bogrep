@@ -120,9 +120,10 @@ impl SourceReader {
         bookmark_readers: &[Box<dyn ReadBookmark>],
     ) -> Result<(Box<dyn ReadBookmark>, impl Read, PathBuf), anyhow::Error> {
         for bookmark_reader in bookmark_readers {
-            if source_path.is_file() {
-                if bookmark_reader.extension()
+            if source_path.is_file()
+                && bookmark_reader.extension()
                     == source_path.extension().and_then(|path| path.to_str())
+            {
                 {
                     let mut bookmark_file = utils::open_file(source_path)?;
                     let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
@@ -135,7 +136,10 @@ impl SourceReader {
                 }
             } else if source_path.is_dir() {
                 if let Some(bookmarks_path) = bookmark_reader.select_path(source_path)? {
-                    if bookmarks_path.is_file() {
+                    if bookmarks_path.is_file()
+                        && bookmark_reader.extension()
+                            == bookmarks_path.extension().and_then(|path| path.to_str())
+                    {
                         let mut bookmark_file = utils::open_file(&bookmarks_path)?;
                         let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
                         bookmark_file.rewind()?;

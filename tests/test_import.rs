@@ -72,7 +72,7 @@ fn test_import_firefox_compressed() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_bookmark_folder_ubuntu() {
-    let source_path = "./test_data/source/bookmarks_firefox.json";
+    let source_path = "./test_data/source/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source_path));
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
@@ -80,7 +80,7 @@ fn test_import_firefox_bookmark_folder_ubuntu() {
     fs::create_dir_all(temp_path.join("firefox")).unwrap();
     fs::copy(
         source_path,
-        temp_path.join("firefox").join("bookmarks_firefox.json"),
+        temp_path.join("firefox").join("bookmarks_firefox.jsonlz4"),
     )
     .unwrap();
 
@@ -90,7 +90,7 @@ fn test_import_firefox_bookmark_folder_ubuntu() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_bookmark_folder_macos() {
-    let source_path = "./test_data/source/bookmarks_firefox.json";
+    let source_path = "./test_data/source/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source_path));
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
@@ -98,7 +98,7 @@ fn test_import_firefox_bookmark_folder_macos() {
     fs::create_dir_all(temp_path.join("Firefox")).unwrap();
     fs::copy(
         source_path,
-        temp_path.join("Firefox").join("bookmarks_firefox.json"),
+        temp_path.join("Firefox").join("bookmarks_firefox.jsonlz4"),
     )
     .unwrap();
 
