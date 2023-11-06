@@ -68,6 +68,6 @@ fn test_configure_firefox() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_chrome() {
-    let source = "./test_data/source/bookmarks_google-chrome.json";
+    let source = "./test_data/source/bookmarks_chrome.json";
     test_configure(source);
 }
