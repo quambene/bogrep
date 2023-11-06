@@ -39,8 +39,6 @@ bogrep "reed-solomon code"
 cargo install bogrep
 ```
 
-- 
-
 ### Install Bogrep from [github.com](https://github.com/quambene/bogrep)
 
 ``` bash
