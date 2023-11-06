@@ -1,7 +1,7 @@
 use assert_cmd::Command;
 use bogrep::{json, test_utils, utils, TargetBookmarks};
 use predicates::str;
-use std::path::Path;
+use std::{fs, path::Path};
 use tempfile::tempdir;
 
 fn test_import(source: &str, temp_path: &Path) {
@@ -67,6 +67,42 @@ fn test_import_firefox_compressed() {
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
     test_import(source, temp_path);
+}
+
+#[test]
+#[cfg_attr(not(feature = "integration-test"), ignore)]
+fn test_import_firefox_bookmark_folder_ubuntu() {
+    let source_path = "./test_data/source/bookmarks_firefox.json";
+    test_utils::create_compressed_bookmarks(Path::new(source_path));
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+    assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+    fs::create_dir_all(temp_path.join("firefox")).unwrap();
+    fs::copy(
+        source_path,
+        temp_path.join("firefox").join("bookmarks_firefox.json"),
+    )
+    .unwrap();
+
+    test_import(temp_path.join("firefox").to_str().unwrap(), temp_path);
+}
+
+#[test]
+#[cfg_attr(not(feature = "integration-test"), ignore)]
+fn test_import_firefox_bookmark_folder_macos() {
+    let source_path = "./test_data/source/bookmarks_firefox.json";
+    test_utils::create_compressed_bookmarks(Path::new(source_path));
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+    assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+    fs::create_dir_all(temp_path.join("Firefox")).unwrap();
+    fs::copy(
+        source_path,
+        temp_path.join("Firefox").join("bookmarks_firefox.json"),
+    )
+    .unwrap();
+
+    test_import(temp_path.join("Firefox").to_str().unwrap(), temp_path);
 }
 
 #[test]
