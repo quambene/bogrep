@@ -96,7 +96,7 @@ impl ReadBookmark for ChromeBookmarkReader {
     }
 
     fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
-        let value: Value = serde_json::from_str(&raw_bookmarks)?;
+        let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
             Value::Object(obj) => {
@@ -146,7 +146,7 @@ impl ReadBookmark for ChromeNoExtensionBookmarkReader {
     }
 
     fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
-        let value: Value = serde_json::from_str(&raw_bookmarks)?;
+        let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
             Value::Object(obj) => {

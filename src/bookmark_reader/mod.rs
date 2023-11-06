@@ -86,7 +86,7 @@ impl SourceReader {
         bookmark_readers: &[Box<dyn ReadBookmark>],
     ) -> Result<Self, anyhow::Error> {
         let (bookmark_reader, reader, bookmarks_path) =
-            Self::select_reader(&source.path, &bookmark_readers)?;
+            Self::select_reader(&source.path, bookmark_readers)?;
 
         Ok(Self {
             source: source.to_owned(),
@@ -100,8 +100,8 @@ impl SourceReader {
         &self.source
     }
 
-    pub fn bookmark_reader(&self) -> &Box<dyn ReadBookmark> {
-        &self.bookmark_reader
+    pub fn bookmark_reader(&self) -> &dyn ReadBookmark {
+        self.bookmark_reader.as_ref()
     }
 
     pub fn read_and_parse(&mut self, bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
@@ -122,7 +122,7 @@ impl SourceReader {
         for bookmark_reader in bookmark_readers {
             if source_path.is_file() {
                 if bookmark_reader.extension()
-                    == source_path.extension().map(|path| path.to_str()).flatten()
+                    == source_path.extension().and_then(|path| path.to_str())
                 {
                     let mut bookmark_file = utils::open_file(source_path)?;
                     let bookmarks = bookmark_reader.read(&mut bookmark_file)?;

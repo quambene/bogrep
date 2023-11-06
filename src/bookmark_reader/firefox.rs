@@ -141,7 +141,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
     }
 
     fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
-        let value: Value = serde_json::from_str(&raw_bookmarks)?;
+        let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
             Value::Object(obj) => {
@@ -169,7 +169,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
         if path_str.contains("firefox") || path_str.contains("Firefox") {
             // The Firefox bookmarks directory contains multiple bookmark file.
             // Check if a specific file or a directory of files is given.
-            let bookmark_path = Firefox::find_most_recent_file(&source_path)?;
+            let bookmark_path = Firefox::find_most_recent_file(source_path)?;
             Ok(Some(bookmark_path))
         } else {
             Err(anyhow!(
@@ -219,7 +219,7 @@ impl ReadBookmark for FirefoxCompressedBookmarkReader {
     }
 
     fn select(&self, raw_bookmarks: &str) -> Result<Option<Box<dyn ReadBookmark>>, anyhow::Error> {
-        let value: Value = serde_json::from_str(&raw_bookmarks)?;
+        let value: Value = serde_json::from_str(raw_bookmarks)?;
 
         match value {
             Value::Object(obj) => {
@@ -247,7 +247,7 @@ impl ReadBookmark for FirefoxCompressedBookmarkReader {
         if path_str.contains("firefox") || path_str.contains("Firefox") {
             // The Firefox bookmarks directory contains multiple bookmark file.
             // Check if a specific file or a directory of files is given.
-            let bookmark_path = Firefox::find_most_recent_file(&source_path)?;
+            let bookmark_path = Firefox::find_most_recent_file(source_path)?;
             Ok(Some(bookmark_path))
         } else {
             Err(anyhow!(
