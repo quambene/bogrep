@@ -62,9 +62,10 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
-            String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]))
     }
 }

@@ -71,3 +71,10 @@ fn test_configure_chrome() {
     let source = "./test_data/source/bookmarks_chrome.json";
     test_configure(source);
 }
+
+#[test]
+#[cfg_attr(not(feature = "integration-test"), ignore)]
+fn test_configure_chrome_no_extension() {
+    let source = "./test_data/source/bookmarks_chrome_no_extension";
+    test_configure(source);
+}
