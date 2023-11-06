@@ -23,6 +23,7 @@ bogrep "reed-solomon code"
   - [Firefox](#firefox)
   - [Chrome](#chrome)
   - [Chromium](#chromium)
+- [Specify bookmark folders](#specify-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
 - [Diff websites](#diff-websites)
 - [Request throttling](#request-throttling)
@@ -34,9 +35,11 @@ bogrep "reed-solomon code"
 ### Install Bogrep from [crates.io](https://crates.io/crates/bogrep)
 
 ``` bash
-# Build and install bogrep binary to ~/.cargo/bin; settings and cache are installed to ~/.config/bogrep
+# Build and install bogrep binary to ~/.cargo/bin
 cargo install bogrep
 ```
+
+- 
 
 ### Install Bogrep from [github.com](https://github.com/quambene/bogrep)
 
@@ -44,11 +47,14 @@ cargo install bogrep
 git clone git@github.com:quambene/bogrep.git
 cd bogrep
 
-# Build and install bogrep binary to ~/.cargo/bin; settings and cache are installed to ~/.config/bogrep
+# Build and install bogrep binary to ~/.cargo/bin
 cargo install --path .
 ```
 
 ## Usage
+
+Settings and cache are installed to `~/.config/bogrep`, after Bogrep has been
+run for the first time.
 
 ``` bash
 # Configure the path to the bookmarks file (e.g. of your browser)
@@ -81,6 +87,9 @@ bogrep fetch --help
 
 ## Import bookmarks
 
+Currently, bookmarks in JSON format for Firefox, Chrome, and Chromium are
+supported.
+
 The path of bookmarks may be different for your operating system.
 
 ### Firefox
@@ -88,22 +97,29 @@ The path of bookmarks may be different for your operating system.
 Configure Firefox as source for bookmarks, where `<my_profile>` is your Firefox profile:
 
 ``` bash
-# snap package
+# Ubuntu (snap package)
 bogrep config --source ~/snap/firefox/common/.mozilla/firefox/<my_profile>/bookmarkbackups
 
-# apt package
+# Ubuntu (apt package)
 bogrep config --source ~/.mozilla/firefox/<my_profile>/bookmarkbackups
+
+# macOS
+bogrep config --source ~/Library/Application Support/Firefox/Profiles/<my_profile>/bookmarkbackups
 ```
 
-Directory `bookmarkbackups` contains multiple backups files, and `bogrep` will
-choose the most recent bookmarks file.
+Directory `bookmarkbackups` contains multiple compressed backup files (in
+format`.jsonlz4`), and `bogrep` will choose the most recent bookmarks file.
 
 ### Chrome
 
 Configure Chrome as source for bookmarks:
 
 ``` bash
+# Ubuntu
 bogrep config --source ~/.config/google-chrome/Default/Bookmarks
+
+# macOS
+bogrep config --source ~/Library/Application Support/Google/Chrome/Default/Bookmarks
 ```
 
 ### Chromium
@@ -111,11 +127,11 @@ bogrep config --source ~/.config/google-chrome/Default/Bookmarks
 Configure Chromium as source for bookmarks:
 
 ``` bash
-# snap package
+# Ubuntu (snap package)
 bogrep config --source ~/snap/chromium/common/chromium/Default/Bookmarks
 ```
 
-### Specify bookmark folders
+## Specify bookmark folders
 
 Specify which bookmark folders are imported. Multiple folders are separated by comma:
 
@@ -166,7 +182,14 @@ host in milliseconds.
 Bogrep assumes a configuration path at `~/.config/bogrep` in your home directory
 for storing the `settings.json`, `bookmarks.json`, and `cache` folder. This
 should work for most Linux derivatives. Feel free to open an issue if you need
-support for macOS or Windows.
+support Windows.
+
+You can configure the configuration path via the environment variable
+`BOGREP_HOME`. For example,
+
+``` bash
+BOGREP_HOME="my/config/path" bogrep config --source bookmarks.json
+```
 
 ## Testing
 
