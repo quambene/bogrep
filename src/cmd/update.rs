@@ -8,7 +8,7 @@ use std::io::Seek;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
-pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
+pub async fn update(config: &Config, _args: &UpdateArgs) -> Result<(), anyhow::Error> {
     let mut source_reader = config
         .settings
         .sources
@@ -21,7 +21,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
 
-    let cache = Cache::new(&config.cache_path, &args.mode);
+    let cache = Cache::new(&config.cache_path, &config.settings.cache_mode);
     let client = Client::new(config)?;
 
     let mut target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;

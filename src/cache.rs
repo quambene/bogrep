@@ -80,10 +80,10 @@ pub struct Cache {
 
 impl Cache {
     /// Create new cache.
-    pub fn new(cache_path: &Path, cache_mode: &Option<CacheMode>) -> Self {
+    pub fn new(cache_path: &Path, cache_mode: &CacheMode) -> Self {
         Self {
             path: cache_path.to_owned(),
-            mode: cache_mode.clone().unwrap_or_default(),
+            mode: cache_mode.to_owned(),
         }
     }
 

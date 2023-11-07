@@ -8,7 +8,7 @@ use std::io::Seek;
 
 /// Import bookmarks, fetch bookmarks from url, and save fetched websites in
 /// cache if bookmarks were not imported yet.
-pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error> {
+pub async fn init(config: &Config, _args: &InitArgs) -> Result<(), anyhow::Error> {
     let mut source_reader = config
         .settings
         .sources
@@ -25,7 +25,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
     if !target_bookmarks.bookmarks.is_empty() {
         info!("Bookmarks already imported");
     } else {
-        let cache = Cache::new(&config.cache_path, &args.mode);
+        let cache = Cache::new(&config.cache_path, &config.settings.cache_mode);
         let client = Client::new(config)?;
         let target_bookmarks = init_bookmarks(
             &client,

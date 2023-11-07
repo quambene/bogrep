@@ -12,7 +12,7 @@ use std::io::{Read, Seek, Write};
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
-    let cache = Cache::new(&config.cache_path, &args.mode);
+    let cache = Cache::new(&config.cache_path, &config.settings.cache_mode);
     let client = Client::new(config)?;
     fetch_and_cache(
         &client,
@@ -119,7 +119,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
     debug!("Diff content for urls: {:#?}", args.urls);
     let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
     let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
-    let cache = Cache::new(&config.cache_path, &args.mode);
+    let cache = Cache::new(&config.cache_path, &config.settings.cache_mode);
     let client = Client::new(config)?;
 
     for url in args.urls {
