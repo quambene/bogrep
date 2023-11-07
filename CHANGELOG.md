@@ -6,7 +6,10 @@
   - Refactor `trait ReadBookmark`
   - Fix duplicate sources
   - Fix cache mode selection
-  - Add doc test to CI pipeline
+  - Extend CI pipeline
+    - Build doc
+    - Add doc tests
+    - Test on macOS and Windows
 
 ### v0.1.5
 

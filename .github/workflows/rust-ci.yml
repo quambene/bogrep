@@ -44,19 +44,38 @@ jobs:
         - name: cargo +nightly fmt --check
           run: cargo +nightly fmt --check
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} (stable)
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
         - uses: actions/checkout@v3
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo test --locked
+        - name: cargo test
           run: cargo test --locked
   integration-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} (stable)
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
         - uses: actions/checkout@v3
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo test --locked --test '*' --features integration-test
+        - name: cargo test --test '*' --features integration-test
           run: cargo test --locked --test '*' --features integration-test
+  doc-test:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} (stable)
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+        - name: cargo test --doc
+          run: cargo test --locked --doc
   coverage:
     runs-on: ubuntu-latest
     steps:
