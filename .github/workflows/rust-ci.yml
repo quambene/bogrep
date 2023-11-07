@@ -20,6 +20,13 @@ jobs:
         - uses: dtolnay/rust-toolchain@stable
         - name: cargo clippy -- -D warnings
           run: cargo clippy -- -D warnings
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+        - name: cargo doc
+          run: cargo doc --no-deps --all-features
   fmt:
     runs-on: ubuntu-latest
     steps:
