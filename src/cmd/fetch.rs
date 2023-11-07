@@ -1,5 +1,6 @@
 use crate::{
-    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
+    cache::CacheMode, html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs,
+    TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
@@ -12,7 +13,8 @@ use std::io::{Read, Seek, Write};
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
-    let cache = Cache::new(&config.cache_path, &config.settings.cache_mode);
+    let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
+    let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
     fetch_and_cache(
         &client,
@@ -119,7 +121,8 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
     debug!("Diff content for urls: {:#?}", args.urls);
     let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
     let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
-    let cache = Cache::new(&config.cache_path, &config.settings.cache_mode);
+    let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
+    let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
 
     for url in args.urls {

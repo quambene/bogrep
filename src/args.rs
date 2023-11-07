@@ -74,6 +74,9 @@ pub struct FetchArgs {
     /// cached yet.
     #[arg(short, long)]
     pub all: bool,
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
+    #[arg(short, long, value_enum)]
+    pub mode: Option<CacheMode>,
     /// Get the difference between the fetched and cached
     /// bookmark.
     #[arg(short, long)]
@@ -84,14 +87,25 @@ pub struct FetchArgs {
 }
 
 #[derive(ClapArgs, Debug)]
-pub struct InitArgs;
+pub struct InitArgs {
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
+    #[arg(short, long, value_enum)]
+    pub mode: Option<CacheMode>,
+}
 
 #[derive(ClapArgs, Debug)]
-pub struct UpdateArgs;
+pub struct UpdateArgs {
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
+    #[arg(short, long, value_enum)]
+    pub mode: Option<CacheMode>,
+}
 
 #[derive(ClapArgs, Debug)]
 pub struct CleanArgs {
     /// Clean cache for all file extensions (.txt, .md, ).
     #[arg(short, long)]
     pub all: bool,
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
+    #[arg(short, long, value_enum)]
+    pub mode: Option<CacheMode>,
 }

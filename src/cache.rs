@@ -27,6 +27,12 @@ pub enum CacheMode {
 }
 
 impl CacheMode {
+    /// Use cache mode if it was provided in the CLI command. If cache mode
+    /// is not provided, the cache mode configured in the settings is used.
+    pub fn new(cache_mode: &Option<CacheMode>, configured: &CacheMode) -> CacheMode {
+        cache_mode.as_ref().cloned().unwrap_or(configured.clone())
+    }
+
     pub fn extension(&self) -> &str {
         match self {
             Self::Html => "html",
@@ -80,10 +86,10 @@ pub struct Cache {
 
 impl Cache {
     /// Create new cache.
-    pub fn new(cache_path: &Path, cache_mode: &CacheMode) -> Self {
+    pub fn new(cache_path: &Path, cache_mode: CacheMode) -> Self {
         Self {
             path: cache_path.to_owned(),
-            mode: cache_mode.to_owned(),
+            mode: cache_mode,
         }
     }
 

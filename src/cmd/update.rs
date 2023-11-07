@@ -2,13 +2,14 @@ use super::fetch_and_add_all;
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{BookmarkReaders, SourceReader},
+    cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
 use std::io::Seek;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
-pub async fn update(config: &Config, _args: &UpdateArgs) -> Result<(), anyhow::Error> {
+pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
     let mut source_reader = config
         .settings
         .sources
@@ -20,8 +21,8 @@ pub async fn update(config: &Config, _args: &UpdateArgs) -> Result<(), anyhow::E
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
-
-    let cache = Cache::new(&config.cache_path, &config.settings.cache_mode);
+    let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
+    let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
 
     let mut target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;

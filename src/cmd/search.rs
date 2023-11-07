@@ -22,12 +22,8 @@ pub fn search(
 
     let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
     let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
-    let cache = Cache::new(
-        &config.cache_path,
-        // Use cache mode if it was provided in the CLI command. If cache mode
-        // is not provided, the cache mode configured in the settings is used.
-        &cache_mode.unwrap_or(config.settings.cache_mode.clone()),
-    );
+    let cache_mode = CacheMode::new(&cache_mode, &config.settings.cache_mode);
+    let cache = Cache::new(&config.cache_path, cache_mode);
 
     if target_bookmarks.bookmarks.is_empty() {
         Err(anyhow!("Missing bookmarks, run `bogrep import` first"))
