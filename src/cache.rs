@@ -76,7 +76,7 @@ pub trait Caching {
     async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error>;
 
     /// Clear the cache, i.e. remove all files in the cache directory.
-    async fn clear(&self) -> Result<(), anyhow::Error>;
+    fn clear(&self) -> Result<(), anyhow::Error>;
 }
 
 /// The cache to store fetched bookmarks.
@@ -196,16 +196,16 @@ impl Caching for Cache {
         Ok(())
     }
 
-    async fn clear(&self) -> Result<(), anyhow::Error> {
-        let cache_path = self.path;
-        let entries = fs::read_dir(cache_path).await?;
+    fn clear(&self) -> Result<(), anyhow::Error> {
+        let cache_path = &self.path;
+        let entries = std::fs::read_dir(cache_path)?;
 
         for entry in entries {
             let entry = entry?;
             let file_type = entry.file_type()?;
 
             if file_type.is_file() {
-                fs::remove_file(entry.path())?;
+                std::fs::remove_file(entry.path())?;
             }
         }
         Ok(())
@@ -277,7 +277,7 @@ impl Caching for MockCache {
         Ok(())
     }
 
-    async fn clear(&self) -> Result<(), anyhow::Error> {
+    fn clear(&self) -> Result<(), anyhow::Error> {
         let mut cache_map = self.cache_map.lock().unwrap();
         cache_map.clear();
         Ok(())
