@@ -13,7 +13,12 @@ fn test_config() {
     env::set_var("BOGREP_HOME", temp_path);
 
     let res = Config::init(verbosity);
-    assert!(res.is_ok(), "{}", res.unwrap_err());
+    assert!(
+        res.is_ok(),
+        "Can't init config for BOGREP_HOME={}: {}",
+        temp_path.display(),
+        res.unwrap_err()
+    );
 
     let config = res.unwrap();
     assert_eq!(
