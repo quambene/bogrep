@@ -3,9 +3,10 @@
 ### Unrelease
 
 - changed
-  - Fix cache mode selection
-  - Fix duplicate sources
   - Refactor `trait ReadBookmark`
+  - Fix duplicate sources
+  - Fix cache mode selection
+  - Add doc test to CI pipeline
 
 ### v0.1.5
 
