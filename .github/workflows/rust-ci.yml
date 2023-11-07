@@ -45,7 +45,7 @@ jobs:
           run: cargo +nightly fmt --check
   test:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} (stable)
+    name: test / ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -56,7 +56,7 @@ jobs:
           run: cargo test --locked
   integration-test:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} (stable)
+    name: integration-test / ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -67,7 +67,7 @@ jobs:
           run: cargo test --locked --test '*' --features integration-test
   doc-test:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} (stable)
+    name: doc-test / ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
