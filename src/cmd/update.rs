@@ -2,6 +2,7 @@ use super::fetch_and_add_all;
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{BookmarkReaders, SourceReader},
+    cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
 use std::io::Seek;
@@ -20,8 +21,8 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_bookmark_file =
         utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
-
-    let cache = Cache::new(&config.cache_path, &args.mode);
+    let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
+    let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
 
     let mut target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
