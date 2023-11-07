@@ -6,7 +6,12 @@ pub async fn clean(config: &Config, args: &CleanArgs) -> Result<(), anyhow::Erro
     let bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
-    cache.remove_all(&bookmarks).await?;
+
+    if args.all {
+        cache.clear().await;
+    } else {
+        cache.remove_all(&bookmarks).await?;
+    }
 
     Ok(())
 }

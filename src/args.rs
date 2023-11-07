@@ -102,7 +102,7 @@ pub struct UpdateArgs {
 
 #[derive(ClapArgs, Debug)]
 pub struct CleanArgs {
-    /// Clean cache for all file extensions (.txt, .md, ).
+    /// Clean cache for all file extensions (.txt, .md, .html).
     #[arg(short, long)]
     pub all: bool,
     /// Cache the fetched bookmarks as text, HTML or markdown file.
