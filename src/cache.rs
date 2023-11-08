@@ -334,4 +334,16 @@ mod tests {
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 0);
     }
+
+    #[tokio::test]
+    async fn test_clear() {
+        let cache = MockCache::new();
+        let now = Utc::now();
+        let bookmark = TargetBookmark::new("url1", now, None);
+        let content = "content";
+        cache.add(content.to_owned(), &bookmark).await.unwrap();
+        cache.clear().unwrap();
+        let cache_map = cache.cache_map.lock().unwrap();
+        assert_eq!(cache_map.keys().len(), 0);
+    }
 }
