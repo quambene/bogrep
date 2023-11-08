@@ -116,7 +116,7 @@ fn test_clean_all() {
 
     assert!(!text_file_path.exists());
     assert!(!html_file_path.exists());
-    assert!(!cache_path.exists());
+    assert!(cache_path.exists());
     assert!(settings_path.exists());
     assert!(bookmarks_path.exists());
 }
