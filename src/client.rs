@@ -10,12 +10,14 @@ use std::{
 };
 use tokio::time::{self, Duration};
 
+/// A trait to fetch websites from a real or mock client.
 #[async_trait]
 pub trait Fetch {
     /// Fetch content of a website as HTML.
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error>;
 }
 
+/// A client to fetch websites.
 pub struct Client {
     client: ReqwestClient,
     throttler: Option<Throttler>,
@@ -53,6 +55,7 @@ impl Fetch for Client {
     }
 }
 
+/// A throttler to limit the number of requests.
 #[derive(Debug)]
 struct Throttler {
     last_fetched: Mutex<HashMap<String, DateTime<Utc>>>,
@@ -118,6 +121,7 @@ impl Throttler {
     }
 }
 
+/// A mock client to fetch websites used in testing.
 #[derive(Debug, Default)]
 pub struct MockClient {
     /// Mock the the HTML content.
