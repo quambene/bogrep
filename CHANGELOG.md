@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### Unrelease
+### Unreleased
 
 - changed
   - Refactor `trait ReadBookmark`
@@ -11,6 +11,7 @@
     - Add doc tests
     - Test on macOS and Windows
   - Make config path platform-independent
+  - Add `--all` flag for `bogrep clean`
 
 ### v0.1.5
 
