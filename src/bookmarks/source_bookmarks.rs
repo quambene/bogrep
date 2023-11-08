@@ -2,6 +2,7 @@ use crate::bookmark_reader::SourceReader;
 use log::debug;
 use std::collections::HashSet;
 
+/// Describes the bookmark url from a specific source, like Firefox or Chrome.
 #[derive(Debug, Clone)]
 pub struct SourceBookmarks {
     pub bookmarks: HashSet<String>,

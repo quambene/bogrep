@@ -14,6 +14,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
 pub trait ReadBookmark {
     fn name(&self) -> &str;
 

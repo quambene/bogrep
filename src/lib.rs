@@ -1,3 +1,23 @@
+//! Bogrep downloads and caches your bookmarks in plaintext without images or
+//! videos. Use the Bogrep CLI to grep through your cached bookmarks in
+//! full-text search.
+//!
+//! ## Examples
+//!
+//! ``` bash
+//! # Configure the path to the bookmarks file (e.g. of your browser)
+//! bogrep config --source "my/path/to/bookmarks_file.json"
+//!
+//! # Import bookmarks
+//! bogrep import
+//!
+//! # Fetch and cache bookmarks
+//! bogrep fetch
+//!
+//! # Search your bookmarks in full-text search
+//! bogrep <pattern>
+//! ````
+
 /// Available arguments.
 mod args;
 /// Abstraction and implementations to read bookmarks.

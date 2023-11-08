@@ -82,7 +82,7 @@ impl Chrome {
     }
 }
 
-/// Bookmark reader to read bookmarks from Chromium or Google Chrome.
+/// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
 pub struct ChromeBookmarkReader;
 
 impl ReadBookmark for ChromeBookmarkReader {

@@ -9,6 +9,8 @@ use std::{
 };
 use uuid::Uuid;
 
+/// A standardized bookmark for internal bookkeeping that is created from the
+/// [`SourceBookmarks`].
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]
 pub struct TargetBookmark {
     pub id: String,
@@ -32,6 +34,8 @@ impl TargetBookmark {
     }
 }
 
+/// A wrapper for a collection of [`TargetBookmark`]s that is stored in the
+/// `bookmarks.json` file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct TargetBookmarks {
     pub bookmarks: Vec<TargetBookmark>,
