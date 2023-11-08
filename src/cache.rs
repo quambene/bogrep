@@ -49,6 +49,9 @@ impl CacheMode {
 
 #[async_trait]
 pub trait Caching {
+    // Get the available cache modes.
+    fn modes() -> [CacheMode; 2];
+
     /// Check if content of bookmark exists in cache.
     fn exists(&self, bookmark: &TargetBookmark) -> bool;
 
@@ -108,6 +111,10 @@ impl Cache {
 
 #[async_trait]
 impl Caching for Cache {
+    fn modes() -> [CacheMode; 2] {
+        [CacheMode::Text, CacheMode::Html]
+    }
+
     fn exists(&self, bookmark: &TargetBookmark) -> bool {
         let cache_path = self.get_path(&bookmark.id);
         cache_path.exists()
@@ -203,7 +210,7 @@ impl Caching for Cache {
     /// instead of using [`std::fs::remove_dir_all`] for the cache directory.
     fn clear(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
         debug!("Clear cache");
-        let cache_modes = [CacheMode::Text, CacheMode::Html];
+        let cache_modes = Cache::modes();
 
         for bookmark in &bookmarks.bookmarks {
             for cache_mode in &cache_modes {
@@ -241,6 +248,10 @@ impl MockCache {
 
 #[async_trait]
 impl Caching for MockCache {
+    fn modes() -> [CacheMode; 2] {
+        [CacheMode::Text, CacheMode::Html]
+    }
+
     fn exists(&self, bookmark: &TargetBookmark) -> bool {
         self.get(bookmark).unwrap().is_some()
     }
