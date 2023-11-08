@@ -12,6 +12,7 @@
     - Test on macOS and Windows
   - Make config path platform-independent
   - Add `--all` flag for `bogrep clean`
+  - Improve documentation
 
 ### v0.1.5
 
