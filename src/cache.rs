@@ -198,16 +198,7 @@ impl Caching for Cache {
 
     fn clear(&self) -> Result<(), anyhow::Error> {
         let cache_path = &self.path;
-        let entries = std::fs::read_dir(cache_path)?;
-
-        for entry in entries {
-            let entry = entry?;
-            let file_type = entry.file_type()?;
-
-            if file_type.is_file() {
-                std::fs::remove_file(entry.path())?;
-            }
-        }
+        std::fs::remove_dir_all(cache_path)?;
         Ok(())
     }
 }

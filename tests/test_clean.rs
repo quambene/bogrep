@@ -49,8 +49,8 @@ fn test_clean_all() {
     let res = cmd.output();
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
+    assert!(!cache_path.exists());
     assert!(!text_file_path.exists());
     assert!(!markdown_file_path.exists());
     assert!(!html_file_path.exists());
-    assert!(cache_path.exists());
 }
