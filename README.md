@@ -184,8 +184,7 @@ Bogrep assumes a configuration path at
 - `C:\Users\<Username>\AppData\Roaming/bogrep` for Windows
 
 in your home directory for storing the `settings.json`, `bookmarks.json`, and
-`cache` folder. This should work for most Linux derivatives. Feel free to open
-an issue if you need support for Windows.
+`cache` folder.
 
 You can configure the configuration path via the environment variable
 `BOGREP_HOME`. For example, create an alias:
