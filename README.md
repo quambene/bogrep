@@ -181,16 +181,16 @@ Bogrep assumes a configuration path at
 
 - `$HOME/.config/bogrep` for Linux,
 - `$HOME/Library/Application Support/bogrep` for macOS,
-- `C:\Users\<Username>\AppData\Roaming/bogrep` for Windows
+- `C:\Users\<Username>\AppData\Roaming/bogrep` for Windows,
 
 in your home directory for storing the `settings.json`, `bookmarks.json`, and
 `cache` folder.
 
 You can configure the configuration path via the environment variable
-`BOGREP_HOME`. For example, create an alias:
+`BOGREP_HOME`:
 
 ``` bash
-alias bogrep='BOGREP_HOME="my/config/path" bogrep'
+BOGREP_HOME="my/config/path"
 ```
 
 ## Testing
