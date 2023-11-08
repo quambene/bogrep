@@ -102,7 +102,7 @@ bogrep config --source ~/snap/firefox/common/.mozilla/firefox/<my_profile>/bookm
 bogrep config --source ~/.mozilla/firefox/<my_profile>/bookmarkbackups
 
 # macOS
-bogrep config --source ~/Library/Application Support/Firefox/Profiles/<my_profile>/bookmarkbackups
+bogrep config --source "~/Library/Application Support/Firefox/Profiles/<my_profile>/bookmarkbackups"
 ```
 
 Directory `bookmarkbackups` contains multiple compressed backup files (in
@@ -117,7 +117,7 @@ Configure Chrome as source for bookmarks:
 bogrep config --source ~/.config/google-chrome/Default/Bookmarks
 
 # macOS
-bogrep config --source ~/Library/Application Support/Google/Chrome/Default/Bookmarks
+bogrep config --source "~/Library/Application Support/Google/Chrome/Default/Bookmarks"
 ```
 
 ### Chromium
