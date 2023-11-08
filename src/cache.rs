@@ -73,7 +73,7 @@ pub trait Caching {
     async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error>;
 
     /// Clear the cache, i.e. remove all files in the cache directory.
-    fn clear(&self) -> Result<(), anyhow::Error>;
+    fn clear(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error>;
 }
 
 /// The cache to store fetched bookmarks.
@@ -97,6 +97,12 @@ impl Cache {
         self.path
             .join(bookmark_id)
             .with_extension(self.mode.extension())
+    }
+
+    fn get_path_by_cache_mode(&self, bookmark_id: &str, cache_mode: &CacheMode) -> PathBuf {
+        self.path
+            .join(bookmark_id)
+            .with_extension(cache_mode.extension())
     }
 }
 
@@ -178,7 +184,7 @@ impl Caching for Cache {
     }
 
     async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
-        println!("Remove all");
+        debug!("Remove all cached websites");
         for bookmark in &bookmarks.bookmarks {
             let cache_file = self.get_path(&bookmark.id);
 
@@ -191,17 +197,21 @@ impl Caching for Cache {
         Ok(())
     }
 
-    fn clear(&self) -> Result<(), anyhow::Error> {
-        let cache_path = &self.path;
-        let entries = std::fs::read_dir(cache_path)?;
+    /// Clears the cache.
+    ///
+    /// Note: For safety reasons, `clear` iterates over the given `bookmarks`
+    /// instead of using [`std::fs::remove_dir_all`] for the cache directory.
+    fn clear(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
+        debug!("Clear cache");
+        let cache_modes = [CacheMode::Text, CacheMode::Html];
 
-        for entry in entries {
-            let entry = entry?;
-            let file_path = entry.path();
+        for bookmark in &bookmarks.bookmarks {
+            for cache_mode in &cache_modes {
+                let cache_file = self.get_path_by_cache_mode(&bookmark.id, cache_mode);
 
-            if let Some(extension) = file_path.extension() {
-                if extension == "txt" || extension == "html" {
-                    std::fs::remove_file(&file_path)?;
+                if cache_file.exists() {
+                    debug!("Remove website from cache: {}", cache_file.display());
+                    std::fs::remove_file(cache_file)?;
                 }
             }
         }
@@ -275,7 +285,7 @@ impl Caching for MockCache {
         Ok(())
     }
 
-    fn clear(&self) -> Result<(), anyhow::Error> {
+    fn clear(&self, _bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
         let mut cache_map = self.cache_map.lock().unwrap();
         cache_map.clear();
         Ok(())
@@ -346,10 +356,15 @@ mod tests {
     async fn test_clear() {
         let cache = MockCache::new();
         let now = Utc::now();
-        let bookmark = TargetBookmark::new("url1", now, None);
-        let content = "content";
-        cache.add(content.to_owned(), &bookmark).await.unwrap();
-        cache.clear().unwrap();
+        let bookmarks = vec![TargetBookmark::new("url1", now, None)];
+
+        for bookmark in &bookmarks {
+            cache.add("content".to_owned(), bookmark).await.unwrap();
+        }
+
+        let target_bookmarks = TargetBookmarks { bookmarks };
+
+        cache.clear(&target_bookmarks).unwrap();
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 0);
     }
