@@ -21,7 +21,6 @@ use tokio::{fs, io::AsyncWriteExt};
 #[serde(rename_all = "lowercase")]
 pub enum CacheMode {
     Html,
-    Markdown,
     #[default]
     Text,
 }
@@ -36,7 +35,6 @@ impl CacheMode {
     pub fn extension(&self) -> &str {
         match self {
             Self::Html => "html",
-            Self::Markdown => "md",
             Self::Text => "txt",
         }
     }
@@ -44,7 +42,6 @@ impl CacheMode {
     pub fn suffix(&self) -> &str {
         match self {
             Self::Html => ".html",
-            Self::Markdown => ".md",
             Self::Text => ".txt",
         }
     }
@@ -141,7 +138,6 @@ impl Caching for Cache {
 
         let website = match self.mode {
             CacheMode::Html => html,
-            CacheMode::Markdown => html::convert_to_markdown(&html),
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
         };
 
@@ -161,7 +157,6 @@ impl Caching for Cache {
 
         let website = match self.mode {
             CacheMode::Html => html,
-            CacheMode::Markdown => html::convert_to_markdown(&html),
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
         };
 

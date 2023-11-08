@@ -44,12 +44,6 @@ async fn test_clean() {
     cmd.args(["fetch", "--mode", "text"]);
     cmd.output().unwrap();
 
-    println!("Execute 'bogrep fetch --mode markdown'");
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-    cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["fetch", "--mode", "markdown"]);
-    cmd.output().unwrap();
-
     println!("Execute 'bogrep fetch --mode html'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
@@ -62,9 +56,6 @@ async fn test_clean() {
 
     for bookmark in &bookmarks.bookmarks {
         let cache_path = temp_path.join(format!("cache/{}.txt", bookmark.id));
-        assert!(cache_path.exists());
-
-        let cache_path = temp_path.join(format!("cache/{}.md", bookmark.id));
         assert!(cache_path.exists());
 
         let cache_path = temp_path.join(format!("cache/{}.html", bookmark.id));
@@ -82,9 +73,6 @@ async fn test_clean() {
         let cache_path = temp_path.join(format!("cache/{}.txt", bookmark.id));
         // Text files are now deleted.
         assert!(!cache_path.exists());
-
-        let cache_path = temp_path.join(format!("cache/{}.md", bookmark.id));
-        assert!(cache_path.exists());
 
         let cache_path = temp_path.join(format!("cache/{}.html", bookmark.id));
         assert!(cache_path.exists());
@@ -108,19 +96,15 @@ fn test_clean_all() {
     );
 
     let text_file_name = PathBuf::from(Uuid::new_v4().to_string()).with_extension("txt");
-    let markdown_file_name = PathBuf::from(Uuid::new_v4().to_string()).with_extension("md");
     let html_file_name = PathBuf::from(Uuid::new_v4().to_string()).with_extension("html");
 
     let text_file_path = cache_path.join(&text_file_name);
-    let markdown_file_path = cache_path.join(&markdown_file_name);
     let html_file_path = cache_path.join(&html_file_name);
 
     File::create(&text_file_path).unwrap();
-    File::create(&markdown_file_path).unwrap();
     File::create(&html_file_path).unwrap();
 
     assert!(text_file_path.exists());
-    assert!(markdown_file_path.exists());
     assert!(html_file_path.exists());
 
     println!("Execute 'bogrep clean --all'");
@@ -131,7 +115,6 @@ fn test_clean_all() {
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     assert!(!text_file_path.exists());
-    assert!(!markdown_file_path.exists());
     assert!(!html_file_path.exists());
     assert!(!cache_path.exists());
     assert!(settings_path.exists());
