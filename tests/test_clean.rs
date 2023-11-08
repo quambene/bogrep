@@ -97,6 +97,8 @@ fn test_clean_all() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+    let settings_path = temp_path.join("settings.json");
+    let bookmarks_path = temp_path.join("bookmarks.json");
     let cache_path = temp_path.join("cache");
     fs::create_dir(&cache_path).unwrap();
     assert!(
@@ -128,8 +130,10 @@ fn test_clean_all() {
     let res = cmd.output();
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
-    assert!(!cache_path.exists());
     assert!(!text_file_path.exists());
     assert!(!markdown_file_path.exists());
     assert!(!html_file_path.exists());
+    assert!(!cache_path.exists());
+    assert!(settings_path.exists());
+    assert!(bookmarks_path.exists());
 }
