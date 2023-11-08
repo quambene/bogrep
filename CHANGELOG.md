@@ -10,6 +10,7 @@
     - Build doc
     - Add doc tests
     - Test on macOS and Windows
+  - Make config path platform-independent
 
 ### v0.1.5
 
