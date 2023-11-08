@@ -30,7 +30,7 @@ async fn test_init() {
     cmd.output().unwrap();
 
     let bookmarks = common::test_bookmarks(&temp_dir);
-    assert!(bookmarks.bookmarks.is_empty());
+    assert!(bookmarks.is_empty());
 
     println!("Execute 'bogrep init'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
@@ -39,13 +39,13 @@ async fn test_init() {
     cmd.output().unwrap();
 
     let bookmarks = common::test_bookmarks(&temp_dir);
-    assert_eq!(bookmarks.bookmarks.len(), 3);
-    for bookmark in &bookmarks.bookmarks {
+    assert_eq!(bookmarks.len(), 3);
+    for bookmark in &bookmarks {
         assert!(bookmark.last_cached.is_some());
     }
 
     // Verify cache
-    for bookmark in bookmarks.bookmarks {
+    for bookmark in bookmarks {
         let cache_path = temp_path.join(format!("cache/{}.txt", bookmark.id));
         let actual_content = fs::read_to_string(&cache_path).unwrap();
         let expected_content = mocks.get(&bookmark.url).unwrap();
