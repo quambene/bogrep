@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const CONFIG_PATH: &str = "bogrep";
+const CONFIG_DIR: &str = "bogrep";
 const SETTINGS_FILE: &str = "settings.json";
 const BOOKMARKS_FILE: &str = "bookmarks.json";
 const CACHE_DIR: &str = "cache";
@@ -48,18 +48,17 @@ impl Config {
         let config_path = if let Ok(bogreg_home) = env::var("BOGREP_HOME") {
             PathBuf::from(bogreg_home)
         } else if let Some(config_path) = dirs::config_dir() {
-            config_path.join(CONFIG_PATH)
+            config_path.join(CONFIG_DIR)
         } else {
             return Err(anyhow!("HOME environment variable not set"));
         };
-        let config_path = Path::new(&config_path);
         let settings_path = config_path.join(SETTINGS_FILE);
         let target_bookmark_path = config_path.join(BOOKMARKS_FILE);
         let cache_path = config_path.join(CACHE_DIR);
 
         if !config_path.exists() {
             debug!("Create config at {}", config_path.display());
-            fs::create_dir_all(config_path).context(format!(
+            fs::create_dir_all(&config_path).context(format!(
                 "Can't create config directory: {}",
                 config_path.display()
             ))?;

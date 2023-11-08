@@ -74,6 +74,9 @@ pub trait Caching {
 
     /// Remove the content of multiple bookmarks from cache.
     async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error>;
+
+    /// Clear the cache, i.e. remove all files in the cache directory.
+    fn clear(&self) -> Result<(), anyhow::Error>;
 }
 
 /// The cache to store fetched bookmarks.
@@ -192,6 +195,12 @@ impl Caching for Cache {
 
         Ok(())
     }
+
+    fn clear(&self) -> Result<(), anyhow::Error> {
+        let cache_path = &self.path;
+        std::fs::remove_dir_all(cache_path)?;
+        Ok(())
+    }
 }
 
 /// The cache to store fetched bookmarks.
@@ -258,6 +267,12 @@ impl Caching for MockCache {
 
         Ok(())
     }
+
+    fn clear(&self) -> Result<(), anyhow::Error> {
+        let mut cache_map = self.cache_map.lock().unwrap();
+        cache_map.clear();
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -316,6 +331,18 @@ mod tests {
         let target_bookmarks = TargetBookmarks { bookmarks };
 
         cache.remove_all(&target_bookmarks).await.unwrap();
+        let cache_map = cache.cache_map.lock().unwrap();
+        assert_eq!(cache_map.keys().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_clear() {
+        let cache = MockCache::new();
+        let now = Utc::now();
+        let bookmark = TargetBookmark::new("url1", now, None);
+        let content = "content";
+        cache.add(content.to_owned(), &bookmark).await.unwrap();
+        cache.clear().unwrap();
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 0);
     }

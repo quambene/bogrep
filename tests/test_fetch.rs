@@ -48,7 +48,8 @@ async fn test_fetch() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(&temp_dir);
     assert_eq!(bookmarks.bookmarks.len(), 3);

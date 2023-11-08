@@ -11,7 +11,6 @@ fn test_configure(source: &str) {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["config", "--source", source]);
-
     let res = cmd.output();
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
