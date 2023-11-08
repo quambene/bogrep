@@ -1,9 +1,9 @@
-use bogrep::{json, utils, TargetBookmarks};
+use bogrep::{json, utils, TargetBookmark, TargetBookmarks};
 use std::{collections::HashMap, fs::File, io::Read, path::Path};
 use tempfile::TempDir;
 use wiremock::{
     matchers::{method, path},
-    Mock, MockServer, ResponseTemplate,
+    Mock, MockGuard, MockServer, ResponseTemplate,
 };
 
 #[allow(dead_code)]
@@ -20,7 +20,7 @@ pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, Strin
 }
 
 #[allow(dead_code)]
-pub fn test_bookmarks(temp_dir: &TempDir) -> TargetBookmarks {
+pub fn test_bookmarks(temp_dir: &TempDir) -> Vec<TargetBookmark> {
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     assert!(
         bookmarks_path.exists(),
@@ -38,15 +38,19 @@ pub fn test_bookmarks(temp_dir: &TempDir) -> TargetBookmarks {
 
     let bookmarks = res.unwrap();
     println!("Bookmarks:  {bookmarks:#?}");
-    bookmarks
+    bookmarks.bookmarks
 }
 
-pub async fn start_mock_server(num_mocks: u32) -> HashMap<String, String> {
+pub async fn start_mock_server() -> MockServer {
     let mock_server = MockServer::start().await;
     let bind_url = mock_server.uri();
     println!("Mock server running at {}", bind_url);
+    mock_server
+}
 
+pub async fn mount_mocks(mock_server: &MockServer, num_mocks: u32) -> HashMap<String, String> {
     let mut mocks = HashMap::new();
+    let bind_url = mock_server.uri();
 
     for i in 0..num_mocks {
         let endpoint = format!("endpoint_{}", i);
