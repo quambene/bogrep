@@ -47,6 +47,8 @@ impl CacheMode {
     }
 }
 
+/// A trait to manage the cache in a file system or a mock cache used in
+/// testing.
 #[async_trait]
 pub trait Caching {
     // Get the available cache modes.

@@ -13,6 +13,7 @@ const SETTINGS_FILE: &str = "settings.json";
 const BOOKMARKS_FILE: &str = "bookmarks.json";
 const CACHE_DIR: &str = "cache";
 
+/// A configuration for running Bogrep.
 #[derive(Debug, PartialEq)]
 pub struct Config {
     /// The log level of the program.

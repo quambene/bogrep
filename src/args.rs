@@ -1,6 +1,7 @@
 use crate::cache::CacheMode;
 use clap::{ArgAction, Args as ClapArgs, Parser, Subcommand};
 
+/// Describes the available arguments in the CLI.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
@@ -14,6 +15,7 @@ pub struct Args {
     pub subcommands: Option<Subcommands>,
 }
 
+/// Describes the available subcommands in the CLI.
 #[derive(Subcommand, Debug)]
 pub enum Subcommands {
     /// Configure the source files to import the bookmarks.
@@ -33,6 +35,7 @@ pub enum Subcommands {
     Clean(CleanArgs),
 }
 
+/// Describes the arguments for the `config` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct ConfigArgs {
     #[command(flatten)]
@@ -61,11 +64,13 @@ pub struct SetCacheMode {
     pub cache_mode: Option<CacheMode>,
 }
 
+/// Describes the arguments for the `ignore` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct IgnoreArgs {
     pub urls: Vec<String>,
 }
 
+/// Describes the arguments for the `fetch` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct FetchArgs {
     /// Fetch all bookmarks.
@@ -86,6 +91,7 @@ pub struct FetchArgs {
     pub urls: Vec<String>,
 }
 
+/// Describes the arguments for the `init` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct InitArgs {
     /// Cache the fetched bookmarks as text, HTML or markdown file.
@@ -93,6 +99,7 @@ pub struct InitArgs {
     pub mode: Option<CacheMode>,
 }
 
+/// Describes the arguments for the `update` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct UpdateArgs {
     /// Cache the fetched bookmarks as text, HTML or markdown file.
@@ -100,6 +107,7 @@ pub struct UpdateArgs {
     pub mode: Option<CacheMode>,
 }
 
+/// Describes the arguments for the `clean` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct CleanArgs {
     /// Clean cache for all file extensions (.txt, .md, .html).

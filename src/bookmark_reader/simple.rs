@@ -2,6 +2,8 @@ use super::ReadBookmark;
 use crate::{Source, SourceBookmarks};
 use std::io::{BufRead, BufReader, Read};
 
+/// A bookmark reader to read bookmarks from a simple text file with one url per
+/// line.
 pub struct SimpleBookmarkReader;
 
 impl ReadBookmark for SimpleBookmarkReader {

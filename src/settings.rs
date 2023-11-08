@@ -18,6 +18,7 @@ const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 /// The default for `Settings::request_throttling`.
 const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
+/// Describes the settings used in Bogrep.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Settings {
     /// The paths to the configured bookmark files.
