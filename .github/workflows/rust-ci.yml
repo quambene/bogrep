@@ -59,11 +59,11 @@ jobs:
           run: cargo test --locked --test '*' --features integration-test
   os-test:
     runs-on: ${{ matrix.os }}
-    name: integration-test / ${{ matrix.os }}
+    name: os-test / ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     steps:
         - uses: actions/checkout@v4
         - uses: dtolnay/rust-toolchain@stable
