@@ -177,10 +177,15 @@ host in milliseconds.
 
 ## Supported operating systems
 
-Bogrep assumes a configuration path at `~/.config/bogrep` in your home directory
-for storing the `settings.json`, `bookmarks.json`, and `cache` folder. This
-should work for most Linux derivatives. Feel free to open an issue if you need
-support for Windows.
+Bogrep assumes a configuration path at
+
+- `$HOME/.config/bogrep` for Linux,
+- `$HOME/Library/Application Support/bogrep` for macOS,
+- `C:\Users\<Username>\AppData\Roaming/bogrep` for Windows
+
+in your home directory for storing the `settings.json`, `bookmarks.json`, and
+`cache` folder. This should work for most Linux derivatives. Feel free to open
+an issue if you need support for Windows.
 
 You can configure the configuration path via the environment variable
 `BOGREP_HOME`. For example, create an alias:
