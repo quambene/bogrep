@@ -28,7 +28,7 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
         &mut config.settings,
         source,
         cache_mode,
-        &args.urls,
+        &args.set_ignored_urls.ignore,
         settings_file,
     )?;
 
@@ -125,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    fn test_configure_urls() {
+    fn test_configure_ignored_urls() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
         let urls = vec![

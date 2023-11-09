@@ -40,8 +40,8 @@ pub struct ConfigArgs {
     pub set_source: SetSource,
     #[command(flatten)]
     pub set_cache_mode: SetCacheMode,
-    #[arg(short, long, num_args = 0.., value_delimiter = ' ')]
-    pub urls: Vec<String>,
+    #[command(flatten)]
+    pub set_ignored_urls: SetIgnoredUrls,
 }
 
 #[derive(ClapArgs, Debug)]
@@ -62,6 +62,13 @@ pub struct SetSource {
 pub struct SetCacheMode {
     #[arg(long)]
     pub cache_mode: Option<CacheMode>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetIgnoredUrls {
+    #[arg(long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
+    pub ignore: Vec<String>,
 }
 
 /// Describes the arguments for the `fetch` subcommand.
