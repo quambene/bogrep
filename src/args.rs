@@ -87,7 +87,7 @@ pub struct FetchArgs {
     /// bookmark for the given urls.
     ///
     /// Multiple urls are separated by a whitespace.
-    #[arg(short, long, value_name = "URLs", value_delimiter = ',')]
+    #[arg(short, long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
     pub diff: Vec<String>,
 }
 

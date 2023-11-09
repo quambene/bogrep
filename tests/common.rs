@@ -68,20 +68,33 @@ pub async fn mount_mocks(mock_server: &MockServer, num_mocks: u32) -> HashMap<St
     mocks
 }
 
+pub struct MockWebsite {
+    pub url: String,
+    pub content: String,
+    pub mock_guard: MockGuard,
+}
+
+impl MockWebsite {
+    pub fn new(url: String, content: String, mock_guard: MockGuard) -> Self {
+        Self {
+            url,
+            content,
+            mock_guard,
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub async fn mount_mock_scoped(
     mock_server: &MockServer,
     url_identifier: u32,
     content_identifier: u32,
-) -> (HashMap<String, String>, MockGuard) {
-    let mut mocks = HashMap::new();
+) -> MockWebsite {
     let bind_url = mock_server.uri();
     let endpoint = format!("endpoint_{}", url_identifier);
     let url = format!("{}/{}", bind_url, endpoint);
     let content = format!("Test content {}", content_identifier);
     let response = format!("<!DOCTYPE html><html><body>{}</body></html>", content);
-
-    mocks.insert(url.clone(), content.clone());
 
     let mock_guard = Mock::given(method("GET"))
         .and(path(endpoint))
@@ -89,5 +102,5 @@ pub async fn mount_mock_scoped(
         .mount_as_scoped(&mock_server)
         .await;
 
-    (mocks, mock_guard)
+    MockWebsite::new(url, content, mock_guard)
 }
