@@ -13,6 +13,7 @@
   - Make config path platform-independent
   - Add `--all` flag for `bogrep clean`
   - Improve documentation
+  - Fix `bogrep fetch --diff`
 
 ### v0.1.5
 
