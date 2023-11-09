@@ -88,7 +88,7 @@ pub trait Caching {
     fn clear(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error>;
 }
 
-/// The cache to store fetched bookmarks.
+/// A cache to store the fetched bookmarks.
 pub struct Cache {
     /// The path to the cache directory.
     path: PathBuf,
@@ -244,7 +244,7 @@ impl Caching for Cache {
     }
 }
 
-/// The cache to store fetched bookmarks.
+/// A mock cache to store fetched bookmarks used in testing.
 #[derive(Debug, Default)]
 pub struct MockCache {
     /// Mock the file system.
