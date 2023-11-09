@@ -1,10 +1,10 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### Unreleased
+### v0.2.0
 
 - changed
   - Refactor `trait ReadBookmark`
-  - Fix duplicate sources
+  - Fix duplicate sources in `settings.json`
   - Fix cache mode selection
   - Extend CI pipeline
     - Build doc
