@@ -76,8 +76,8 @@ pub struct FetchArgs {
     /// Fetch all bookmarks.
     ///
     /// If flag is not set, bookmarks are only fetched if a bookmark is not
-    /// cached yet. Otherwise, the cached website's content will be updated with
-    /// the newly fetched content.
+    /// cached yet. Otherwise, the cached content will be updated with
+    /// the fetched content.
     #[arg(short, long)]
     pub all: bool,
     /// Cache the fetched bookmarks as text, HTML or markdown file.
