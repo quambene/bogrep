@@ -11,7 +11,8 @@ use tempfile::tempdir;
 #[tokio::test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_clean() {
-    let mocks = common::start_mock_server(3).await;
+    let mock_server = common::start_mock_server().await;
+    let mocks = common::mount_mocks(&mock_server, 3).await;
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -80,7 +81,8 @@ async fn test_clean() {
 #[tokio::test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_clean_all() {
-    let mocks = common::start_mock_server(3).await;
+    let mock_server = common::start_mock_server().await;
+    let mocks = common::mount_mocks(&mock_server, 3).await;
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());

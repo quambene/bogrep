@@ -87,9 +87,9 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_init_bookmarks() {
+    async fn test_init_bookmarks_mode_html() {
         let client = MockClient::new();
-        let cache = MockCache::new();
+        let cache = MockCache::new(CacheMode::Html);
         let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
         let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
@@ -143,6 +143,65 @@ mod tests {
                         bookmark.id.clone(),
                         "<html><head></head><body><p>Test content</p></body></html>".to_owned(),
                     );
+                    acc
+                })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_init_bookmarks_mode_text() {
+        let client = MockClient::new();
+        let cache = MockCache::new(CacheMode::Text);
+        let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
+        let bookmark_readers = BookmarkReaders::new();
+        let source = Source::new(bookmark_path, vec![]);
+        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
+        let max_concurrent_requests = 100;
+        let expected_bookmarks: HashSet<String> = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]);
+        for url in &expected_bookmarks {
+            client
+                .add(
+                    "<html><head></head><body><img></img><p>Test content</p></body></html>"
+                        .to_owned(),
+                    url,
+                )
+                .unwrap();
+        }
+
+        let res = init_bookmarks(
+            &client,
+            &cache,
+            &mut [source_reader],
+            max_concurrent_requests,
+        )
+        .await;
+        assert!(res.is_ok());
+
+        let target_bookmarks = res.unwrap();
+        assert_eq!(
+            target_bookmarks
+                .bookmarks
+                .iter()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+            expected_bookmarks,
+        );
+        assert!(target_bookmarks
+            .bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached.is_some()));
+        assert_eq!(
+            cache.cache_map(),
+            target_bookmarks
+                .bookmarks
+                .iter()
+                .fold(HashMap::new(), |mut acc, bookmark| {
+                    acc.insert(bookmark.id.clone(), "Test content".to_owned());
                     acc
                 })
         );

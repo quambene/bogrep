@@ -76,19 +76,19 @@ pub struct FetchArgs {
     /// Fetch all bookmarks.
     ///
     /// If flag is not set, bookmarks are only fetched if a bookmark is not
-    /// cached yet.
+    /// cached yet. Otherwise, the cached website's content will be updated with
+    /// the newly fetched content.
     #[arg(short, long)]
     pub all: bool,
     /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
     /// Get the difference between the fetched and cached
-    /// bookmark.
-    #[arg(short, long)]
-    pub diff: bool,
-    /// The urls for which the diff should be determined.
-    #[arg(short, long)]
-    pub urls: Vec<String>,
+    /// bookmark for the given urls.
+    ///
+    /// Multiple urls are separated by a whitespace.
+    #[arg(short, long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
+    pub diff: Vec<String>,
 }
 
 /// Describes the arguments for the `init` subcommand.

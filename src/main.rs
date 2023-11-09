@@ -19,7 +19,7 @@ async fn main() -> Result<(), anyhow::Error> {
             Subcommands::Update(args) => cmd::update(&config, &args).await?,
             Subcommands::Ignore(args) => cmd::ignore(&config, args)?,
             Subcommands::Fetch(args) => {
-                if args.diff {
+                if !args.diff.is_empty() {
                     cmd::fetch_diff(&config, args).await?;
                 } else {
                     cmd::fetch(&config, &args).await?;
