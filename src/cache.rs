@@ -105,13 +105,13 @@ impl Cache {
         }
     }
 
-    fn path(&self, bookmark_id: &str) -> PathBuf {
+    fn bookmark_path(&self, bookmark_id: &str) -> PathBuf {
         self.path
             .join(bookmark_id)
             .with_extension(self.mode.extension())
     }
 
-    fn path_by_cache_mode(&self, bookmark_id: &str, cache_mode: &CacheMode) -> PathBuf {
+    fn bookmark_path_by_cache_mode(&self, bookmark_id: &str, cache_mode: &CacheMode) -> PathBuf {
         self.path
             .join(bookmark_id)
             .with_extension(cache_mode.extension())
@@ -129,12 +129,12 @@ impl Caching for Cache {
     }
 
     fn exists(&self, bookmark: &TargetBookmark) -> bool {
-        let cache_path = self.path(&bookmark.id);
+        let cache_path = self.bookmark_path(&bookmark.id);
         cache_path.exists()
     }
 
     fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, anyhow::Error> {
-        let cache_path = self.path(&bookmark.id);
+        let cache_path = self.bookmark_path(&bookmark.id);
         debug!("Open website: {}", cache_path.display());
 
         if cache_path.exists() {
@@ -149,7 +149,7 @@ impl Caching for Cache {
         if let Some(mut cache_file) = self.open(bookmark)? {
             debug!(
                 "Get website from cache: {}",
-                self.path(&bookmark.id).display()
+                self.bookmark_path(&bookmark.id).display()
             );
             let mut buf = String::new();
             cache_file.read_to_string(&mut buf)?;
@@ -160,7 +160,7 @@ impl Caching for Cache {
     }
 
     async fn add(&self, html: String, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
-        let cache_path = self.path(&bookmark.id);
+        let cache_path = self.bookmark_path(&bookmark.id);
 
         let content = match self.mode {
             CacheMode::Html => html,
@@ -182,7 +182,7 @@ impl Caching for Cache {
         html: String,
         bookmark: &TargetBookmark,
     ) -> Result<String, anyhow::Error> {
-        let cache_path = self.path(&bookmark.id);
+        let cache_path = self.bookmark_path(&bookmark.id);
         debug!("Replace website in cache: {}", cache_path.display());
 
         let content = match self.mode {
@@ -197,11 +197,11 @@ impl Caching for Cache {
     }
 
     async fn remove(&self, bookmark: &TargetBookmark) -> Result<(), anyhow::Error> {
-        let cache_file = self.path(&bookmark.id);
+        let cache_path = self.bookmark_path(&bookmark.id);
 
-        if cache_file.exists() {
-            debug!("Remove website from cache: {}", cache_file.display());
-            fs::remove_file(cache_file).await?;
+        if cache_path.exists() {
+            debug!("Remove website from cache: {}", cache_path.display());
+            fs::remove_file(cache_path).await?;
         }
 
         Ok(())
@@ -210,11 +210,11 @@ impl Caching for Cache {
     async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
         debug!("Remove all cached websites");
         for bookmark in &bookmarks.bookmarks {
-            let cache_file = self.path(&bookmark.id);
+            let cache_path = self.bookmark_path(&bookmark.id);
 
-            if cache_file.exists() {
-                debug!("Remove website from cache: {}", cache_file.display());
-                fs::remove_file(cache_file).await?;
+            if cache_path.exists() {
+                debug!("Remove website from cache: {}", cache_path.display());
+                fs::remove_file(cache_path).await?;
             }
         }
 
@@ -231,11 +231,11 @@ impl Caching for Cache {
 
         for bookmark in &bookmarks.bookmarks {
             for cache_mode in &cache_modes {
-                let cache_file = self.path_by_cache_mode(&bookmark.id, cache_mode);
+                let cache_path = self.bookmark_path_by_cache_mode(&bookmark.id, cache_mode);
 
-                if cache_file.exists() {
-                    debug!("Remove website from cache: {}", cache_file.display());
-                    std::fs::remove_file(cache_file)?;
+                if cache_path.exists() {
+                    debug!("Remove website from cache: {}", cache_path.display());
+                    std::fs::remove_file(cache_path)?;
                 }
             }
         }
