@@ -86,8 +86,9 @@ async fn fetch_and_add(
     if fetch_all {
         match client.fetch(bookmark).await {
             Ok(website) => {
-                let website = html::filter_html(&website)?;
-                if let Err(err) = cache.replace(website, bookmark).await {
+                let html = html::filter_html(&website)?;
+
+                if let Err(err) = cache.replace(html, bookmark).await {
                     error!("Can't replace website {} in cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
@@ -100,8 +101,9 @@ async fn fetch_and_add(
     } else if !cache.exists(bookmark) {
         match client.fetch(bookmark).await {
             Ok(website) => {
-                let website = html::filter_html(&website)?;
-                if let Err(err) = cache.add(website, bookmark).await {
+                let html = html::filter_html(&website)?;
+
+                if let Err(err) = cache.add(html, bookmark).await {
                     error!("Can't add website '{}' to cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
@@ -129,11 +131,14 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
         let bookmark = target_bookmarks.find(&url);
 
         if let Some(bookmark) = bookmark {
-            if let Some(cached_website) = cache.get(bookmark)? {
+            if let Some(cached_website_before) = cache.get(bookmark)? {
                 let fetched_website = client.fetch(bookmark).await?;
-                let fetched_website = html::filter_html(&fetched_website)?;
+                let html = html::filter_html(&fetched_website)?;
 
-                let diff = TextDiff::from_lines(&cached_website, &fetched_website);
+                // Cache fetched website
+                let cached_website_after = cache.replace(html, bookmark).await?;
+
+                let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
 
                 for change in diff.iter_all_changes() {
                     match change.tag() {
@@ -150,9 +155,6 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
                         ChangeTag::Equal => continue,
                     }
                 }
-
-                // Cache fetched website
-                cache.replace(fetched_website, bookmark).await?;
             }
         } else {
             warn!("Bookmark missing: add bookmark first before running `bogrep fetch --diff`");
@@ -169,21 +171,21 @@ mod tests {
     use std::collections::HashMap;
 
     #[tokio::test]
-    async fn test_fetch_and_add_all() {
+    async fn test_fetch_and_add_all_mode_html() {
         let now = Utc::now();
         let client = MockClient::new();
-        let cache = MockCache::new();
+        let cache = MockCache::new(CacheMode::Html);
         let mut target_bookmarks = TargetBookmarks {
             bookmarks: vec![
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "url1".to_owned(),
+                    url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "url2".to_owned(),
+                    url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                 },
@@ -218,21 +220,70 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_and_add_all_if_not_exists() {
+    async fn test_fetch_and_add_all_mode_text() {
         let now = Utc::now();
         let client = MockClient::new();
-        let cache = MockCache::new();
+        let cache = MockCache::new(CacheMode::Text);
         let mut target_bookmarks = TargetBookmarks {
             bookmarks: vec![
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "url1".to_owned(),
+                    url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "url2".to_owned(),
+                    url: "https://test_url2.com".to_owned(),
+                    last_imported: now.timestamp_millis(),
+                    last_cached: None,
+                },
+            ],
+        };
+        for bookmark in &target_bookmarks.bookmarks {
+            client
+                .add(
+                    "<html><head></head><body><img></img><p>Test content</p></body></html>"
+                        .to_owned(),
+                    &bookmark.url,
+                )
+                .unwrap();
+        }
+
+        let res =
+            fetch_and_add_all(&client, &cache, &mut target_bookmarks.bookmarks, 100, true).await;
+        assert!(res.is_ok());
+        assert_eq!(
+            cache.cache_map(),
+            HashMap::from_iter(vec![
+                (
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    "Test content".to_owned()
+                ),
+                (
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    "Test content".to_owned()
+                )
+            ])
+        )
+    }
+
+    #[tokio::test]
+    async fn test_fetch_and_add_all_if_not_exists_mode_html() {
+        let now = Utc::now();
+        let client = MockClient::new();
+        let cache = MockCache::new(CacheMode::Html);
+        let mut target_bookmarks = TargetBookmarks {
+            bookmarks: vec![
+                TargetBookmark {
+                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url: "https://test_url1.com".to_owned(),
+                    last_imported: now.timestamp_millis(),
+                    last_cached: None,
+                },
+                TargetBookmark {
+                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                 },
@@ -271,6 +322,63 @@ mod tests {
                     "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     "<html><head></head><body><p>Test content (fetched)</p></body></html>"
                         .to_owned()
+                )
+            ])
+        );
+    }
+
+    #[tokio::test]
+    async fn test_fetch_and_add_all_if_not_exists_mode_text() {
+        let now = Utc::now();
+        let client = MockClient::new();
+        let cache = MockCache::new(CacheMode::Text);
+        let mut target_bookmarks = TargetBookmarks {
+            bookmarks: vec![
+                TargetBookmark {
+                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url: "https://test_url1.com".to_owned(),
+                    last_imported: now.timestamp_millis(),
+                    last_cached: None,
+                },
+                TargetBookmark {
+                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url: "https://test_url2.com".to_owned(),
+                    last_imported: now.timestamp_millis(),
+                    last_cached: None,
+                },
+            ],
+        };
+        for bookmark in &target_bookmarks.bookmarks {
+            client
+                .add(
+                    "<html><head></head><body><img></img><p>Test content (fetched)</p></body></html>"
+                        .to_owned(),
+                    &bookmark.url,
+                )
+                .unwrap();
+        }
+        cache
+            .add(
+                "<html><head></head><body><p>Test content (already cached)</p></body></html>"
+                    .to_owned(),
+                &target_bookmarks.bookmarks[0],
+            )
+            .await
+            .unwrap();
+
+        let res =
+            fetch_and_add_all(&client, &cache, &mut target_bookmarks.bookmarks, 100, false).await;
+        assert!(res.is_ok());
+        assert_eq!(
+            cache.cache_map(),
+            HashMap::from_iter(vec![
+                (
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    "Test content (already cached)".to_owned()
+                ),
+                (
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    "Test content (fetched)".to_owned()
                 )
             ])
         );
