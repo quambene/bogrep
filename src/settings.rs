@@ -128,16 +128,6 @@ impl Settings {
             self.cache_mode = cache_mode;
         }
     }
-
-    pub fn configure(
-        &mut self,
-        source: Source,
-        cache_mode: Option<CacheMode>,
-    ) -> Result<(), anyhow::Error> {
-        self.set_source(source)?;
-        self.set_cache_mode(cache_mode);
-        Ok(())
-    }
 }
 
 /// The source of bookmarks.
@@ -274,27 +264,6 @@ mod tests {
         assert_eq!(
             settings,
             Settings {
-                cache_mode: CacheMode::Html,
-                ..Default::default()
-            }
-        );
-    }
-
-    #[test]
-    fn test_configure() {
-        let mut settings = Settings::default();
-        let source = Source {
-            path: PathBuf::from("path/to/source"),
-            folders: vec![String::from("dev,science,article")],
-        };
-        settings.configure(source, Some(CacheMode::Html)).unwrap();
-        assert_eq!(
-            settings,
-            Settings {
-                sources: vec![Source {
-                    path: PathBuf::from("path/to/source"),
-                    folders: vec![String::from("dev,science,article")]
-                }],
                 cache_mode: CacheMode::Html,
                 ..Default::default()
             }

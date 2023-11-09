@@ -146,7 +146,7 @@ usually don't include relevant text to grep.
 
 ``` bash
 # Ignore one or more urls
-bogrep ignore <url1> <url2> ...
+bogrep config --ignore <url1> <url2> ...
 ```
 
 ## Diff websites

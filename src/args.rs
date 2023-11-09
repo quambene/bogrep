@@ -25,8 +25,6 @@ pub enum Subcommands {
     /// Determine diff of source and target bookmarks. Fetch and cache websites
     /// for new bookmarks; delete cache for removed bookmarks.
     Update(UpdateArgs),
-    /// Ignore the given urls and don't fetch and add these urls to the cache.
-    Ignore(IgnoreArgs),
     /// Import bookmarks from the configured source files.
     Import,
     /// Fetch and cache bookmarks.
@@ -42,6 +40,8 @@ pub struct ConfigArgs {
     pub set_source: SetSource,
     #[command(flatten)]
     pub set_cache_mode: SetCacheMode,
+    #[command(flatten)]
+    pub set_ignored_urls: SetIgnoredUrls,
 }
 
 #[derive(ClapArgs, Debug)]
@@ -53,7 +53,7 @@ pub struct SetSource {
     /// The bookmark folders to be imported.
     ///
     /// Multiple folders are separated by a comma.
-    #[arg(long, value_delimiter = ',')]
+    #[arg(long, num_args = 0.., value_delimiter = ',')]
     pub folders: Vec<String>,
 }
 
@@ -64,10 +64,11 @@ pub struct SetCacheMode {
     pub cache_mode: Option<CacheMode>,
 }
 
-/// Describes the arguments for the `ignore` subcommand.
 #[derive(ClapArgs, Debug)]
-pub struct IgnoreArgs {
-    pub urls: Vec<String>,
+#[group(required = false)]
+pub struct SetIgnoredUrls {
+    #[arg(long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
+    pub ignore: Vec<String>,
 }
 
 /// Describes the arguments for the `fetch` subcommand.
