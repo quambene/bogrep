@@ -5,7 +5,7 @@ use crate::{
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
-use log::{debug, error, trace, warn};
+use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
 use std::io::{Read, Seek, Write};
 
@@ -69,7 +69,7 @@ pub async fn fetch_and_add_all(
 
     while let Some(item) = stream.next().await {
         if let Err(err) = item {
-            error!("Can't fetch bookmark: {err}");
+            warn!("Can't fetch bookmark: {err}");
         }
     }
 
@@ -89,13 +89,13 @@ async fn fetch_and_add(
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.replace(html, bookmark).await {
-                    error!("Can't replace website {} in cache: {}", bookmark.url, err);
+                    warn!("Can't replace website {} in cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
                 }
             }
             Err(err) => {
-                error!("Can't fetch website: {}", err);
+                warn!("Can't fetch website: {}", err);
             }
         }
     } else if !cache.exists(bookmark) {
@@ -104,13 +104,13 @@ async fn fetch_and_add(
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.add(html, bookmark).await {
-                    error!("Can't add website '{}' to cache: {}", bookmark.url, err);
+                    warn!("Can't add website '{}' to cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
                 }
             }
             Err(err) => {
-                error!("Can't fetch website from '{}': {}", bookmark.url, err);
+                warn!("Can't fetch website from '{}': {}", bookmark.url, err);
             }
         }
     }
