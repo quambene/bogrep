@@ -2,18 +2,20 @@
 
 ### v0.2.0
 
-- changed
-  - Refactor `trait ReadBookmark`
-  - Fix duplicate sources in `settings.json`
-  - Fix cache mode selection
+- added
   - Extend CI pipeline
     - Build doc
     - Add doc tests
     - Test on macOS and Windows
-  - Make config path platform-independent
   - Add `--all` flag for `bogrep clean`
   - Improve documentation
+- changed
+  - Refactor `trait ReadBookmark`
+  - Fix duplicate sources in `settings.json`
+  - Make config path platform-independent
   - Fix `bogrep fetch --diff`
+- removed
+  - Remove cache mode for markdown
 
 ### v0.1.5
 
