@@ -1,5 +1,12 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
+### Unreleased
+
+- added
+  - Add integration test for `bogrep config --ignore`
+- changed
+  - Refactor from `bogrep ignore` to `bogrep config --ignore`
+
 ### v0.2.0
 
 - added
