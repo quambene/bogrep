@@ -118,14 +118,14 @@ async fn fetch_and_add(
 
 /// Fetch difference between cached and fetched website, and display changes.
 pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::Error> {
-    debug!("Diff content for urls: {:#?}", args.urls);
+    debug!("Diff content for urls: {:#?}", args.diff);
     let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
     let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
 
-    for url in args.urls {
+    for url in args.diff {
         let bookmark = target_bookmarks.find(&url);
 
         if let Some(bookmark) = bookmark {
