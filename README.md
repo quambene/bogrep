@@ -187,11 +187,7 @@ in your home directory for storing the `settings.json`, `bookmarks.json`, and
 `cache` folder.
 
 You can configure the configuration path via the environment variable
-`BOGREP_HOME`:
-
-``` bash
-BOGREP_HOME="my/config/path"
-```
+`BOGREP_HOME`.
 
 ## Testing
 
