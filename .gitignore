@@ -17,3 +17,6 @@
 perf.data
 perf.data.old
 flamegraph.svg
+
+# Environment
+.env
