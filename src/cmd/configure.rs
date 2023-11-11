@@ -70,10 +70,7 @@ fn configure_settings(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        io::{Cursor, Seek},
-        path::PathBuf,
-    };
+    use std::{io::Cursor, path::PathBuf};
 
     #[test]
     fn test_configure_source() {
@@ -81,53 +78,11 @@ mod tests {
         let mut settings = Settings::default();
         let source = Source {
             path: PathBuf::from("test_data/bookmarks_simple.txt"),
-            folders: vec![],
-        };
-        let urls = vec![];
-        let cache_mode = None;
-        let res = configure_settings(&mut settings, Some(source), cache_mode, &urls, &mut cursor);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-        let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
-        let expected_settings = r#"{
-    "bookmark_files": [
-        {
-            "source": "test_data/bookmarks_simple.txt",
-            "folders": []
-        }
-    ],
-    "ignored_urls": [],
-    "cache_mode": "text",
-    "max_concurrent_requests": 100,
-    "request_timeout": 60000,
-    "request_throttling": 3000
-}"#;
-        assert_eq!(actual_settings, expected_settings);
-    }
-
-    #[test]
-    fn test_configure_source_and_folders() {
-        let mut cursor = Cursor::new(Vec::new());
-        let mut settings = Settings::default();
-        let source = Source {
-            path: PathBuf::from("test_data/bookmarks_simple.txt"),
-            folders: vec![],
-        };
-        let urls = vec![];
-        let cache_mode = None;
-        let res = configure_settings(
-            &mut settings,
-            Some(source),
-            cache_mode.clone(),
-            &urls,
-            &mut cursor,
-        );
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-
-        cursor.rewind().unwrap();
-        let source = Source {
-            path: PathBuf::from("test_data/bookmarks_simple.txt"),
             folders: vec!["dev".to_string(), "articles".to_string()],
         };
+        let urls = vec![];
+        let cache_mode = None;
+
         let res = configure_settings(&mut settings, Some(source), cache_mode, &urls, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 

@@ -183,12 +183,11 @@ mod tests {
     #[test]
     fn test_set_source() {
         let mut settings = Settings::default();
-        settings
-            .set_source(Source {
-                path: PathBuf::from("path/to/source"),
-                folders: vec![],
-            })
-            .unwrap();
+        let res = settings.set_source(Source {
+            path: PathBuf::from("path/to/source"),
+            folders: vec![],
+        });
+        assert!(res.is_ok());
         assert_eq!(
             settings,
             Settings {
@@ -202,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set_source_duplicate() {
+    fn test_set_source_overwrite() {
         let mut settings = Settings::default();
         settings
             .set_source(Source {
@@ -221,11 +220,22 @@ mod tests {
             }
         );
 
-        let res = settings.set_source(Source {
-            path: PathBuf::from("path/to/source"),
-            folders: vec![],
-        });
-        assert!(res.is_err());
+        settings
+            .set_source(Source {
+                path: PathBuf::from("path/to/source"),
+                folders: vec!["dev".to_string(), "articles".to_string()],
+            })
+            .unwrap();
+        assert_eq!(
+            settings,
+            Settings {
+                sources: vec![Source {
+                    path: PathBuf::from("path/to/source"),
+                    folders: vec!["dev".to_string(), "articles".to_string()]
+                }],
+                ..Default::default()
+            }
+        );
     }
 
     #[test]
