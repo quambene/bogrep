@@ -6,6 +6,7 @@
   - Add integration test for `bogrep config --ignore`
 - changed
   - Refactor from `bogrep ignore` to `bogrep config --ignore`
+  - Fix overwrite of `Source` in settings
 
 ### v0.2.0
 
@@ -21,6 +22,7 @@
   - Fix duplicate sources in `settings.json`
   - Make config path platform-independent
   - Fix `bogrep fetch --diff`
+  - Downgrade fetching error to warning
 - removed
   - Remove cache mode for markdown
 

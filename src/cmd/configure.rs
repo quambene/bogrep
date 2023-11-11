@@ -82,8 +82,10 @@ mod tests {
         };
         let urls = vec![];
         let cache_mode = None;
+
         let res = configure_settings(&mut settings, Some(source), cache_mode, &urls, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
+
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
         let expected_settings = r#"{
     "bookmark_files": [
