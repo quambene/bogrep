@@ -13,6 +13,9 @@
 **/*.jsonlz4
 **/*.html
 
+# Testing
+/bogrep
+
 # Performance
 perf.data
 perf.data.old
