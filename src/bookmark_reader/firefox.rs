@@ -127,6 +127,7 @@ impl Firefox {
 }
 
 /// A bookmark reader to read bookmarks in JSON format from Firefox.
+#[derive(Debug)]
 pub struct FirefoxBookmarkReader;
 
 impl ReadBookmark for FirefoxBookmarkReader {
@@ -204,6 +205,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
 }
 
 /// A bookmark reader to read compressed bookmarks in JSON format from Firefox.
+#[derive(Debug)]
 pub struct FirefoxCompressedBookmarkReader;
 
 impl ReadBookmark for FirefoxCompressedBookmarkReader {

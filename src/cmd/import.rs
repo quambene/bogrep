@@ -1,5 +1,5 @@
 use crate::{
-    bookmark_reader::{BookmarkReaders, SourceReader},
+    bookmark_reader::{SourceReader, TargetReaderWriter},
     utils, Config, SourceBookmarks, TargetBookmarks,
 };
 use log::{info, trace};
@@ -12,30 +12,30 @@ pub fn import(config: &Config) -> Result<(), anyhow::Error> {
         .settings
         .sources
         .iter()
-        .map(|source| {
-            let bookmark_readers = BookmarkReaders::new();
-            SourceReader::new(source, bookmark_readers)
-        })
+        .map(|source| SourceReader::init(source))
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-    let mut target_bookmark_file =
-        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
+    let target_bookmark_file = utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
 
-    import_bookmarks(source_reader, &mut target_bookmark_file)?;
+    import_bookmarks(source_reader, target_bookmark_file)?;
 
     Ok(())
 }
 
 fn import_bookmarks(
     mut source_reader: Vec<SourceReader>,
-    target_reader_writer: &mut (impl Read + Write + Seek),
+    target_reader_writer: impl Read + Write + Seek,
 ) -> Result<(), anyhow::Error> {
-    let source_bookmarks = SourceBookmarks::read(source_reader.as_mut())?;
-    let mut target_bookmarks = TargetBookmarks::read(target_reader_writer)?;
-    // Rewind after reading the content from the file and overwrite it with the
-    // updated content.
-    target_reader_writer.rewind()?;
+    let mut source_bookmarks = SourceBookmarks::new();
+
+    for reader in &mut source_reader {
+        reader.read_and_parse(&mut source_bookmarks)?;
+    }
+
+    let mut target_bookmarks = TargetBookmarks::default();
+    let mut target_reader_writer = TargetReaderWriter::new(target_reader_writer);
+    target_reader_writer.read(&mut target_bookmarks)?;
     target_bookmarks.update(source_bookmarks)?;
-    target_bookmarks.write(target_reader_writer)?;
+    target_reader_writer.write(&target_bookmarks)?;
 
     log_import(&source_reader, &target_bookmarks);
 
@@ -65,7 +65,7 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, test_utils, Source};
+    use crate::{json, test_utils, SimpleBookmarkReader, Source};
     use std::{collections::HashSet, io::Cursor, path::Path};
 
     fn test_import_bookmarks(source: &Source, expected_bookmarks: HashSet<String>) {
@@ -77,8 +77,7 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         cursor.set_position(0);
 
-        let bookmark_readers = BookmarkReaders::new();
-        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
+        let source_reader = SourceReader::init(&source).unwrap();
         let res = import_bookmarks(vec![source_reader], &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
@@ -99,18 +98,18 @@ mod tests {
     }
 
     #[test]
-    fn test_import_bookmarks_firefox_uncompressed() {
+    fn test_import_bookmarks_firefox() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
-        let target_bookmarks = HashSet::from_iter([
+        let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
             String::from("https://doc.rust-lang.org/book/title-page.html")
         ]);
 
-        test_import_bookmarks(&source, target_bookmarks);
+        test_import_bookmarks(&source, expected_bookmarks);
     }
 
     #[test]
@@ -118,7 +117,7 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
-        let target_bookmarks = HashSet::from_iter([
+        let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
@@ -126,7 +125,7 @@ mod tests {
         ]);
         test_utils::create_compressed_bookmarks(source_path);
 
-        test_import_bookmarks(&source, target_bookmarks);
+        test_import_bookmarks(&source, expected_bookmarks);
     }
 
     #[test]
@@ -134,14 +133,14 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_chrome.json");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
-        let target_bookmarks = HashSet::from_iter([
+        let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
 
-        test_import_bookmarks(&source, target_bookmarks);
+        test_import_bookmarks(&source, expected_bookmarks);
     }
 
     #[test]
@@ -149,14 +148,14 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_chrome_no_extension");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
-        let target_bookmarks = HashSet::from_iter([
+        let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
 
-        test_import_bookmarks(&source, target_bookmarks);
+        test_import_bookmarks(&source, expected_bookmarks);
     }
 
     #[test]
@@ -164,12 +163,13 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
-        let target_bookmarks = HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        let expected_bookmarks = HashSet::from_iter([
+            "https://www.deepl.com/translator".to_owned(),
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
+                .to_owned(),
+            "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
+            "https://doc.rust-lang.org/book/title-page.html".to_owned(),
         ]);
-        test_import_bookmarks(&source, target_bookmarks);
+        test_import_bookmarks(&source, expected_bookmarks);
     }
 }
