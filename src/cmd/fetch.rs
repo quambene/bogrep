@@ -86,6 +86,7 @@ async fn fetch_and_add(
     if fetch_all {
         match client.fetch(bookmark).await {
             Ok(website) => {
+                trace!("Fetched website: {website}");
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.replace(html, bookmark).await {
@@ -101,6 +102,7 @@ async fn fetch_and_add(
     } else if !cache.exists(bookmark) {
         match client.fetch(bookmark).await {
             Ok(website) => {
+                trace!("Fetched website: {website}");
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.add(html, bookmark).await {
@@ -133,6 +135,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
         if let Some(bookmark) = bookmark {
             if let Some(cached_website_before) = cache.get(bookmark)? {
                 let fetched_website = client.fetch(bookmark).await?;
+                trace!("Fetched website: {fetched_website}");
                 let html = html::filter_html(&fetched_website)?;
 
                 // Cache fetched website
