@@ -27,6 +27,10 @@ impl<T: Read + Write + Seek> TargetReaderWriter<T> {
         self.0
             .write_all(&bookmarks_json)
             .context("Can't write to `bookmarks.json` file")?;
+
+        // Rewind after writing.
+        self.0.rewind()?;
+
         Ok(())
     }
 
