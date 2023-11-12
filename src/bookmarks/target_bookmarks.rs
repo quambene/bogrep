@@ -1,12 +1,8 @@
-use crate::{json, SourceBookmarks};
-use anyhow::Context;
+use crate::SourceBookmarks;
 use chrono::{DateTime, Utc};
 use log::{info, trace};
 use serde::{Deserialize, Serialize};
-use std::{
-    io::{Read, Write},
-    slice,
-};
+use std::slice;
 use uuid::Uuid;
 
 /// A standardized bookmark for internal bookkeeping that is created from the
@@ -42,26 +38,8 @@ pub struct TargetBookmarks {
 }
 
 impl TargetBookmarks {
-    pub fn read(
-        target_reader_writer: &mut (impl Read + Write),
-    ) -> Result<TargetBookmarks, anyhow::Error> {
-        let mut buf = Vec::new();
-        target_reader_writer
-            .read_to_end(&mut buf)
-            .context("Can't read from `bookmarks.json` file:")?;
-        let target_bookmarks = json::deserialize::<TargetBookmarks>(&buf)?;
-        Ok(target_bookmarks)
-    }
-
-    pub fn write(
-        &self,
-        target_reader_writer: &mut (impl Read + Write),
-    ) -> Result<(), anyhow::Error> {
-        let bookmarks_json = json::serialize(self)?;
-        target_reader_writer
-            .write_all(&bookmarks_json)
-            .context("Can't write to `bookmarks.json` file")?;
-        Ok(())
+    pub fn new(bookmarks: Vec<TargetBookmark>) -> Self {
+        Self { bookmarks }
     }
 
     pub fn add(&mut self, bookmark: &TargetBookmark) {
@@ -77,6 +55,10 @@ impl TargetBookmarks {
         if let Some(index) = index {
             self.bookmarks.remove(index);
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bookmarks.is_empty()
     }
 
     pub fn find(&self, url: &str) -> Option<&TargetBookmark> {
@@ -179,6 +161,7 @@ impl From<SourceBookmarks> for TargetBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bookmark_reader::TargetReaderWriter;
     use std::{collections::HashSet, io::Cursor};
 
     const EXPECTED_BOOKMARKS: &str = r#"{
@@ -239,14 +222,14 @@ mod tests {
 
     #[test]
     fn test_read_target_bookmarks() {
-        let bookmarks = EXPECTED_BOOKMARKS.as_bytes().to_vec();
-        let mut cursor = Cursor::new(bookmarks);
-        let res = TargetBookmarks::read(&mut cursor);
+        let expected_bookmarks = EXPECTED_BOOKMARKS.as_bytes().to_vec();
+        let mut target_bookmarks = TargetBookmarks::default();
+        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(expected_bookmarks));
+        let res = target_reader_writer.read(&mut target_bookmarks);
         assert!(res.is_ok());
 
-        let bookmarks = res.unwrap();
         assert_eq!(
-            bookmarks.bookmarks,
+            target_bookmarks.bookmarks,
             vec![
                 TargetBookmark {
                     id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
@@ -266,49 +249,47 @@ mod tests {
 
     #[test]
     fn test_read_target_bookmarks_empty() {
-        let bookmarks = EXPECTED_BOOKMARKS_EMPTY.as_bytes().to_vec();
-        let mut cursor = Cursor::new(bookmarks);
-        let res = TargetBookmarks::read(&mut cursor);
+        let expected_bookmarks = EXPECTED_BOOKMARKS_EMPTY.as_bytes().to_vec();
+        let mut target_bookmarks = TargetBookmarks::default();
+        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(expected_bookmarks));
+        let res = target_reader_writer.read(&mut target_bookmarks);
         assert!(res.is_ok());
 
-        let bookmarks = res.unwrap();
-        assert!(bookmarks.bookmarks.is_empty());
+        assert!(target_bookmarks.bookmarks.is_empty());
     }
 
     #[test]
     fn test_write_target_bookmarks() {
-        let bookmarks = TargetBookmarks {
-            bookmarks: vec![
-                TargetBookmark {
-                    id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
-                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
-                    last_imported: 1694989714351,
-                    last_cached: None,
-                },
-                TargetBookmark {
-                    id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
-                    url: String::from("https://www.deepl.com/translator"),
-                    last_imported: 1694989714351,
-                    last_cached: None,
-                },
-            ],
-        };
-        let mut cursor = Cursor::new(Vec::new());
-        let res = TargetBookmarks::write(&bookmarks, &mut cursor);
+        let target_bookmarks = TargetBookmarks::new(vec![
+            TargetBookmark {
+                id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
+                url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                last_imported: 1694989714351,
+                last_cached: None,
+            },
+            TargetBookmark {
+                id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                url: String::from("https://www.deepl.com/translator"),
+                last_imported: 1694989714351,
+                last_cached: None,
+            },
+        ]);
+        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(Vec::new()));
+        let res = target_reader_writer.write(&target_bookmarks);
         assert!(res.is_ok());
 
-        let actual = cursor.into_inner();
+        let actual = target_reader_writer.inner().into_inner();
         assert_eq!(String::from_utf8(actual).unwrap(), EXPECTED_BOOKMARKS);
     }
 
     #[test]
     fn test_write_target_bookmarks_empty() {
         let bookmarks = TargetBookmarks::default();
-        let mut cursor = Cursor::new(Vec::new());
-        let res = TargetBookmarks::write(&bookmarks, &mut cursor);
+        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(Vec::new()));
+        let res = target_reader_writer.write(&bookmarks);
         assert!(res.is_ok());
 
-        let actual = cursor.into_inner();
+        let actual = target_reader_writer.inner().into_inner();
         assert_eq!(String::from_utf8(actual).unwrap(), EXPECTED_BOOKMARKS_EMPTY);
     }
 }

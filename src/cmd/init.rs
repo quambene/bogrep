@@ -1,11 +1,10 @@
 use super::fetch_and_add_all;
 use crate::{
-    bookmark_reader::{BookmarkReaders, SourceReader},
+    bookmark_reader::{SourceReader, TargetReaderWriter},
     cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks, TargetBookmarks,
 };
 use log::info;
-use std::io::Seek;
 
 /// Import bookmarks, fetch bookmarks from url, and save fetched websites in
 /// cache if bookmarks were not imported yet.
@@ -14,14 +13,13 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         .settings
         .sources
         .iter()
-        .map(|source| {
-            let bookmark_readers = BookmarkReaders::new();
-            SourceReader::new(source, bookmark_readers)
-        })
+        .map(|source| SourceReader::init(source))
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-    let mut target_bookmark_file =
-        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
-    let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
+
+    let mut target_bookmarks = TargetBookmarks::default();
+    let target_bookmark_file = utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
+    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
+    target_reader_writer.read(&mut target_bookmarks)?;
 
     if !target_bookmarks.bookmarks.is_empty() {
         info!("Bookmarks already imported");
@@ -36,10 +34,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
             config.settings.max_concurrent_requests,
         )
         .await?;
-        // Rewind after reading the content from the file and overwrite it with the
-        // updated content.
-        target_bookmark_file.rewind()?;
-        target_bookmarks.write(&mut target_bookmark_file)?;
+        target_reader_writer.write(&target_bookmarks)?;
     }
 
     Ok(())
@@ -51,7 +46,12 @@ async fn init_bookmarks(
     source_reader: &mut [SourceReader],
     max_concurrent_requests: usize,
 ) -> Result<TargetBookmarks, anyhow::Error> {
-    let source_bookmarks = SourceBookmarks::read(source_reader)?;
+    let mut source_bookmarks = SourceBookmarks::new();
+
+    for reader in source_reader.iter_mut() {
+        reader.read_and_parse(&mut source_bookmarks)?;
+    }
+
     let mut target_bookmarks = TargetBookmarks::from(source_bookmarks);
 
     info!(
@@ -91,9 +91,8 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
         let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
-        let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
+        let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
@@ -153,9 +152,8 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
         let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
-        let bookmark_readers = BookmarkReaders::new();
         let source = Source::new(bookmark_path, vec![]);
-        let source_reader = SourceReader::new(&source, bookmark_readers).unwrap();
+        let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),

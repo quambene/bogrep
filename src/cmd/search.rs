@@ -1,4 +1,7 @@
-use crate::{cache::CacheMode, utils, Cache, Caching, Config, TargetBookmarks};
+use crate::{
+    bookmark_reader::TargetReaderWriter, cache::CacheMode, utils, Cache, Caching, Config,
+    TargetBookmarks,
+};
 use anyhow::anyhow;
 use colored::Colorize;
 use log::info;
@@ -20,12 +23,15 @@ pub fn search(
         info!("{pattern:?}");
     }
 
-    let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
-    let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache_mode = CacheMode::new(&cache_mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
 
-    if target_bookmarks.bookmarks.is_empty() {
+    let mut target_bookmarks = TargetBookmarks::default();
+    let target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
+    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
+    target_reader_writer.read(&mut target_bookmarks)?;
+
+    if target_bookmarks.is_empty() {
         Err(anyhow!("Missing bookmarks, run `bogrep import` first"))
     } else {
         search_bookmarks(pattern, &target_bookmarks, &cache)?;

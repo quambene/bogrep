@@ -1,6 +1,6 @@
 use crate::{
-    cache::CacheMode, html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs,
-    TargetBookmark, TargetBookmarks,
+    bookmark_reader::TargetReaderWriter, cache::CacheMode, html, utils, Cache, Caching, Client,
+    Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
@@ -11,15 +11,14 @@ use std::io::{Read, Seek, Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
-    let mut target_bookmark_file =
-        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
+    let target_bookmark_file = utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
     fetch_and_cache(
         &client,
         &cache,
-        &mut target_bookmark_file,
+        target_bookmark_file,
         config.settings.max_concurrent_requests,
         args.all,
     )
@@ -30,28 +29,27 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 pub async fn fetch_and_cache(
     client: &impl Fetch,
     cache: &impl Caching,
-    target_bookmark_file: &mut (impl Read + Write + Seek),
+    target_bookmark_file: impl Read + Write + Seek,
     max_concurrent_requests: usize,
     fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
-    let mut bookmarks = TargetBookmarks::read(target_bookmark_file)?;
-    // Rewind after reading the content from the file and overwrite it with the
-    // updated content.
-    target_bookmark_file.rewind()?;
+    let mut target_bookmarks = TargetBookmarks::default();
+    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
+    target_reader_writer.read(&mut target_bookmarks)?;
 
     fetch_and_add_all(
         client,
         cache,
-        &mut bookmarks.bookmarks,
+        &mut target_bookmarks.bookmarks,
         max_concurrent_requests,
         fetch_all,
     )
     .await?;
 
-    trace!("Fetched bookmarks: {bookmarks:#?}");
+    trace!("Fetched bookmarks: {target_bookmarks:#?}");
 
     // Write bookmarks with updated timestamps.
-    bookmarks.write(target_bookmark_file)?;
+    target_reader_writer.write(&target_bookmarks)?;
     Ok(())
 }
 
@@ -123,11 +121,14 @@ async fn fetch_and_add(
 /// Fetch difference between cached and fetched website, and display changes.
 pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::Error> {
     debug!("Diff content for urls: {:#?}", args.diff);
-    let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
-    let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
+
+    let mut target_bookmarks = TargetBookmarks::default();
+    let target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
+    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
+    target_reader_writer.read(&mut target_bookmarks)?;
 
     for url in args.diff {
         let bookmark = target_bookmarks.find(&url);
