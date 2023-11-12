@@ -46,7 +46,7 @@ async fn init_bookmarks(
     source_reader: &mut [SourceReader],
     max_concurrent_requests: usize,
 ) -> Result<TargetBookmarks, anyhow::Error> {
-    let mut source_bookmarks = SourceBookmarks::new();
+    let mut source_bookmarks = SourceBookmarks::default();
 
     for reader in source_reader.iter_mut() {
         reader.read_and_parse(&mut source_bookmarks)?;

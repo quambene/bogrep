@@ -197,7 +197,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
@@ -220,7 +220,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
@@ -243,7 +243,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![String::from("dev")]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
@@ -267,7 +267,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![String::from("dev")]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);

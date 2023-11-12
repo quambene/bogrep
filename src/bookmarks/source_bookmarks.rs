@@ -2,22 +2,14 @@ use log::debug;
 use std::collections::HashSet;
 
 /// Describes the bookmark url from a specific source, like Firefox or Chrome.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SourceBookmarks {
     pub bookmarks: HashSet<String>,
 }
 
-impl Default for SourceBookmarks {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SourceBookmarks {
-    pub fn new() -> Self {
-        Self {
-            bookmarks: HashSet::new(),
-        }
+    pub fn new(bookmarks: HashSet<String>) -> Self {
+        Self { bookmarks }
     }
 
     pub fn insert(&mut self, url: &str) {

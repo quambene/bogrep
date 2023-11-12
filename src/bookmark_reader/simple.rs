@@ -52,7 +52,7 @@ mod tests {
         assert!(source_path.exists());
         let mut source_bookmark_file = utils::open_file(source_path).unwrap();
 
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![]);
         let bookmark_reader = SimpleBookmarkReader;
 
