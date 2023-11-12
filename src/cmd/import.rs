@@ -23,16 +23,17 @@ pub fn import(config: &Config) -> Result<(), anyhow::Error> {
 
 fn import_bookmarks(
     mut source_reader: Vec<SourceReader>,
-    target_reader_writer: impl Read + Write + Seek,
+    reader_writer: impl Read + Write + Seek,
 ) -> Result<(), anyhow::Error> {
-    let mut source_bookmarks = SourceBookmarks::new();
+    let mut source_bookmarks = SourceBookmarks::default();
 
     for reader in &mut source_reader {
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader_writer = TargetReaderWriter::new(target_reader_writer);
+    let mut target_reader_writer = TargetReaderWriter::new(reader_writer);
+
     target_reader_writer.read(&mut target_bookmarks)?;
     target_bookmarks.update(source_bookmarks)?;
     target_reader_writer.write(&target_bookmarks)?;
@@ -171,5 +172,183 @@ mod tests {
             "https://doc.rust-lang.org/book/title-page.html".to_owned(),
         ]);
         test_import_bookmarks(&source, expected_bookmarks);
+    }
+
+    #[test]
+    fn test_import_bookmarks_simple_add_source_bookmarks() {
+        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
+        let mut source_reader_writer = Cursor::new(Vec::new());
+        let source_bookmarks = vec!["https://doc.rust-lang.org/book/title-page.html".to_owned()];
+
+        for bookmark in source_bookmarks {
+            writeln!(source_reader_writer, "{}", bookmark).unwrap();
+        }
+
+        source_reader_writer.set_position(0);
+        let source_reader = SourceReader::new(
+            source.clone(),
+            source_path.to_owned(),
+            Box::new(source_reader_writer.clone()),
+            Box::new(SimpleBookmarkReader),
+        );
+
+        let target_bookmarks = TargetBookmarks::default();
+        let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
+        let mut target_reader_writer = Cursor::new(Vec::new());
+        target_reader_writer.write_all(&target_bookmarks).unwrap();
+        // Set cursor position to the start again to prepare cursor for reading.
+        target_reader_writer.set_position(0);
+
+        let res = import_bookmarks(vec![source_reader], &mut target_reader_writer);
+
+        let actual = target_reader_writer.get_ref();
+        let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual);
+        assert!(
+            actual_bookmarks.is_ok(),
+            "{}\n{}",
+            actual_bookmarks.unwrap_err(),
+            String::from_utf8(actual.to_owned()).unwrap()
+        );
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        source_reader_writer.get_mut().clear();
+        let source_bookmarks =
+            vec!["https://www.deepl.com/translator".to_owned(),
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
+            .to_owned(),
+            "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
+            "https://doc.rust-lang.org/book/title-page.html".to_owned()];
+
+        for bookmark in source_bookmarks {
+            writeln!(source_reader_writer, "{}", bookmark).unwrap();
+        }
+
+        source_reader_writer.set_position(0);
+        let source_reader = SourceReader::new(
+            source,
+            source_path.to_owned(),
+            Box::new(source_reader_writer.clone()),
+            Box::new(SimpleBookmarkReader),
+        );
+        let res = import_bookmarks(vec![source_reader], &mut target_reader_writer);
+
+        let actual = target_reader_writer.get_ref();
+        let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual);
+        assert!(
+            actual_bookmarks.is_ok(),
+            "{}\n{}",
+            actual_bookmarks.unwrap_err(),
+            String::from_utf8(actual.to_owned()).unwrap()
+        );
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let actual_bookmarks = actual_bookmarks.unwrap();
+        assert!(actual_bookmarks
+            .bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached == None));
+        assert_eq!(
+            actual_bookmarks
+                .bookmarks
+                .iter()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+                HashSet::from_iter([
+                    "https://www.deepl.com/translator".to_owned(),
+                    "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
+                        .to_owned(),
+                    "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
+                    "https://doc.rust-lang.org/book/title-page.html".to_owned(),
+                ]),
+        );
+    }
+
+    #[test]
+    fn test_import_bookmarks_simple_delete_source_bookmarks() {
+        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
+        let source_bookmarks =
+            vec!["https://www.deepl.com/translator".to_owned(),
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
+            .to_owned(),
+            "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
+            "https://doc.rust-lang.org/book/title-page.html".to_owned()];
+        let mut source_reader_writer = Cursor::new(Vec::new());
+
+        for bookmark in source_bookmarks {
+            writeln!(source_reader_writer, "{}", bookmark).unwrap();
+        }
+
+        source_reader_writer.set_position(0);
+        let source_reader = SourceReader::new(
+            source.clone(),
+            source_path.to_owned(),
+            Box::new(source_reader_writer.clone()),
+            Box::new(SimpleBookmarkReader),
+        );
+
+        let target_bookmarks = TargetBookmarks::default();
+        let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
+        let mut target_reader_writer = Cursor::new(Vec::new());
+        target_reader_writer.write_all(&target_bookmarks).unwrap();
+        // Set cursor position to the start again to prepare cursor for reading.
+        target_reader_writer.set_position(0);
+
+        let res = import_bookmarks(vec![source_reader], &mut target_reader_writer);
+
+        let actual = target_reader_writer.get_ref();
+        let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual);
+        assert!(
+            actual_bookmarks.is_ok(),
+            "{}\n{}",
+            actual_bookmarks.unwrap_err(),
+            String::from_utf8(actual.to_owned()).unwrap()
+        );
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        source_reader_writer.get_mut().clear();
+        writeln!(
+            source_reader_writer,
+            "{}",
+            "https://doc.rust-lang.org/book/title-page.html"
+        )
+        .unwrap();
+        source_reader_writer.set_position(0);
+        let source_reader = SourceReader::new(
+            source,
+            source_path.to_owned(),
+            Box::new(source_reader_writer.clone()),
+            Box::new(SimpleBookmarkReader),
+        );
+        let res = import_bookmarks(vec![source_reader], &mut target_reader_writer);
+
+        let actual = target_reader_writer.get_ref();
+        let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual);
+        assert!(
+            actual_bookmarks.is_ok(),
+            "{}\n{}",
+            actual_bookmarks.unwrap_err(),
+            String::from_utf8(actual.to_owned()).unwrap()
+        );
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let actual_bookmarks = actual_bookmarks.unwrap();
+        assert!(actual_bookmarks
+            .bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached == None));
+        assert_eq!(
+            actual_bookmarks
+                .bookmarks
+                .iter()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+            HashSet::from_iter([String::from(
+                "https://doc.rust-lang.org/book/title-page.html"
+            )]),
+        );
     }
 }
