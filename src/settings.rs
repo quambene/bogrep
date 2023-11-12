@@ -116,7 +116,7 @@ impl Settings {
 
     pub fn set_cache_mode(&mut self, cache_mode: Option<CacheMode>) {
         if let Some(cache_mode) = cache_mode {
-            debug!("Set cache mode to {:#?}", cache_mode);
+            debug!("Set cache mode to {}", cache_mode);
             self.cache_mode = cache_mode;
         }
     }
