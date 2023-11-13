@@ -43,6 +43,7 @@ pub fn test_bookmarks(temp_path: &Path) -> Vec<TargetBookmark> {
     bookmarks.bookmarks
 }
 
+#[allow(dead_code)]
 pub async fn start_mock_server() -> MockServer {
     let mock_server = MockServer::start().await;
     let bind_url = mock_server.uri();
@@ -50,6 +51,7 @@ pub async fn start_mock_server() -> MockServer {
     mock_server
 }
 
+#[allow(dead_code)]
 pub async fn mount_mocks(mock_server: &MockServer, num_mocks: u32) -> HashMap<String, String> {
     let mut mocks = HashMap::new();
     let bind_url = mock_server.uri();
