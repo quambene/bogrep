@@ -1,6 +1,5 @@
 use bogrep::{json, utils, TargetBookmark, TargetBookmarks};
 use std::{collections::HashMap, fs::File, io::Read, path::Path};
-use tempfile::TempDir;
 use wiremock::{
     matchers::{method, path},
     Mock, MockGuard, MockServer, ResponseTemplate,
@@ -20,13 +19,16 @@ pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, Strin
 }
 
 #[allow(dead_code)]
-pub fn test_bookmarks(temp_dir: &TempDir) -> Vec<TargetBookmark> {
-    let bookmarks_path = temp_dir.path().join("bookmarks.json");
+pub fn test_bookmarks(temp_path: &Path) -> Vec<TargetBookmark> {
+    let bookmarks_path = temp_path.join("bookmarks.json");
     assert!(
         bookmarks_path.exists(),
         "Missing path: {}",
         bookmarks_path.display()
     );
+    // Lock file was cleaned up.
+    let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");
+    assert!(!bookmarks_lock_path.exists());
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
     let res = json::deserialize::<TargetBookmarks>(&bookmarks);
     assert!(

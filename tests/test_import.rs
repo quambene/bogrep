@@ -27,7 +27,7 @@ fn test_import(source: &str, temp_path: &Path) {
         bookmarks_path.display()
     );
     // Lock file was cleaned up.
-    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
+    let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");
     assert!(!bookmarks_lock_path.exists());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
@@ -178,7 +178,7 @@ fn test_import_consecutive() {
     let bookmarks_path = temp_path.join("bookmarks.json");
     assert!(bookmarks_path.exists());
     // Lock file was cleaned up.
-    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
+    let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");
     assert!(!bookmarks_lock_path.exists());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();

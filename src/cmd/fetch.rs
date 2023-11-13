@@ -60,6 +60,7 @@ pub async fn fetch_and_cache(
 
     // Write bookmarks with updated timestamps.
     target_writer.write(&target_bookmarks)?;
+
     Ok(())
 }
 

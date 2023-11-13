@@ -30,7 +30,7 @@ async fn test_init() {
     cmd.args(["config", "--source", source.to_str().unwrap()]);
     cmd.output().unwrap();
 
-    let bookmarks = common::test_bookmarks(&temp_dir);
+    let bookmarks = common::test_bookmarks(temp_path);
     assert!(bookmarks.is_empty());
 
     println!("Execute 'bogrep init'");
@@ -39,7 +39,7 @@ async fn test_init() {
     cmd.args(["init"]);
     cmd.output().unwrap();
 
-    let bookmarks = common::test_bookmarks(&temp_dir);
+    let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
     for bookmark in &bookmarks {
         assert!(bookmark.last_cached.is_some());
@@ -54,6 +54,6 @@ async fn test_init() {
     }
 
     // Lock file was cleaned up.
-    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
+    let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");
     assert!(!bookmarks_lock_path.exists());
 }

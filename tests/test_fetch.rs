@@ -31,7 +31,7 @@ async fn test_fetch() {
     cmd.args(["config", "--source", source.to_str().unwrap()]);
     cmd.output().unwrap();
 
-    let bookmarks = common::test_bookmarks(&temp_dir);
+    let bookmarks = common::test_bookmarks(temp_path);
     assert!(bookmarks.is_empty());
 
     println!("Execute 'bogrep import'");
@@ -40,7 +40,7 @@ async fn test_fetch() {
     cmd.args(["import"]);
     cmd.output().unwrap();
 
-    let bookmarks = common::test_bookmarks(&temp_dir);
+    let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
     for bookmark in bookmarks {
         assert!(bookmark.last_cached.is_none());
@@ -53,7 +53,7 @@ async fn test_fetch() {
     let res = cmd.output();
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
-    let bookmarks = common::test_bookmarks(&temp_dir);
+    let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
     for bookmark in &bookmarks {
         assert!(bookmark.last_cached.is_some());
@@ -66,10 +66,6 @@ async fn test_fetch() {
         let expected_content = mocks.get(&bookmark.url).unwrap();
         assert_eq!(&actual_content, expected_content);
     }
-
-    // Lock file was cleaned up.
-    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
-    assert!(!bookmarks_lock_path.exists());
 }
 
 #[tokio::test]
@@ -115,7 +111,7 @@ async fn test_fetch_diff() {
     writeln!(bookmarks_file, "{}", mock_website_1.url).unwrap();
     writeln!(bookmarks_file, "{}", mock_website_2.url).unwrap();
 
-    let bookmarks = common::test_bookmarks(&temp_dir);
+    let bookmarks = common::test_bookmarks(temp_path);
 
     println!("Execute 'bogrep fetch --diff'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
@@ -125,8 +121,4 @@ async fn test_fetch_diff() {
         str::contains("-Test content 10+Test content 11")
             .and(str::contains("-Test content 20+Test content 21")),
     );
-
-    // Lock file was cleaned up.
-    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
-    assert!(!bookmarks_lock_path.exists());
 }
