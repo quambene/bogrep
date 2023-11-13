@@ -62,7 +62,6 @@ pub fn open_file_in_read_write_mode(path: &Path) -> Result<File, anyhow::Error> 
 /// Helper function to open a file and truncate it.
 pub fn open_and_truncate_file(path: &Path) -> Result<File, anyhow::Error> {
     let file = OpenOptions::new()
-        .read(true)
         .write(true)
         .truncate(true)
         .create(true)
