@@ -1,21 +1,27 @@
 mod chrome;
 mod firefox;
 mod simple;
+mod source_reader;
+mod target_reader;
+mod target_writer;
 
-use crate::{utils, Source, SourceBookmarks};
-use anyhow::anyhow;
+use crate::{Source, SourceBookmarks};
 pub use chrome::{ChromeBookmarkReader, ChromeNoExtensionBookmarkReader};
 pub use firefox::{FirefoxBookmarkReader, FirefoxCompressedBookmarkReader};
 use log::debug;
 pub use simple::SimpleBookmarkReader;
+pub use source_reader::SourceReader;
 use std::{
+    fmt,
     fs::File,
-    io::{Read, Seek},
+    io::Read,
     path::{Path, PathBuf},
 };
+pub use target_reader::ReadTarget;
+pub use target_writer::WriteTarget;
 
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
-pub trait ReadBookmark {
+pub trait ReadBookmark: fmt::Debug {
     fn name(&self) -> &str;
 
     fn extension(&self) -> Option<&str>;
@@ -77,87 +83,5 @@ impl BookmarkReaders {
 impl Default for BookmarkReaders {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-pub struct SourceReader {
-    source: Source,
-    bookmarks_path: PathBuf,
-    reader: Box<dyn Read>,
-    bookmark_reader: Box<dyn ReadBookmark>,
-}
-
-impl SourceReader {
-    pub fn new(source: &Source, bookmark_readers: BookmarkReaders) -> Result<Self, anyhow::Error> {
-        let (bookmark_reader, reader, bookmarks_path) =
-            Self::select_reader(&source.path, bookmark_readers)?;
-
-        Ok(Self {
-            source: source.to_owned(),
-            bookmarks_path,
-            reader: Box::new(reader),
-            bookmark_reader,
-        })
-    }
-
-    pub fn source(&self) -> &Source {
-        &self.source
-    }
-
-    pub fn bookmark_reader(&self) -> &dyn ReadBookmark {
-        self.bookmark_reader.as_ref()
-    }
-
-    pub fn read_and_parse(&mut self, bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
-        debug!(
-            "Read bookmarks from file '{}'",
-            self.bookmarks_path.display()
-        );
-
-        self.bookmark_reader
-            .read_and_parse(&mut self.reader, &self.source, bookmarks)?;
-        Ok(())
-    }
-
-    pub fn select_reader(
-        source_path: &Path,
-        bookmark_readers: BookmarkReaders,
-    ) -> Result<(Box<dyn ReadBookmark>, impl Read, PathBuf), anyhow::Error> {
-        for bookmark_reader in bookmark_readers.0 {
-            if source_path.is_file()
-                && bookmark_reader.extension()
-                    == source_path.extension().and_then(|path| path.to_str())
-            {
-                {
-                    let mut bookmark_file = utils::open_file(source_path)?;
-                    let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
-                    bookmark_file.rewind()?;
-
-                    if bookmark_reader.is_selected(&bookmarks)? {
-                        return Ok((bookmark_reader, bookmark_file, source_path.to_owned()));
-                    }
-                }
-            } else if source_path.is_dir() {
-                if let Some(bookmarks_path) = bookmark_reader.select_path(source_path)? {
-                    if bookmarks_path.is_file()
-                        && bookmark_reader.extension()
-                            == bookmarks_path.extension().and_then(|path| path.to_str())
-                    {
-                        let mut bookmark_file = utils::open_file(&bookmarks_path)?;
-                        let bookmarks = bookmark_reader.read(&mut bookmark_file)?;
-                        bookmark_file.rewind()?;
-
-                        if bookmark_reader.is_selected(&bookmarks)? {
-                            return Ok((bookmark_reader, bookmark_file, bookmarks_path));
-                        }
-                    }
-                }
-            }
-        }
-
-        Err(anyhow!(
-            "Format not supported for bookmark file '{}'",
-            source_path.display()
-        ))
     }
 }

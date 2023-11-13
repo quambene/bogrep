@@ -83,6 +83,7 @@ impl Chrome {
 }
 
 /// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
+#[derive(Debug)]
 pub struct ChromeBookmarkReader;
 
 impl ReadBookmark for ChromeBookmarkReader {
@@ -132,6 +133,7 @@ impl ReadBookmark for ChromeBookmarkReader {
     }
 }
 
+#[derive(Debug)]
 pub struct ChromeNoExtensionBookmarkReader;
 
 impl ReadBookmark for ChromeNoExtensionBookmarkReader {
@@ -195,7 +197,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
@@ -218,7 +220,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
@@ -241,7 +243,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![String::from("dev")]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
@@ -265,7 +267,7 @@ mod tests {
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
+        let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(source_path, vec![String::from("dev")]);
 
         let res = bookmark_reader.parse(&bookmarks, &source, &mut source_bookmarks);
