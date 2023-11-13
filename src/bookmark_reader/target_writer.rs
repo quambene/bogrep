@@ -19,8 +19,6 @@ where
         // Rewind after writing.
         self.rewind()?;
 
-        self.flush()?;
-
         Ok(())
     }
 }
