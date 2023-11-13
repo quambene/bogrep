@@ -4,9 +4,9 @@ use log::{debug, trace};
 use serde_json::{Map, Value};
 use std::io::Read;
 
-pub struct Chrome;
+pub struct Chromium;
 
-impl Chrome {
+impl Chromium {
     fn select_bookmark(obj: &Map<String, Value>, bookmarks: &mut SourceBookmarks) {
         trace!("json object: {obj:#?}");
 
@@ -84,11 +84,11 @@ impl Chrome {
 
 /// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
 #[derive(Debug)]
-pub struct ChromeBookmarkReader;
+pub struct ChromiumBookmarkReader;
 
-impl ReadBookmark for ChromeBookmarkReader {
+impl ReadBookmark for ChromiumBookmarkReader {
     fn name(&self) -> &'static str {
-        "Chrome/Chromium"
+        "Chromium/Chrome/Edge"
     }
 
     fn extension(&self) -> Option<&str> {
@@ -128,17 +128,17 @@ impl ReadBookmark for ChromeBookmarkReader {
     ) -> Result<(), anyhow::Error> {
         debug!("Parse bookmarks from {}", self.name());
         let value: Value = serde_json::from_str(raw_bookmarks)?;
-        Chrome::traverse_json(&value, bookmarks, source);
+        Chromium::traverse_json(&value, bookmarks, source);
         Ok(())
     }
 }
 
 #[derive(Debug)]
-pub struct ChromeNoExtensionBookmarkReader;
+pub struct ChromiumNoExtensionBookmarkReader;
 
-impl ReadBookmark for ChromeNoExtensionBookmarkReader {
+impl ReadBookmark for ChromiumNoExtensionBookmarkReader {
     fn name(&self) -> &'static str {
-        "Chrome/Chromium (no extension)"
+        "Chromium/Chrome/Edge (no extension)"
     }
 
     fn extension(&self) -> Option<&str> {
@@ -178,7 +178,7 @@ impl ReadBookmark for ChromeNoExtensionBookmarkReader {
     ) -> Result<(), anyhow::Error> {
         debug!("Parse bookmarks from {}", self.name());
         let value: Value = serde_json::from_str(raw_bookmarks)?;
-        Chrome::traverse_json(&value, bookmarks, source);
+        Chromium::traverse_json(&value, bookmarks, source);
         Ok(())
     }
 }
@@ -190,10 +190,10 @@ mod tests {
 
     #[test]
     fn test_parse_all() {
-        let source_path = Path::new("test_data/bookmarks_chrome.json");
+        let source_path = Path::new("test_data/bookmarks_chromium.json");
         assert!(source_path.exists());
 
-        let bookmark_reader = ChromeBookmarkReader;
+        let bookmark_reader = ChromiumBookmarkReader;
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
@@ -213,10 +213,10 @@ mod tests {
 
     #[test]
     fn test_parse_all_no_extension() {
-        let source_path = Path::new("test_data/bookmarks_chrome_no_extension");
+        let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
         assert!(source_path.exists());
 
-        let bookmark_reader = ChromeNoExtensionBookmarkReader;
+        let bookmark_reader = ChromiumNoExtensionBookmarkReader;
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
@@ -236,10 +236,10 @@ mod tests {
 
     #[test]
     fn test_parse_folder() {
-        let source_path = Path::new("test_data/bookmarks_chrome.json");
+        let source_path = Path::new("test_data/bookmarks_chromium.json");
         assert!(source_path.exists());
 
-        let bookmark_reader = ChromeBookmarkReader;
+        let bookmark_reader = ChromiumBookmarkReader;
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
@@ -260,10 +260,10 @@ mod tests {
 
     #[test]
     fn test_parse_folder_no_extension() {
-        let source_path = Path::new("test_data/bookmarks_chrome_no_extension");
+        let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
         assert!(source_path.exists());
 
-        let bookmark_reader = ChromeNoExtensionBookmarkReader;
+        let bookmark_reader = ChromiumNoExtensionBookmarkReader;
         let mut bookmark_file = bookmark_reader.open(source_path).unwrap();
 
         let bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();

@@ -95,7 +95,7 @@ mod tests {
     async fn test_init_bookmarks_mode_html() {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
-        let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
+        let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
         let source = Source::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
@@ -156,7 +156,7 @@ mod tests {
     async fn test_init_bookmarks_mode_text() {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
-        let bookmark_path = Path::new("test_data/bookmarks_chrome.json");
+        let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
         let source = Source::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;

@@ -132,22 +132,25 @@ mod tests {
 
     #[test]
     fn test_init_chrome() {
-        let source_path = Path::new("test_data/bookmarks_chrome.json");
-        let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
-        let source_reader = SourceReader::init(&source).unwrap();
-        assert_eq!(source_reader.bookmark_reader().name(), "Chrome/Chromium");
-    }
-
-    #[test]
-    fn test_init_chrome_no_extension() {
-        let source_path = Path::new("test_data/bookmarks_chrome_no_extension");
+        let source_path = Path::new("test_data/bookmarks_chromium.json");
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let source_reader = SourceReader::init(&source).unwrap();
         assert_eq!(
             source_reader.bookmark_reader().name(),
-            "Chrome/Chromium (no extension)"
+            "Chromium/Chrome/Edge"
+        );
+    }
+
+    #[test]
+    fn test_init_chrome_no_extension() {
+        let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
+        let source_folders = vec![];
+        let source = Source::new(source_path, source_folders);
+        let source_reader = SourceReader::init(&source).unwrap();
+        assert_eq!(
+            source_reader.bookmark_reader().name(),
+            "Chromium/Chrome/Edge (no extension)"
         );
     }
 

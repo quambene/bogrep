@@ -4,6 +4,7 @@
 
 - added
   - Add integration test for `bogrep config --ignore`
+  - Support Edge browser
 - changed
   - Refactor from `bogrep ignore` to `bogrep config --ignore`
   - Fix overwrite of `Source` in settings
