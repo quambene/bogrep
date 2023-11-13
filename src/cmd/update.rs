@@ -17,7 +17,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         .settings
         .sources
         .iter()
-        .map(|source| SourceReader::init(source))
+        .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
     let target_bookmark_file = utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;

@@ -13,7 +13,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         .settings
         .sources
         .iter()
-        .map(|source| SourceReader::init(source))
+        .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
     let mut target_bookmarks = TargetBookmarks::default();
