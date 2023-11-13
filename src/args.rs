@@ -60,6 +60,7 @@ pub struct SetSource {
 #[derive(ClapArgs, Debug)]
 #[group(required = false)]
 pub struct SetCacheMode {
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(long)]
     pub cache_mode: Option<CacheMode>,
 }
