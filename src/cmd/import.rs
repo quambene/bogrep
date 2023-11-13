@@ -3,7 +3,6 @@ use crate::{
     utils, Config, SourceBookmarks, TargetBookmarks,
 };
 use log::{info, trace};
-use std::fs;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
@@ -19,9 +18,9 @@ pub fn import(config: &Config) -> Result<(), anyhow::Error> {
 
     import_bookmarks(source_reader, &mut target_reader, &mut target_writer)?;
 
-    fs::rename(
-        &config.target_bookmark_lock_file,
-        &config.target_bookmark_file,
+    utils::close_and_rename(
+        (target_writer, &config.target_bookmark_lock_file),
+        (target_reader, &config.target_bookmark_file),
     )?;
 
     Ok(())

@@ -98,3 +98,13 @@ pub fn append_file(path: &Path) -> Result<File, anyhow::Error> {
 pub fn remove_file(path: &Path) -> Result<(), anyhow::Error> {
     fs::remove_file(path).context(format!("Can't remove file at {}", path.display()))
 }
+
+/// Helper function to close and rename a file.
+pub fn close_and_rename(from: (File, &Path), to: (File, &Path)) -> Result<(), anyhow::Error> {
+    drop(from.0);
+    drop(to.0);
+
+    fs::rename(from.1, to.1)?;
+
+    Ok(())
+}

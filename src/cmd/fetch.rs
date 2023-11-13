@@ -8,7 +8,6 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::fs;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -28,9 +27,9 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     )
     .await?;
 
-    fs::rename(
-        &config.target_bookmark_lock_file,
-        &config.target_bookmark_file,
+    utils::close_and_rename(
+        (target_writer, &config.target_bookmark_lock_file),
+        (target_reader, &config.target_bookmark_file),
     )?;
 
     Ok(())

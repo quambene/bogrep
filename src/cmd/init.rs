@@ -5,7 +5,6 @@ use crate::{
     utils, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks, TargetBookmarks,
 };
 use log::info;
-use std::fs;
 
 /// Import bookmarks, fetch bookmarks from url, and save fetched websites in
 /// cache if bookmarks were not imported yet.
@@ -37,9 +36,9 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         .await?;
         target_writer.write(&target_bookmarks)?;
 
-        fs::rename(
-            &config.target_bookmark_lock_file,
-            &config.target_bookmark_file,
+        utils::close_and_rename(
+            (target_writer, &config.target_bookmark_lock_file),
+            (target_reader, &config.target_bookmark_file),
         )?;
     }
 

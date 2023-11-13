@@ -5,7 +5,6 @@ use crate::{
     cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
-use std::fs;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
@@ -37,11 +36,10 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
 
     target_writer.write(&target_bookmarks)?;
 
-    fs::rename(
-        &config.target_bookmark_lock_file,
-        &config.target_bookmark_file,
+    utils::close_and_rename(
+        (target_writer, &config.target_bookmark_lock_file),
+        (target_reader, &config.target_bookmark_file),
     )?;
-
     Ok(())
 }
 
