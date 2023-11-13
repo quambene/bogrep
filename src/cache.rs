@@ -10,6 +10,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    fmt,
     fs::File,
     io::Read,
     path::{Path, PathBuf},
@@ -23,6 +24,16 @@ pub enum CacheMode {
     Html,
     #[default]
     Text,
+}
+
+impl fmt::Display for CacheMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let cache_mode = match &self {
+            CacheMode::Html => "html",
+            CacheMode::Text => "text",
+        };
+        write!(f, "{}", cache_mode)
+    }
 }
 
 impl CacheMode {

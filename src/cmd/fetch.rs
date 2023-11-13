@@ -1,57 +1,65 @@
 use crate::{
-    cache::CacheMode, html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs,
-    TargetBookmark, TargetBookmarks,
+    bookmark_reader::{ReadTarget, WriteTarget},
+    cache::CacheMode,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::io::{Read, Seek, Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
-    let mut target_bookmark_file =
-        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+
     fetch_and_cache(
         &client,
         &cache,
-        &mut target_bookmark_file,
+        &mut target_reader,
+        &mut target_writer,
         config.settings.max_concurrent_requests,
         args.all,
     )
     .await?;
+
+    utils::close_and_rename(
+        (target_writer, &config.target_bookmark_lock_file),
+        (target_reader, &config.target_bookmark_file),
+    )?;
+
     Ok(())
 }
 
 pub async fn fetch_and_cache(
     client: &impl Fetch,
     cache: &impl Caching,
-    target_bookmark_file: &mut (impl Read + Write + Seek),
+    target_reader: &mut impl ReadTarget,
+    target_writer: &mut impl WriteTarget,
     max_concurrent_requests: usize,
     fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
-    let mut bookmarks = TargetBookmarks::read(target_bookmark_file)?;
-    // Rewind after reading the content from the file and overwrite it with the
-    // updated content.
-    target_bookmark_file.rewind()?;
+    let mut target_bookmarks = TargetBookmarks::default();
+    target_reader.read(&mut target_bookmarks)?;
 
     fetch_and_add_all(
         client,
         cache,
-        &mut bookmarks.bookmarks,
+        &mut target_bookmarks.bookmarks,
         max_concurrent_requests,
         fetch_all,
     )
     .await?;
 
-    trace!("Fetched bookmarks: {bookmarks:#?}");
+    trace!("Fetched bookmarks: {target_bookmarks:#?}");
 
     // Write bookmarks with updated timestamps.
-    bookmarks.write(target_bookmark_file)?;
+    target_writer.write(&target_bookmarks)?;
+
     Ok(())
 }
 
@@ -86,6 +94,7 @@ async fn fetch_and_add(
     if fetch_all {
         match client.fetch(bookmark).await {
             Ok(website) => {
+                trace!("Fetched website: {website}");
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.replace(html, bookmark).await {
@@ -101,6 +110,7 @@ async fn fetch_and_add(
     } else if !cache.exists(bookmark) {
         match client.fetch(bookmark).await {
             Ok(website) => {
+                trace!("Fetched website: {website}");
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.add(html, bookmark).await {
@@ -121,11 +131,13 @@ async fn fetch_and_add(
 /// Fetch difference between cached and fetched website, and display changes.
 pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::Error> {
     debug!("Diff content for urls: {:#?}", args.diff);
-    let mut target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
-    let target_bookmarks = TargetBookmarks::read(&mut target_bookmark_file)?;
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
+
+    let mut target_bookmarks = TargetBookmarks::default();
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    target_reader.read(&mut target_bookmarks)?;
 
     for url in args.diff {
         let bookmark = target_bookmarks.find(&url);
@@ -133,6 +145,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
         if let Some(bookmark) = bookmark {
             if let Some(cached_website_before) = cache.get(bookmark)? {
                 let fetched_website = client.fetch(bookmark).await?;
+                trace!("Fetched website: {fetched_website}");
                 let html = html::filter_html(&fetched_website)?;
 
                 // Cache fetched website

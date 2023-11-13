@@ -40,11 +40,31 @@ pub fn open_file(path: &Path) -> Result<File, anyhow::Error> {
     Ok(file)
 }
 
+/// Helper function to open a file in read mode.
+pub fn open_file_in_read_mode(path: &Path) -> Result<File, anyhow::Error> {
+    let file = OpenOptions::new()
+        .read(true)
+        .open(path)
+        .context(format!("Can't open file at {}", path.display()))?;
+    Ok(file)
+}
+
+/// Helper function to open a file in read-write mode.
 pub fn open_file_in_read_write_mode(path: &Path) -> Result<File, anyhow::Error> {
     let file = OpenOptions::new()
         .read(true)
         .write(true)
-        // .append(false)
+        .open(path)
+        .context(format!("Can't open file at {}", path.display()))?;
+    Ok(file)
+}
+
+/// Helper function to open a file and truncate it.
+pub fn open_and_truncate_file(path: &Path) -> Result<File, anyhow::Error> {
+    let file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
         .open(path)
         .context(format!("Can't open file at {}", path.display()))?;
     Ok(file)
@@ -77,4 +97,14 @@ pub fn append_file(path: &Path) -> Result<File, anyhow::Error> {
 /// Helper function to remove a file that logs the path of the file in case of an error.
 pub fn remove_file(path: &Path) -> Result<(), anyhow::Error> {
     fs::remove_file(path).context(format!("Can't remove file at {}", path.display()))
+}
+
+/// Helper function to close and rename a file.
+pub fn close_and_rename(from: (File, &Path), to: (File, &Path)) -> Result<(), anyhow::Error> {
+    drop(from.0);
+    drop(to.0);
+
+    fs::rename(from.1, to.1)?;
+
+    Ok(())
 }

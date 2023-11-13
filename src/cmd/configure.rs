@@ -1,7 +1,6 @@
 use crate::{
-    bookmark_reader::{BookmarkReaders, SourceReader},
-    cache::CacheMode,
-    json, utils, Config, ConfigArgs, Settings, Source,
+    bookmark_reader::SourceReader, cache::CacheMode, json, utils, Config, ConfigArgs, Settings,
+    Source,
 };
 use anyhow::Context;
 use log::info;
@@ -43,11 +42,10 @@ fn configure_settings(
     mut writer: impl Write,
 ) -> Result<(), anyhow::Error> {
     let settings_read = settings.clone();
-    let bookmark_readers = BookmarkReaders::new();
 
     if let Some(source) = source {
         // Validate source file
-        let _ = SourceReader::select_reader(&source.path, bookmark_readers)?;
+        let _ = SourceReader::init(&source)?;
         settings.set_source(source)?;
     }
 

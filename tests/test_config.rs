@@ -28,6 +28,7 @@ fn test_config() {
             settings_path: temp_path.join("settings.json"),
             cache_path: temp_path.join("cache"),
             target_bookmark_file: temp_path.join("bookmarks.json"),
+            target_bookmark_lock_file: temp_path.join("bookmarks-lock.json"),
             settings: Settings::default()
         }
     );
