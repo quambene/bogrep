@@ -23,6 +23,7 @@ bogrep "reed-solomon code"
   - [Firefox](#firefox)
   - [Chrome](#chrome)
   - [Chromium](#chromium)
+  - [Edge](#edge)
 - [Specify bookmark folders](#specify-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
 - [Diff websites](#diff-websites)
@@ -127,6 +128,15 @@ Configure Chromium as source for bookmarks:
 ``` bash
 # Ubuntu (snap package)
 bogrep config --source ~/snap/chromium/common/chromium/Default/Bookmarks
+```
+
+### Edge
+
+Configure Edge as source for bookmarks:
+
+``` bash
+# Ubuntu
+bogrep config --source ~/.config/microsoft-edge/Default/Bookmarks
 ```
 
 ## Specify bookmark folders

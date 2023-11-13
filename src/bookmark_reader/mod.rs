@@ -1,4 +1,4 @@
-mod chrome;
+mod chromium;
 mod firefox;
 mod simple;
 mod source_reader;
@@ -6,7 +6,7 @@ mod target_reader;
 mod target_writer;
 
 use crate::{Source, SourceBookmarks};
-pub use chrome::{ChromeBookmarkReader, ChromeNoExtensionBookmarkReader};
+pub use chromium::{ChromiumBookmarkReader, ChromiumNoExtensionBookmarkReader};
 pub use firefox::{FirefoxBookmarkReader, FirefoxCompressedBookmarkReader};
 use log::debug;
 pub use simple::SimpleBookmarkReader;
@@ -73,8 +73,8 @@ impl BookmarkReaders {
         BookmarkReaders(vec![
             Box::new(FirefoxBookmarkReader),
             Box::new(FirefoxCompressedBookmarkReader),
-            Box::new(ChromeBookmarkReader),
-            Box::new(ChromeNoExtensionBookmarkReader),
+            Box::new(ChromiumBookmarkReader),
+            Box::new(ChromiumNoExtensionBookmarkReader),
             Box::new(SimpleBookmarkReader),
         ])
     }

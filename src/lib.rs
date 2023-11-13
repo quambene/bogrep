@@ -45,7 +45,7 @@ pub mod utils;
 
 pub use args::{Args, ConfigArgs, FetchArgs, InitArgs, Subcommands};
 pub use bookmark_reader::{
-    ChromeBookmarkReader, FirefoxBookmarkReader, ReadBookmark, SimpleBookmarkReader,
+    ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark, SimpleBookmarkReader,
 };
 pub use bookmarks::{SourceBookmarks, TargetBookmark, TargetBookmarks};
 pub use cache::{Cache, Caching, MockCache};

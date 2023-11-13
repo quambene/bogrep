@@ -67,14 +67,14 @@ fn test_configure_source_firefox() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_source_chrome() {
-    let source = "./test_data/bookmarks_chrome.json";
+    let source = "./test_data/bookmarks_chromium.json";
     test_configure_source(source);
 }
 
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_source_chrome_no_extension() {
-    let source = "./test_data/bookmarks_chrome_no_extension";
+    let source = "./test_data/bookmarks_chromium_no_extension";
     test_configure_source(source);
 }
 

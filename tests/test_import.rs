@@ -111,7 +111,7 @@ fn test_import_firefox_bookmark_folder_macos() {
 #[test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_chrome() {
-    let source = "./test_data/bookmarks_chrome.json";
+    let source = "./test_data/bookmarks_chromium.json";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
