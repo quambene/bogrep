@@ -7,7 +7,7 @@
 - changed
   - Refactor from `bogrep ignore` to `bogrep config --ignore`
   - Fix overwrite of `Source` in settings
-  - Fix consecutive `import`s
+  - Write `bookmarks.json` atomically
 
 ### v0.2.0
 
