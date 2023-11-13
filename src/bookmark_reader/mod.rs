@@ -2,7 +2,9 @@ mod chrome;
 mod firefox;
 mod simple;
 mod source_reader;
+mod target_reader;
 mod target_reader_writer;
+mod target_writer;
 
 use crate::{Source, SourceBookmarks};
 pub use chrome::{ChromeBookmarkReader, ChromeNoExtensionBookmarkReader};
@@ -16,7 +18,9 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
 };
+pub use target_reader::ReadTarget;
 pub use target_reader_writer::TargetReaderWriter;
+pub use target_writer::WriteTarget;
 
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
 pub trait ReadBookmark: fmt::Debug {

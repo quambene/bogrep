@@ -1,9 +1,9 @@
 use crate::{
-    bookmark_reader::{SourceReader, TargetReaderWriter},
+    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     utils, Config, SourceBookmarks, TargetBookmarks,
 };
 use log::{info, trace};
-use std::io::{Read, Seek, Write};
+use std::fs;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
@@ -14,17 +14,23 @@ pub fn import(config: &Config) -> Result<(), anyhow::Error> {
         .iter()
         .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-    let mut target_bookmark_file =
-        utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
-    import_bookmarks(source_reader, &mut target_bookmark_file)?;
+    import_bookmarks(source_reader, &mut target_reader, &mut target_writer)?;
+
+    fs::rename(
+        &config.target_bookmark_lock_file,
+        &config.target_bookmark_file,
+    )?;
 
     Ok(())
 }
 
 fn import_bookmarks(
     mut source_reader: Vec<SourceReader>,
-    reader_writer: &mut (impl Read + Write + Seek),
+    target_reader: &mut impl ReadTarget,
+    target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
@@ -33,11 +39,10 @@ fn import_bookmarks(
     }
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader_writer = TargetReaderWriter::new(reader_writer);
 
-    target_reader_writer.read(&mut target_bookmarks)?;
+    target_reader.read(&mut target_bookmarks)?;
     target_bookmarks.update(source_bookmarks)?;
-    target_reader_writer.write(&target_bookmarks)?;
+    target_writer.write(&target_bookmarks)?;
 
     log_import(&source_reader, &target_bookmarks);
 
@@ -68,22 +73,27 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 mod tests {
     use super::*;
     use crate::{json, test_utils, ReadBookmark, SimpleBookmarkReader, Source};
-    use std::{collections::HashSet, io::Cursor, path::Path};
+    use std::{
+        collections::HashSet,
+        io::{Cursor, Write},
+        path::Path,
+    };
 
     fn test_import_bookmarks(source: &Source, expected_bookmarks: HashSet<String>) {
         let target_bookmarks = TargetBookmarks::default();
         let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
 
-        let mut cursor = Cursor::new(Vec::new());
-        cursor.write_all(&target_bookmarks).unwrap();
+        let mut target_reader = Cursor::new(Vec::new());
+        target_reader.write_all(&target_bookmarks).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
-        cursor.set_position(0);
+        target_reader.set_position(0);
+        let mut target_writer = Cursor::new(Vec::new());
 
         let source_reader = SourceReader::init(&source).unwrap();
-        let res = import_bookmarks(vec![source_reader], &mut cursor);
+        let res = import_bookmarks(vec![source_reader], &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        let actual = cursor.into_inner();
+        let actual = target_writer.into_inner();
         let actual_bookmarks = json::deserialize::<TargetBookmarks>(&actual).unwrap();
         assert!(actual_bookmarks
             .bookmarks
@@ -180,7 +190,8 @@ mod tests {
         source: &Source,
         source_reader_writer: &mut Cursor<Vec<u8>>,
         bookmark_reader: impl ReadBookmark + 'static,
-        target_reader_writer: &mut Cursor<Vec<u8>>,
+        target_reader: &mut Cursor<Vec<u8>>,
+        target_writer: &mut Cursor<Vec<u8>>,
     ) {
         for bookmark in source_bookmarks.iter() {
             writeln!(source_reader_writer, "{}", bookmark).unwrap();
@@ -194,9 +205,9 @@ mod tests {
             Box::new(bookmark_reader),
         );
 
-        let res = import_bookmarks(vec![source_reader], target_reader_writer);
+        let res = import_bookmarks(vec![source_reader], target_reader, target_writer);
 
-        let actual = target_reader_writer.get_ref();
+        let actual = target_writer.get_ref();
         let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual);
         assert!(
             actual_bookmarks.is_ok(),
@@ -233,17 +244,20 @@ mod tests {
 
         let target_bookmarks = TargetBookmarks::default();
         let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
-        let mut target_reader_writer = Cursor::new(Vec::new());
-        target_reader_writer.write_all(&target_bookmarks).unwrap();
+
+        let mut target_reader = Cursor::new(Vec::new());
+        target_reader.write_all(&target_bookmarks).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
-        target_reader_writer.set_position(0);
+        target_reader.set_position(0);
+        let mut target_writer = Cursor::new(Vec::new());
 
         test_import(
             source_bookmarks,
             &source,
             &mut source_reader_writer,
             SimpleBookmarkReader,
-            &mut target_reader_writer,
+            &mut target_reader,
+            &mut target_writer,
         );
 
         // Clean up source and simulate change of source bookmarks.
@@ -261,7 +275,8 @@ mod tests {
             &source,
             &mut source_reader_writer,
             SimpleBookmarkReader,
-            &mut target_reader_writer,
+            &mut target_reader,
+            &mut target_writer,
         );
     }
 
@@ -281,29 +296,36 @@ mod tests {
 
         let target_bookmarks = TargetBookmarks::default();
         let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
-        let mut target_reader_writer = Cursor::new(Vec::new());
-        target_reader_writer.write_all(&target_bookmarks).unwrap();
+
+        let mut target_reader = Cursor::new(Vec::new());
+        target_reader.write_all(&target_bookmarks).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
-        target_reader_writer.set_position(0);
+        target_reader.set_position(0);
+        let mut target_writer = Cursor::new(Vec::new());
 
         test_import(
             source_bookmarks,
             &source,
             &mut source_reader_writer,
             SimpleBookmarkReader,
-            &mut target_reader_writer,
+            &mut target_reader,
+            &mut target_writer,
         );
 
+        // Clean up source and simulate change of source bookmarks.
         source_reader_writer.get_mut().clear();
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
+        // Clean up target to prepare cursor for writing.
+        target_writer.get_mut().clear();
 
         test_import(
             source_bookmarks,
             &source,
             &mut source_reader_writer,
             SimpleBookmarkReader,
-            &mut target_reader_writer,
+            &mut target_reader,
+            &mut target_writer,
         );
     }
 }

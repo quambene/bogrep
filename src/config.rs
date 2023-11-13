@@ -11,6 +11,7 @@ use std::{
 const CONFIG_DIR: &str = "bogrep";
 const SETTINGS_FILE: &str = "settings.json";
 const BOOKMARKS_FILE: &str = "bookmarks.json";
+const BOOKMARKS_LOCK_FILE: &str = "bookmarks-lock.json";
 const CACHE_DIR: &str = "cache";
 
 /// A configuration for running Bogrep.
@@ -24,6 +25,8 @@ pub struct Config {
     pub cache_path: PathBuf,
     /// The path to the generated bookmark file.
     pub target_bookmark_file: PathBuf,
+    /// The path to the lock file to write bookmarks.
+    pub target_bookmark_lock_file: PathBuf,
     /// The configured settings.
     pub settings: Settings,
 }
@@ -34,6 +37,7 @@ impl Config {
         settings_path: &Path,
         cache_path: &Path,
         target_bookmark_file: &Path,
+        target_bookmark_lock_file: &Path,
         settings: Settings,
     ) -> Self {
         Self {
@@ -41,6 +45,7 @@ impl Config {
             settings_path: settings_path.to_owned(),
             cache_path: cache_path.to_owned(),
             target_bookmark_file: target_bookmark_file.to_owned(),
+            target_bookmark_lock_file: target_bookmark_lock_file.to_owned(),
             settings,
         }
     }
@@ -55,6 +60,7 @@ impl Config {
         };
         let settings_path = config_path.join(SETTINGS_FILE);
         let target_bookmark_path = config_path.join(BOOKMARKS_FILE);
+        let target_bookmark_lock_path = config_path.join(BOOKMARKS_LOCK_FILE);
         let cache_path = config_path.join(CACHE_DIR);
 
         if !config_path.exists() {
@@ -99,6 +105,7 @@ impl Config {
             &settings_path,
             &cache_path,
             &target_bookmark_path,
+            &target_bookmark_lock_path,
             settings,
         );
 
@@ -121,6 +128,7 @@ pub mod tests {
                 settings_path: PathBuf::default(),
                 cache_path: PathBuf::default(),
                 target_bookmark_file: PathBuf::default(),
+                target_bookmark_lock_file: PathBuf::default(),
                 settings: Settings::default(),
             }
         }

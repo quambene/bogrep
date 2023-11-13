@@ -26,6 +26,8 @@ fn test_import(source: &str, temp_path: &Path) {
         "Missing path: {}",
         bookmarks_path.display()
     );
+    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
+    assert!(!bookmarks_lock_path.exists());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
     let res = json::deserialize::<TargetBookmarks>(&bookmarks);
