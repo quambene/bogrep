@@ -66,6 +66,10 @@ async fn test_fetch() {
         let expected_content = mocks.get(&bookmark.url).unwrap();
         assert_eq!(&actual_content, expected_content);
     }
+
+    // Lock file was cleaned up.
+    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
+    assert!(!bookmarks_lock_path.exists());
 }
 
 #[tokio::test]
@@ -121,4 +125,8 @@ async fn test_fetch_diff() {
         str::contains("-Test content 10+Test content 11")
             .and(str::contains("-Test content 20+Test content 21")),
     );
+
+    // Lock file was cleaned up.
+    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
+    assert!(!bookmarks_lock_path.exists());
 }

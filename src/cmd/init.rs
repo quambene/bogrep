@@ -1,10 +1,11 @@
 use super::fetch_and_add_all;
 use crate::{
-    bookmark_reader::{SourceReader, TargetReaderWriter},
+    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks, TargetBookmarks,
 };
 use log::info;
+use std::fs;
 
 /// Import bookmarks, fetch bookmarks from url, and save fetched websites in
 /// cache if bookmarks were not imported yet.
@@ -17,9 +18,9 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let target_bookmark_file = utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
-    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
-    target_reader_writer.read(&mut target_bookmarks)?;
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    target_reader.read(&mut target_bookmarks)?;
 
     if !target_bookmarks.bookmarks.is_empty() {
         info!("Bookmarks already imported");
@@ -34,7 +35,12 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
             config.settings.max_concurrent_requests,
         )
         .await?;
-        target_reader_writer.write(&target_bookmarks)?;
+        target_writer.write(&target_bookmarks)?;
+
+        fs::rename(
+            &config.target_bookmark_lock_file,
+            &config.target_bookmark_file,
+        )?;
     }
 
     Ok(())

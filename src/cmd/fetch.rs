@@ -1,41 +1,51 @@
 use crate::{
-    bookmark_reader::TargetReaderWriter, cache::CacheMode, html, utils, Cache, Caching, Client,
-    Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
+    bookmark_reader::{ReadTarget, WriteTarget},
+    cache::CacheMode,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::io::{Read, Seek, Write};
+use std::fs;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
-    let target_bookmark_file = utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+
     fetch_and_cache(
         &client,
         &cache,
-        target_bookmark_file,
+        &mut target_reader,
+        &mut target_writer,
         config.settings.max_concurrent_requests,
         args.all,
     )
     .await?;
+
+    fs::rename(
+        &config.target_bookmark_lock_file,
+        &config.target_bookmark_file,
+    )?;
+
     Ok(())
 }
 
 pub async fn fetch_and_cache(
     client: &impl Fetch,
     cache: &impl Caching,
-    target_bookmark_file: impl Read + Write + Seek,
+    target_reader: &mut impl ReadTarget,
+    target_writer: &mut impl WriteTarget,
     max_concurrent_requests: usize,
     fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
-    target_reader_writer.read(&mut target_bookmarks)?;
+    target_reader.read(&mut target_bookmarks)?;
 
     fetch_and_add_all(
         client,
@@ -49,7 +59,7 @@ pub async fn fetch_and_cache(
     trace!("Fetched bookmarks: {target_bookmarks:#?}");
 
     // Write bookmarks with updated timestamps.
-    target_reader_writer.write(&target_bookmarks)?;
+    target_writer.write(&target_bookmarks)?;
     Ok(())
 }
 
@@ -126,9 +136,8 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
     let client = Client::new(config)?;
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let target_bookmark_file = utils::open_file(&config.target_bookmark_file)?;
-    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
-    target_reader_writer.read(&mut target_bookmarks)?;
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    target_reader.read(&mut target_bookmarks)?;
 
     for url in args.diff {
         let bookmark = target_bookmarks.find(&url);

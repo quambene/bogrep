@@ -52,4 +52,8 @@ async fn test_init() {
         let expected_content = mocks.get(&bookmark.url).unwrap();
         assert_eq!(&actual_content, expected_content);
     }
+
+    // Lock file was cleaned up.
+    let bookmarks_lock_path = temp_path.join("bookmarks-json.json");
+    assert!(!bookmarks_lock_path.exists());
 }

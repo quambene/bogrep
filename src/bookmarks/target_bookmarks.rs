@@ -161,7 +161,7 @@ impl From<SourceBookmarks> for TargetBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmark_reader::TargetReaderWriter;
+    use crate::bookmark_reader::{ReadTarget, WriteTarget};
     use std::{collections::HashSet, io::Cursor};
 
     const EXPECTED_BOOKMARKS: &str = r#"{
@@ -224,10 +224,10 @@ mod tests {
     fn test_read_target_bookmarks() {
         let expected_bookmarks = EXPECTED_BOOKMARKS.as_bytes().to_vec();
         let mut target_bookmarks = TargetBookmarks::default();
-        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(expected_bookmarks));
-        let res = target_reader_writer.read(&mut target_bookmarks);
-        assert!(res.is_ok());
+        let mut target_reader = Cursor::new(expected_bookmarks);
 
+        let res = target_reader.read(&mut target_bookmarks);
+        assert!(res.is_ok());
         assert_eq!(
             target_bookmarks.bookmarks,
             vec![
@@ -251,10 +251,10 @@ mod tests {
     fn test_read_target_bookmarks_empty() {
         let expected_bookmarks = EXPECTED_BOOKMARKS_EMPTY.as_bytes().to_vec();
         let mut target_bookmarks = TargetBookmarks::default();
-        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(expected_bookmarks));
-        let res = target_reader_writer.read(&mut target_bookmarks);
-        assert!(res.is_ok());
+        let mut target_reader = Cursor::new(expected_bookmarks);
 
+        let res = target_reader.read(&mut target_bookmarks);
+        assert!(res.is_ok());
         assert!(target_bookmarks.bookmarks.is_empty());
     }
 
@@ -274,22 +274,22 @@ mod tests {
                 last_cached: None,
             },
         ]);
-        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(Vec::new()));
-        let res = target_reader_writer.write(&target_bookmarks);
+        let mut target_reader = Cursor::new(Vec::new());
+        let res = target_reader.write(&target_bookmarks);
         assert!(res.is_ok());
 
-        let actual = target_reader_writer.inner().into_inner();
+        let actual = target_reader.into_inner();
         assert_eq!(String::from_utf8(actual).unwrap(), EXPECTED_BOOKMARKS);
     }
 
     #[test]
     fn test_write_target_bookmarks_empty() {
         let bookmarks = TargetBookmarks::default();
-        let mut target_reader_writer = TargetReaderWriter::new(Cursor::new(Vec::new()));
-        let res = target_reader_writer.write(&bookmarks);
+        let mut target_writer = Cursor::new(Vec::new());
+        let res = target_writer.write(&bookmarks);
         assert!(res.is_ok());
 
-        let actual = target_reader_writer.inner().into_inner();
+        let actual = target_writer.into_inner();
         assert_eq!(String::from_utf8(actual).unwrap(), EXPECTED_BOOKMARKS_EMPTY);
     }
 }

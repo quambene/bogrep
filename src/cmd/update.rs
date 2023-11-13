@@ -1,10 +1,11 @@
 use super::fetch_and_add_all;
 use crate::{
     args::UpdateArgs,
-    bookmark_reader::{SourceReader, TargetReaderWriter},
+    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
+use std::fs;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
@@ -20,10 +21,10 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
-    let target_bookmark_file = utils::open_file_in_read_write_mode(&config.target_bookmark_file)?;
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader_writer = TargetReaderWriter::new(target_bookmark_file);
-    target_reader_writer.read(&mut target_bookmarks)?;
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    target_reader.read(&mut target_bookmarks)?;
 
     update_bookmarks(
         &client,
@@ -34,7 +35,12 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     )
     .await?;
 
-    target_reader_writer.write(&target_bookmarks)?;
+    target_writer.write(&target_bookmarks)?;
+
+    fs::rename(
+        &config.target_bookmark_lock_file,
+        &config.target_bookmark_file,
+    )?;
 
     Ok(())
 }
