@@ -105,6 +105,13 @@ pub fn convert_to_markdown(html: &str) -> String {
 mod tests {
     use super::*;
 
+    fn filter_whitespaces(html: impl Into<String>) -> String {
+        html.into()
+            .chars()
+            .filter(|char| !char.is_whitespace())
+            .collect::<String>()
+    }
+
     #[test]
     fn test_filter_html() {
         let html = r#"
@@ -117,6 +124,7 @@ mod tests {
         </head>
 
         <body>
+            <img>
             <div>
                 <p>paragraph_content_1</p>
                 <script>script_content_2</script>
@@ -159,14 +167,8 @@ mod tests {
         let filter_html = filter_html(html).unwrap();
 
         assert_eq!(
-            filter_html
-                .chars()
-                .filter(|char| !char.is_whitespace())
-                .collect::<String>(),
-            expected_html
-                .chars()
-                .filter(|char| !char.is_whitespace())
-                .collect::<String>()
+            filter_whitespaces(filter_html),
+            filter_whitespaces(expected_html)
         );
     }
 

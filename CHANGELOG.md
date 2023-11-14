@@ -9,6 +9,7 @@
   - Refactor from `bogrep ignore` to `bogrep config --ignore`
   - Fix overwrite of `Source` in settings
   - Write `bookmarks.json` atomically
+  - Filter out responses with content type `application/`, `image/`, `audio/`, `video/`
 
 ### v0.2.0
 

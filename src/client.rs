@@ -49,9 +49,25 @@ impl Fetch for Client {
         }
 
         let response = self.client.get(&bookmark.url).send().await?;
-        let html = response.text().await?;
 
-        Ok(html)
+        if response.status().is_success() {
+            if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
+                let content_type = content_type
+                    .to_str()
+                    .map_err(|err| anyhow!("Can't convert content type to string: {}", err))?;
+
+                if !(content_type.starts_with("application/")
+                    || content_type.starts_with("image/")
+                    || content_type.starts_with("audio/")
+                    || content_type.starts_with("video/"))
+                {
+                    let html = response.text().await?;
+                    return Ok(html);
+                }
+            }
+        }
+
+        Ok(String::default())
     }
 }
 
