@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### Unreleased
+### v0.3.0
 
 - added
   - Add integration test for `bogrep config --ignore`
@@ -9,7 +9,7 @@
   - Refactor from `bogrep ignore` to `bogrep config --ignore`
   - Fix overwrite of `Source` in settings
   - Write `bookmarks.json` atomically
-  - Filter out responses with content type `application/`, `image/`, `audio/`, `video/`
+  - Filter out responses with content type `application/*`, `image/*`, `audio/*`, `video/*`
 
 ### v0.2.0
 
