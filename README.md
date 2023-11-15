@@ -52,8 +52,9 @@ cargo install --path .
 
 ## Usage
 
-Settings and cache are installed to `~/.config/bogrep`, after Bogrep has been
-run for the first time.
+Settings and cache are installed to the configuration path, after Bogrep has
+been run for the first time. The configuration path depends on your operating
+system (see [Supported operating systems](#supported-operating-systems)).
 
 ``` bash
 # Configure the path to the bookmarks file (e.g. of your browser)
@@ -187,7 +188,7 @@ host in milliseconds.
 
 ## Supported operating systems
 
-Bogrep assumes a configuration path at
+Bogrep assumes and creates a configuration path at
 
 - `$HOME/.config/bogrep` for Linux,
 - `$HOME/Library/Application Support/bogrep` for macOS,
