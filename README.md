@@ -80,7 +80,7 @@ bogrep <pattern>
 ``` properties
 Options:
   -v, --verbose...          
-  -m, --mode <MODE>         Search the cached bookmarks in HTML or markdown format [possible values: html, text]
+  -m, --mode <MODE>         Search the cached bookmarks in HTML or plaintext format [possible values: html, text]
   -i, --ignore-case         Ignore case distinctions in patterns
   -l, --files-with-matches  Print only URLs of bookmarks with matched lines
   -h, --help                Print help
@@ -104,7 +104,7 @@ bogrep fetch --help
 
 ## Import bookmarks
 
-Currently, bookmarks in JSON format for Firefox, Chrome, and Chromium are
+Currently, bookmarks in JSON format for Firefox, Chrome, Chromium, and Edge are
 supported. Bookmark files in HTML format are not supported yet.
 
 The path of bookmarks may be different for your operating system.
