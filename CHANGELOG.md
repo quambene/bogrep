@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### Unreleased
+### v0.4.0
 
 - added
   - Implement `bogrep -i <pattern>` (ignore case distinctions in patterns)
