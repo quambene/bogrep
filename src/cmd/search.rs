@@ -1,5 +1,6 @@
 use crate::{
-    bookmark_reader::ReadTarget, cache::CacheMode, utils, Cache, Caching, Config, TargetBookmarks,
+    bookmark_reader::ReadTarget, cache::CacheMode, utils, Args, Cache, Caching, Config,
+    TargetBookmarks,
 };
 use anyhow::anyhow;
 use colored::Colorize;
@@ -13,16 +14,12 @@ use std::{
 /// Maximum number of characters per line displayed in the search result.
 const MAX_COLUMNS: usize = 1000;
 
-pub fn search(
-    pattern: String,
-    config: &Config,
-    cache_mode: Option<CacheMode>,
-) -> Result<(), anyhow::Error> {
+pub fn search(pattern: &str, config: &Config, args: &Args) -> Result<(), anyhow::Error> {
     if config.verbosity >= 1 {
-        info!("{pattern:?}");
+        info!("{:?}", pattern);
     }
 
-    let cache_mode = CacheMode::new(&cache_mode, &config.settings.cache_mode);
+    let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
 
     let mut target_bookmarks = TargetBookmarks::default();
@@ -32,18 +29,31 @@ pub fn search(
     if target_bookmarks.is_empty() {
         Err(anyhow!("Missing bookmarks, run `bogrep import` first"))
     } else {
-        search_bookmarks(pattern, &target_bookmarks, &cache)?;
+        let matches = search_bookmarks(pattern, &target_bookmarks, &cache, args)?;
+
+        if matches == 0 {
+            println!("No matches in bookmarks");
+        }
+
         Ok(())
     }
 }
 
 #[allow(clippy::comparison_chain)]
 fn search_bookmarks(
-    pattern: String,
+    pattern: &str,
     bookmarks: &TargetBookmarks,
     cache: &impl Caching,
-) -> Result<(), anyhow::Error> {
-    let re = format!("(?i){pattern}");
+    args: &Args,
+) -> Result<i64, anyhow::Error> {
+    let mut matches = 0;
+    let re = if args.ignore_case {
+        format!("(?i){pattern}")
+    } else {
+        {
+            pattern.to_string()
+        }
+    };
     let regex = Regex::new(&re)?;
 
     for bookmark in &bookmarks.bookmarks {
@@ -52,18 +62,22 @@ fn search_bookmarks(
             let matched_lines = find_matches(reader, &regex)?;
 
             if matched_lines.len() == 1 {
+                matches += 1;
                 println!("Match in bookmark: {}", bookmark.url.blue());
             } else if matched_lines.len() > 1 {
+                matches += 1;
                 println!("Matches in bookmark: {}", bookmark.url.blue());
             }
 
-            for matched_line in &matched_lines {
-                println!("{}", color_matches(matched_line, &regex));
+            if !args.files_with_matches {
+                for matched_line in &matched_lines {
+                    println!("{}", color_matches(matched_line, &regex));
+                }
             }
         }
     }
 
-    Ok(())
+    Ok(matches)
 }
 
 /// Find the matched lines for the regex in a file.

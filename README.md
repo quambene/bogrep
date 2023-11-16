@@ -18,6 +18,7 @@ bogrep "reed-solomon code"
   - [Install Bogrep from crates.io](#install-bogrep-from-cratesio)
   - [Install Bogrep from github.com](#install-bogrep-from-githubcom)
 - [Usage](#usage)
+  - [Search](#search)
 - [Getting help](#getting-help)
 - [Import bookmarks](#import-bookmarks)
   - [Firefox](#firefox)
@@ -68,6 +69,22 @@ bogrep fetch
 
 # Search your bookmarks in full-text search
 bogrep <pattern>
+```
+
+### Search
+
+``` bash
+bogrep <pattern>
+```
+
+``` properties
+Options:
+  -v, --verbose...          
+  -m, --mode <MODE>         Search the cached bookmarks in HTML or markdown format [possible values: html, text]
+  -i, --ignore-case         Ignore case distinctions in patterns
+  -l, --files-with-matches  Print only URLs of bookmarks with matched lines
+  -h, --help                Print help
+  -V, --version             Print version
 ```
 
 ## Getting help
