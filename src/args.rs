@@ -8,7 +8,7 @@ pub struct Args {
     pub pattern: Option<String>,
     #[arg(short, long, action = ArgAction::Count)]
     pub verbose: u8,
-    /// Search the cached bookmarks in HTML or markdown format.
+    /// Search the cached bookmarks in HTML or plaintext format.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
     /// Ignore case distinctions in patterns.

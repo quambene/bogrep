@@ -9,7 +9,7 @@ videos. Use the Bogrep CLI to grep through your cached bookmarks in full-text
 search.
 
 ``` bash
-bogrep "reed-solomon code"
+bogrep -i "reed-solomon code"
 ```
 
 ![Bogrep mockup](/assets/mockup.png)
