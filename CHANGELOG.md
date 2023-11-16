@@ -4,7 +4,7 @@
 
 - added
   - Implement `bogrep -i <pattern>` (ignore case distinctions in patterns)
-  - Implement `bogrep -l <pattern>` (print only URLs of bookmarks with selected lines)
+  - Implement `bogrep -l <pattern>` (print only URLs of bookmarks with matched lines)
 
 ### v0.3.0
 

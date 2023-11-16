@@ -82,7 +82,7 @@ Options:
   -v, --verbose...          
   -m, --mode <MODE>         Search the cached bookmarks in HTML or markdown format [possible values: html, text]
   -i, --ignore-case         Ignore case distinctions in patterns
-  -l, --files-with-matches  Print only URLs of bookmarks with selected lines
+  -l, --files-with-matches  Print only URLs of bookmarks with matched lines
   -h, --help                Print help
   -V, --version             Print version
 ```

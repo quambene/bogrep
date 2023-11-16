@@ -29,7 +29,12 @@ pub fn search(pattern: &str, config: &Config, args: &Args) -> Result<(), anyhow:
     if target_bookmarks.is_empty() {
         Err(anyhow!("Missing bookmarks, run `bogrep import` first"))
     } else {
-        search_bookmarks(pattern, &target_bookmarks, &cache)?;
+        let matches = search_bookmarks(pattern, &target_bookmarks, &cache, args)?;
+
+        if matches == 0 {
+            println!("No matches in bookmarks");
+        }
+
         Ok(())
     }
 }
@@ -39,8 +44,14 @@ fn search_bookmarks(
     pattern: &str,
     bookmarks: &TargetBookmarks,
     cache: &impl Caching,
-) -> Result<(), anyhow::Error> {
-    let re = format!("(?i){pattern}");
+    args: &Args,
+) -> Result<i64, anyhow::Error> {
+    let mut matches = 0;
+    let re = if args.ignore_case {
+        format!("(?i){pattern}")
+    } else {
+        format!("{pattern}")
+    };
     let regex = Regex::new(&re)?;
 
     for bookmark in &bookmarks.bookmarks {
@@ -49,18 +60,22 @@ fn search_bookmarks(
             let matched_lines = find_matches(reader, &regex)?;
 
             if matched_lines.len() == 1 {
+                matches = matches + 1;
                 println!("Match in bookmark: {}", bookmark.url.blue());
             } else if matched_lines.len() > 1 {
+                matches = matches + 1;
                 println!("Matches in bookmark: {}", bookmark.url.blue());
             }
 
-            for matched_line in &matched_lines {
-                println!("{}", color_matches(matched_line, &regex));
+            if !args.files_with_matches {
+                for matched_line in &matched_lines {
+                    println!("{}", color_matches(matched_line, &regex));
+                }
             }
         }
     }
 
-    Ok(())
+    Ok(matches)
 }
 
 /// Find the matched lines for the regex in a file.
