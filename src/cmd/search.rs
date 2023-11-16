@@ -50,7 +50,9 @@ fn search_bookmarks(
     let re = if args.ignore_case {
         format!("(?i){pattern}")
     } else {
-        format!("{pattern}")
+        {
+            pattern.to_string()
+        }
     };
     let regex = Regex::new(&re)?;
 
@@ -60,10 +62,10 @@ fn search_bookmarks(
             let matched_lines = find_matches(reader, &regex)?;
 
             if matched_lines.len() == 1 {
-                matches = matches + 1;
+                matches += 1;
                 println!("Match in bookmark: {}", bookmark.url.blue());
             } else if matched_lines.len() > 1 {
-                matches = matches + 1;
+                matches += 1;
                 println!("Matches in bookmark: {}", bookmark.url.blue());
             }
 
