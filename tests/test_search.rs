@@ -1,7 +1,7 @@
 mod common;
 
 use assert_cmd::Command;
-use predicates::str;
+use predicates::{boolean::PredicateBooleanExt, str};
 use std::{
     fs::{self, File},
     io::Write,
@@ -49,7 +49,11 @@ async fn test_search_case_sensitive() {
     cmd.arg("Test content 1");
     cmd.assert()
         .success()
-        .stdout(str::contains("Match in bookmark"))
+        .stdout(
+            str::contains("Match in bookmark")
+                .and(str::contains("endpoint_1"))
+                .and(str::contains("Test content 1")),
+        )
         .stderr("");
 
     println!("Execute 'bogrep \"Test content 4\"'");
@@ -103,7 +107,11 @@ async fn test_search_case_insensitive() {
     cmd.args(["-i", "test content 1"]);
     cmd.assert()
         .success()
-        .stdout(str::contains("Match in bookmark"))
+        .stdout(
+            str::contains("Match in bookmark")
+                .and(str::contains("endpoint_1"))
+                .and(str::contains("Test content 1")),
+        )
         .stderr("");
 
     println!("Execute 'bogrep -i \"test content 4\"'");
@@ -118,7 +126,7 @@ async fn test_search_case_insensitive() {
 
 #[tokio::test]
 #[cfg_attr(not(feature = "integration-test"), ignore)]
-async fn test_search_no_matched_lines() {
+async fn test_search_no_content() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
     let temp_dir = tempdir().unwrap();
@@ -157,7 +165,11 @@ async fn test_search_no_matched_lines() {
     cmd.args(["-l", "Test content 1"]);
     cmd.assert()
         .success()
-        .stdout(str::contains("Match in bookmark"))
+        .stdout(
+            str::contains("Match in bookmark")
+                .and(str::contains("endpoint_1"))
+                .and(str::contains("Test content 1").not()),
+        )
         .stderr("");
 
     println!("Execute 'bogrep -l \"Test content 4\"'");
