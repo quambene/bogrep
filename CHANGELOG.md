@@ -1,5 +1,11 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
+### Unreleased
+
+- added
+  - Implement `bogrep -i <pattern>` (ignore case distinctions in patterns)
+  - Implement `bogrep -l <pattern>` (print only URLs of bookmarks with selected lines)
+
 ### v0.3.0
 
 - added
