@@ -8,9 +8,15 @@ pub struct Args {
     pub pattern: Option<String>,
     #[arg(short, long, action = ArgAction::Count)]
     pub verbose: u8,
-    /// Cache the fetched bookmarks as HTML or markdown file.
+    /// Search the cached bookmarks in HTML or markdown format.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
+    /// Ignore case distinctions in patterns.
+    #[arg(short = 'i', long)]
+    pub ignore_case: bool,
+    /// Print only URLs of bookmarks with selected lines.
+    #[arg(short = 'l', long)]
+    pub files_with_matches: bool,
     #[command(subcommand)]
     pub subcommands: Option<Subcommands>,
 }

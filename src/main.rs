@@ -26,8 +26,8 @@ async fn main() -> Result<(), anyhow::Error> {
             }
             Subcommands::Clean(args) => cmd::clean(&config, &args).await?,
         }
-    } else if let Some(pattern) = args.pattern {
-        cmd::search(pattern, &config, args.mode)?;
+    } else if let Some(pattern) = &args.pattern {
+        cmd::search(pattern, &config, &args)?;
     } else {
         return Err(anyhow!("Missing search pattern: `bogrep <pattern>`"));
     }
