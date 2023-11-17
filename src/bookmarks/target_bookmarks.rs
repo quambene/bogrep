@@ -93,7 +93,7 @@ impl TargetBookmarks {
     /// the target bookmarks.
     pub fn update(
         &mut self,
-        source_bookmarks: SourceBookmarks,
+        source_bookmarks: &SourceBookmarks,
     ) -> Result<(Vec<TargetBookmark>, Vec<TargetBookmark>), anyhow::Error> {
         if self.bookmarks.is_empty() {
             self.bookmarks = Self::from(source_bookmarks.clone()).bookmarks;
@@ -101,8 +101,8 @@ impl TargetBookmarks {
         }
 
         let now = Utc::now();
-        let urls_to_add = self.filter_to_add(&source_bookmarks);
-        let bookmarks_to_remove = self.filter_to_remove(&source_bookmarks);
+        let urls_to_add = self.filter_to_add(source_bookmarks);
+        let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
         let mut bookmarks_to_add = vec![];
 
         for url in urls_to_add {
@@ -208,7 +208,7 @@ mod tests {
                 None,
             )],
         };
-        let res = target_bookmarks.update(source_bookmarks);
+        let res = target_bookmarks.update(&source_bookmarks);
         assert!(res.is_ok());
         assert_eq!(
             target_bookmarks

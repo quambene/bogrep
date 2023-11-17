@@ -32,7 +32,7 @@ pub enum Subcommands {
     /// for new bookmarks; delete cache for removed bookmarks.
     Update(UpdateArgs),
     /// Import bookmarks from the configured source files.
-    Import,
+    Import(ImportArgs),
     /// Fetch and cache bookmarks.
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
@@ -76,6 +76,16 @@ pub struct SetCacheMode {
 pub struct SetIgnoredUrls {
     #[arg(long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
     pub ignore: Vec<String>,
+}
+
+/// Describes the arguments for the `import` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct ImportArgs {
+    /// Import URLs as bookmark.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    #[arg(long, num_args = 0.., value_delimiter = ' ')]
+    pub urls: Vec<String>,
 }
 
 /// Describes the arguments for the `fetch` subcommand.
