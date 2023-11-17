@@ -57,7 +57,7 @@ async fn update_bookmarks(
     }
 
     // TODO: fixed `last_cached` for `bookmarks_to_add`.
-    let (mut bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(source_bookmarks)?;
+    let (mut bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(&source_bookmarks)?;
 
     if !bookmarks_to_add.is_empty() {
         // Fetch and cache new bookmarks.

@@ -32,7 +32,7 @@ pub enum Subcommands {
     /// for new bookmarks; delete cache for removed bookmarks.
     Update(UpdateArgs),
     /// Import bookmarks from the configured source files.
-    Import,
+    Import(ImportArgs),
     /// Fetch and cache bookmarks.
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
@@ -78,6 +78,16 @@ pub struct SetIgnoredUrls {
     pub ignore: Vec<String>,
 }
 
+/// Describes the arguments for the `import` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct ImportArgs {
+    /// Import specified URLs as bookmark.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    #[arg(long, num_args = 0.., value_delimiter = ' ')]
+    pub urls: Vec<String>,
+}
+
 /// Describes the arguments for the `fetch` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct FetchArgs {
@@ -97,6 +107,12 @@ pub struct FetchArgs {
     /// Multiple urls are separated by a whitespace.
     #[arg(short, long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
     pub diff: Vec<String>,
+    /// Fetch and cache specified URLs.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    /// If an URL is missing in the bookmarks, it will be imported.
+    #[arg(long, num_args = 0.., value_delimiter = ' ')]
+    pub urls: Vec<String>,
 }
 
 /// Describes the arguments for the `init` subcommand.
