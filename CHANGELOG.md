@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### Unrelease
+### Unreleased
 
 - added
   - Implement `bogrep import --urls <URLs>` (import specified URLs)
