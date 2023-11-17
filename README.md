@@ -41,6 +41,8 @@ bogrep -i "reed-solomon code"
 cargo install bogrep
 ```
 
+To update bogrep to a new version, run `cargo install bogrep` again.
+
 ### Install Bogrep from [github.com](https://github.com/quambene/bogrep)
 
 ``` bash
