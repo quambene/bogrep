@@ -6,7 +6,7 @@ use crate::{
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
-use log::{debug, trace, warn};
+use log::{debug, info, trace, warn};
 use similar::{ChangeTag, TextDiff};
 
 /// Fetch and cache bookmarks.
@@ -17,20 +17,54 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
-    fetch_and_cache(
-        &client,
-        &cache,
-        &mut target_reader,
-        &mut target_writer,
-        config.settings.max_concurrent_requests,
-        args.all,
-    )
-    .await?;
+    if args.urls.is_empty() {
+        fetch_and_cache(
+            &client,
+            &cache,
+            &mut target_reader,
+            &mut target_writer,
+            config.settings.max_concurrent_requests,
+            args.all,
+        )
+        .await?;
+    } else {
+        fetch_urls(
+            &args.urls,
+            &client,
+            &cache,
+            &mut target_reader,
+            &mut target_writer,
+        )
+        .await?;
+    }
 
     utils::close_and_rename(
         (target_writer, &config.target_bookmark_lock_file),
         (target_reader, &config.target_bookmark_file),
     )?;
+
+    Ok(())
+}
+
+pub async fn fetch_urls(
+    urls: &[String],
+    client: &impl Fetch,
+    cache: &impl Caching,
+    target_reader: &mut impl ReadTarget,
+    target_writer: &mut impl WriteTarget,
+) -> Result<(), anyhow::Error> {
+    let now = Utc::now();
+    let mut target_bookmarks = TargetBookmarks::default();
+    target_reader.read(&mut target_bookmarks)?;
+
+    for url in urls {
+        let mut bookmark = TargetBookmark::new(url, now, None);
+        fetch_and_add(client, cache, &mut bookmark, true).await?;
+        info!("Fetched website for {url}");
+        target_bookmarks.add(&bookmark);
+    }
+
+    target_writer.write(&target_bookmarks)?;
 
     Ok(())
 }

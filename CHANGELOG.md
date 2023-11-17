@@ -1,5 +1,11 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
+### Unrelease
+
+- added
+  - Implement `bogrep import --urls <URLs>` (import specified URLs)
+  - Implement `bogrep fetch --urls <URLs>` (fetch specified URLs)
+
 ### v0.4.0
 
 - added
