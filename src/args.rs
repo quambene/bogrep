@@ -81,7 +81,7 @@ pub struct SetIgnoredUrls {
 /// Describes the arguments for the `import` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct ImportArgs {
-    /// Import URLs as bookmark.
+    /// Import specified URLs as bookmark.
     ///
     /// Multiple URLs are separated by a whitespace.
     #[arg(long, num_args = 0.., value_delimiter = ' ')]
@@ -107,6 +107,12 @@ pub struct FetchArgs {
     /// Multiple urls are separated by a whitespace.
     #[arg(short, long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
     pub diff: Vec<String>,
+    /// Fetch and cache specified URLs.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    /// If an URL is missing in the bookmarks, it will be imported.
+    #[arg(long, num_args = 0.., value_delimiter = ' ')]
+    pub urls: Vec<String>,
 }
 
 /// Describes the arguments for the `init` subcommand.
