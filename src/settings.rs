@@ -1,4 +1,4 @@
-use crate::{bookmarks::Source, cache::CacheMode, json};
+use crate::{bookmarks::RawSource, cache::CacheMode, json};
 use anyhow::Context;
 use log::debug;
 use reqwest::Url;
@@ -24,8 +24,8 @@ pub struct Settings {
     /// The paths to the configured bookmark files.
     ///
     /// Source could be Firefox or Chrome.
-    #[serde(rename = "bookmark_files")]
-    pub sources: Vec<Source>,
+    #[serde(rename = "bookmark_sources")]
+    pub sources: Vec<RawSource>,
     /// The urls which are ignored and not imported.
     pub ignored_urls: Vec<String>,
     /// The file extension used to cache websites.
@@ -53,7 +53,7 @@ impl Default for Settings {
 
 impl Settings {
     pub fn new(
-        sources: Vec<Source>,
+        sources: Vec<RawSource>,
         ignored_urls: Vec<String>,
         cache_mode: CacheMode,
         max_concurrent_requests: usize,
@@ -102,7 +102,7 @@ impl Settings {
         Ok(())
     }
 
-    pub fn set_source(&mut self, source: Source) -> Result<(), anyhow::Error> {
+    pub fn set_source(&mut self, source: RawSource) -> Result<(), anyhow::Error> {
         debug!("Set source to {}", source.path.display());
 
         if let Some(s) = self.sources.iter_mut().find(|s| s.path == source.path) {
@@ -161,19 +161,14 @@ mod tests {
 
     #[test]
     fn test_set_source() {
+        let raw_source = RawSource::new(PathBuf::from("path/to/source"), vec![]);
         let mut settings = Settings::default();
-        let res = settings.set_source(Source {
-            path: PathBuf::from("path/to/source"),
-            folders: vec![],
-        });
+        let res = settings.set_source(raw_source.clone());
         assert!(res.is_ok());
         assert_eq!(
             settings,
             Settings {
-                sources: vec![Source {
-                    path: PathBuf::from("path/to/source"),
-                    folders: vec![]
-                }],
+                sources: vec![raw_source],
                 ..Default::default()
             }
         );
@@ -181,37 +176,28 @@ mod tests {
 
     #[test]
     fn test_set_source_overwrite() {
+        let raw_source = RawSource::new(PathBuf::from("path/to/source"), vec![]);
+        let raw_source_with_folders = RawSource::new(
+            PathBuf::from("path/to/source"),
+            vec!["dev".to_string(), "articles".to_string()],
+        );
         let mut settings = Settings::default();
-        settings
-            .set_source(Source {
-                path: PathBuf::from("path/to/source"),
-                folders: vec![],
-            })
-            .unwrap();
+        settings.set_source(raw_source.clone()).unwrap();
         assert_eq!(
             settings,
             Settings {
-                sources: vec![Source {
-                    path: PathBuf::from("path/to/source"),
-                    folders: vec![]
-                }],
+                sources: vec![raw_source],
                 ..Default::default()
             }
         );
 
         settings
-            .set_source(Source {
-                path: PathBuf::from("path/to/source"),
-                folders: vec!["dev".to_string(), "articles".to_string()],
-            })
+            .set_source(raw_source_with_folders.clone())
             .unwrap();
         assert_eq!(
             settings,
             Settings {
-                sources: vec![Source {
-                    path: PathBuf::from("path/to/source"),
-                    folders: vec!["dev".to_string(), "articles".to_string()]
-                }],
+                sources: vec![raw_source_with_folders],
                 ..Default::default()
             }
         );
@@ -219,20 +205,18 @@ mod tests {
 
     #[test]
     fn test_set_source_and_folders() {
+        let raw_source_with_folders = RawSource::new(
+            PathBuf::from("path/to/source"),
+            vec!["dev".to_string(), "articles".to_string()],
+        );
         let mut settings = Settings::default();
         settings
-            .set_source(Source {
-                path: PathBuf::from("path/to/source"),
-                folders: vec![String::from("dev,science,article")],
-            })
+            .set_source(raw_source_with_folders.clone())
             .unwrap();
         assert_eq!(
             settings,
             Settings {
-                sources: vec![Source {
-                    path: PathBuf::from("path/to/source"),
-                    folders: vec![String::from("dev,science,article")]
-                }],
+                sources: vec![raw_source_with_folders],
                 ..Default::default()
             }
         );

@@ -82,7 +82,7 @@ async fn update_bookmarks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MockCache, MockClient, Source, TargetBookmark};
+    use crate::{bookmarks::RawSource, MockCache, MockClient, TargetBookmark};
     use chrono::Utc;
     use std::{collections::HashSet, path::Path};
 
@@ -92,7 +92,7 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
-        let source = Source::new(bookmark_path, vec![]);
+        let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
@@ -211,7 +211,7 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
-        let source = Source::new(bookmark_path, vec![]);
+        let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([

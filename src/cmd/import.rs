@@ -89,7 +89,7 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
         source_reader.len(),
         source_reader
             .iter()
-            .map(|source_reader| source_reader.source().path.to_string_lossy())
+            .map(|source_reader| source_reader.source().path.clone())
             .collect::<Vec<_>>()
             .join(", ")
     );
@@ -99,14 +99,17 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Source, json, test_utils, ReadBookmark, SimpleBookmarkReader};
+    use crate::{
+        bookmarks::{RawSource, Source},
+        json, test_utils, ReadBookmark, SimpleBookmarkReader, SourceType,
+    };
     use std::{
         collections::HashSet,
         io::{Cursor, Write},
         path::Path,
     };
 
-    fn test_import_source(source: &Source, expected_bookmarks: HashSet<String>) {
+    fn test_import_source(source: &RawSource, expected_bookmarks: HashSet<String>) {
         let target_bookmarks = TargetBookmarks::default();
         let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
 
@@ -151,7 +154,6 @@ mod tests {
 
         let source_reader = SourceReader::new(
             source.clone(),
-            source.path.to_owned(),
             Box::new(source_reader_writer.clone()),
             Box::new(bookmark_reader),
         );
@@ -188,7 +190,7 @@ mod tests {
     fn test_import_source_firefox() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -203,7 +205,7 @@ mod tests {
     fn test_import_source_firefox_compressed() {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -219,7 +221,7 @@ mod tests {
     fn test_import_source_chrome() {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -234,7 +236,7 @@ mod tests {
     fn test_import_source_chromium_no_extension() {
         let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -249,7 +251,7 @@ mod tests {
     fn test_import_source_simple() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),
             "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
@@ -264,7 +266,7 @@ mod tests {
     fn test_import_bookmarks_simple_add_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = Source::new(SourceType::Simple, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
@@ -311,7 +313,7 @@ mod tests {
     fn test_import_bookmarks_simple_delete_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = Source::new(SourceType::Simple, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),

@@ -66,23 +66,25 @@ impl TargetBookmarks {
     }
 
     pub fn filter_to_add<'a>(&self, source_bookmarks: &'a SourceBookmarks) -> Vec<&'a str> {
-        source_bookmarks
-            .bookmarks
-            .iter()
-            .filter(|bookmark_url| {
-                !self
-                    .bookmarks
-                    .iter()
-                    .any(|bookmark| &&bookmark.url == bookmark_url)
-            })
-            .map(|url| url.as_str())
-            .collect()
+        let mut bookmarks_to_add = vec![];
+
+        for source_bookmark in source_bookmarks.as_ref() {
+            if !self
+                .bookmarks
+                .iter()
+                .any(|target_bookmark| &target_bookmark.url == source_bookmark.0)
+            {
+                bookmarks_to_add.push(source_bookmark.0.as_ref());
+            }
+        }
+
+        bookmarks_to_add
     }
 
     pub fn filter_to_remove(&self, source_bookmarks: &SourceBookmarks) -> Vec<TargetBookmark> {
         self.bookmarks
             .iter()
-            .filter(|bookmark| !source_bookmarks.bookmarks.contains(&bookmark.url))
+            .filter(|target_bookmark| !source_bookmarks.contains(&target_bookmark.url))
             .cloned()
             .collect()
     }
@@ -150,9 +152,9 @@ impl From<SourceBookmarks> for TargetBookmarks {
         let now = Utc::now();
         TargetBookmarks {
             bookmarks: source_bookmarks
-                .bookmarks
+                .inner()
                 .into_iter()
-                .map(|bookmark| TargetBookmark::new(bookmark, now, None))
+                .map(|bookmark| TargetBookmark::new(bookmark.0, now, None))
                 .collect(),
         }
     }
@@ -162,7 +164,10 @@ impl From<SourceBookmarks> for TargetBookmarks {
 mod tests {
     use super::*;
     use crate::bookmark_reader::{ReadTarget, WriteTarget};
-    use std::{collections::HashSet, io::Cursor};
+    use std::{
+        collections::{HashMap, HashSet},
+        io::Cursor,
+    };
 
     const EXPECTED_BOOKMARKS: &str = r#"{
     "bookmarks": [
@@ -188,15 +193,13 @@ mod tests {
     #[test]
     fn test_update() {
         let now = Utc::now();
-        let expected_bookmarks = HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        let expected_bookmarks = HashMap::from_iter([
+            ("https://www.deepl.com/translator".to_owned(), HashSet::new()),
+            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::new()),
+            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::new()),
+            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::new()),
         ]);
-        let source_bookmarks = SourceBookmarks {
-            bookmarks: expected_bookmarks.clone(),
-        };
+        let source_bookmarks = SourceBookmarks::new(expected_bookmarks.clone());
         let mut target_bookmarks = TargetBookmarks {
             bookmarks: vec![TargetBookmark::new(
                 "https://www.deepl.com/translator",
@@ -216,7 +219,7 @@ mod tests {
                 .iter()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
-            expected_bookmarks,
+            expected_bookmarks.keys().cloned().collect(),
         );
     }
 

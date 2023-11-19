@@ -1,5 +1,5 @@
 use crate::{
-    bookmark_reader::SourceReader, bookmarks::Source, cache::CacheMode, json, utils, Config,
+    bookmark_reader::SourceReader, bookmarks::RawSource, cache::CacheMode, json, utils, Config,
     ConfigArgs, Settings,
 };
 use anyhow::Context;
@@ -20,7 +20,13 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
         .map(|source_path| fs::canonicalize(source_path).context("Invalid source path"))
         .transpose()?;
     let source_folders = args.set_source.folders;
-    let source = source_path.map(|source_path| Source::new(source_path, source_folders));
+    let source = source_path.map(|source_path| RawSource::new(source_path, source_folders));
+
+    if let Some(ref source) = source {
+        // Validate source file
+        SourceReader::init(source)?;
+    }
+
     let settings_file = utils::open_file_in_read_write_mode(&config.settings_path)?;
 
     configure_settings(
@@ -36,7 +42,7 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
 
 fn configure_settings(
     settings: &mut Settings,
-    source: Option<Source>,
+    source: Option<RawSource>,
     cache_mode: Option<CacheMode>,
     urls: &[String],
     mut writer: impl Write,
@@ -44,8 +50,6 @@ fn configure_settings(
     let settings_read = settings.clone();
 
     if let Some(source) = source {
-        // Validate source file
-        let _ = SourceReader::init(&source)?;
         settings.set_source(source)?;
     }
 
@@ -74,7 +78,7 @@ mod tests {
     fn test_configure_source() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let source = Source {
+        let source = RawSource {
             path: PathBuf::from("test_data/bookmarks_simple.txt"),
             folders: vec!["dev".to_string(), "articles".to_string()],
         };
@@ -86,7 +90,7 @@ mod tests {
 
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
         let expected_settings = r#"{
-    "bookmark_files": [
+    "bookmark_sources": [
         {
             "source": "test_data/bookmarks_simple.txt",
             "folders": [
@@ -114,7 +118,7 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
         let expected_settings = r#"{
-    "bookmark_files": [],
+    "bookmark_sources": [],
     "ignored_urls": [],
     "cache_mode": "html",
     "max_concurrent_requests": 100,
@@ -137,7 +141,7 @@ mod tests {
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
 
         let expected_settings = r#"{
-    "bookmark_files": [],
+    "bookmark_sources": [],
     "ignored_urls": [
         "https://test_url1.com/",
         "https://test_url2.com/"
