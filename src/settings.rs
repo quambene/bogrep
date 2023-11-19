@@ -24,7 +24,6 @@ pub struct Settings {
     /// The paths to the configured bookmark files.
     ///
     /// Source could be Firefox or Chrome.
-    #[serde(rename = "bookmark_sources")]
     pub sources: Vec<RawSource>,
     /// The urls which are ignored and not imported.
     pub ignored_urls: Vec<String>,

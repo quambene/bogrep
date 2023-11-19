@@ -90,7 +90,7 @@ mod tests {
 
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
         let expected_settings = r#"{
-    "bookmark_sources": [
+    "sources": [
         {
             "source": "test_data/bookmarks_simple.txt",
             "folders": [
@@ -118,7 +118,7 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
         let expected_settings = r#"{
-    "bookmark_sources": [],
+    "sources": [],
     "ignored_urls": [],
     "cache_mode": "html",
     "max_concurrent_requests": 100,
@@ -141,7 +141,7 @@ mod tests {
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
 
         let expected_settings = r#"{
-    "bookmark_sources": [],
+    "sources": [],
     "ignored_urls": [
         "https://test_url1.com/",
         "https://test_url2.com/"
