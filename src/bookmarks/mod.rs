@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
 
 /// The type used to identify a source.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SourceType {
     Firefox,
     Chromium,

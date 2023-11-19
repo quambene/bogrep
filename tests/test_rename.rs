@@ -2,7 +2,7 @@ mod common;
 
 use bogrep::{json, utils, TargetBookmark, TargetBookmarks};
 use chrono::Utc;
-use std::io::Write;
+use std::{collections::HashSet, io::Write};
 use tempfile::tempdir;
 
 #[test]
@@ -25,6 +25,7 @@ fn test_rename() {
             "https://test_url.com".to_owned(),
             Utc::now(),
             None,
+            HashSet::new(),
         ));
         let bookmarks_json = json::serialize(&bookmarks).unwrap();
         let mut bookmarks_lock_file = utils::open_and_truncate_file(&bookmarks_lock_path).unwrap();

@@ -5,6 +5,7 @@ use crate::{
 };
 use chrono::Utc;
 use log::{info, trace};
+use std::collections::HashSet;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
@@ -65,7 +66,7 @@ fn import_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let bookmark = TargetBookmark::new(url, now, None);
+        let bookmark = TargetBookmark::new(url, now, None, HashSet::new());
         target_bookmarks.add(&bookmark);
     }
 
@@ -370,6 +371,7 @@ mod tests {
             "https://test_url1.com".to_owned(),
             Utc::now(),
             None,
+            HashSet::new(),
         ));
         let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
 

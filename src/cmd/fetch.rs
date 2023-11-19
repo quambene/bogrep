@@ -8,6 +8,7 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, info, trace, warn};
 use similar::{ChangeTag, TextDiff};
+use std::collections::HashSet;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -58,7 +59,7 @@ pub async fn fetch_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let mut bookmark = TargetBookmark::new(url, now, None);
+        let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new());
         fetch_and_add(client, cache, &mut bookmark, true).await?;
         info!("Fetched website for {url}");
         target_bookmarks.add(&bookmark);
@@ -229,12 +230,14 @@ mod tests {
                     url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
             ],
         };
@@ -278,12 +281,14 @@ mod tests {
                     url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
             ],
         };
@@ -327,12 +332,14 @@ mod tests {
                     url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
             ],
         };
@@ -386,12 +393,14 @@ mod tests {
                     url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
             ],
         };

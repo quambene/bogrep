@@ -108,12 +108,14 @@ mod tests {
                     url: "https://www.deepl.com/translator".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
+                    sources: HashSet::new(),
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
+                    sources: HashSet::new()
                 },
             ],
         };
@@ -227,12 +229,14 @@ mod tests {
                     url: "https://www.deepl.com/translator".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
+                    sources: HashSet::new()
                 },
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
+                    sources: HashSet::new()
                 },
             ],
         };

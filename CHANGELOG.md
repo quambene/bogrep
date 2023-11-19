@@ -5,7 +5,7 @@
 - added
   - Implement `bogrep import --urls <URLs>` (import specified URLs)
   - Implement `bogrep fetch --urls <URLs>` (fetch specified URLs)
-  - Add `SourceType` to `SourceBookmarks`
+  - Add `SourceType` to `SourceBookmark` and `TargetBookmark`
 
 ### v0.4.0
 

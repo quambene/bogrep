@@ -356,12 +356,13 @@ impl Caching for MockCache {
 mod tests {
     use super::*;
     use chrono::Utc;
+    use std::collections::HashSet;
 
     #[tokio::test]
     async fn test_add_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new("https://test_url.com", now, None);
+        let bookmark = TargetBookmark::new("https://test_url.com", now, None, HashSet::new());
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         let cached_content = cache.add(content.to_owned(), &bookmark).await.unwrap();
         assert_eq!(
@@ -376,7 +377,7 @@ mod tests {
     async fn test_add_mode_text() {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new("https://test_url.com", now, None);
+        let bookmark = TargetBookmark::new("https://test_url.com", now, None, HashSet::new());
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         let cached_content = cache.add(content.to_owned(), &bookmark).await.unwrap();
         assert_eq!(cached_content, "Test content");
@@ -388,7 +389,7 @@ mod tests {
     async fn test_replace_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new("https://test_url.com", now, None);
+        let bookmark = TargetBookmark::new("https://test_url.com", now, None, HashSet::new());
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
         cache.add(content1.to_owned(), &bookmark).await.unwrap();
         let content2 = "<html><head></head><body><p>Test content 2</p></body></html>";
@@ -405,7 +406,7 @@ mod tests {
     async fn test_replace_mode_text() {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new("https://test_url.com", now, None);
+        let bookmark = TargetBookmark::new("https://test_url.com", now, None, HashSet::new());
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
         cache.add(content1.to_owned(), &bookmark).await.unwrap();
         let content2 = "<html><head></head><body><p>Test content 2</p></body></html>";
@@ -419,7 +420,7 @@ mod tests {
     async fn test_remove_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new("https://test_url.com", now, None);
+        let bookmark = TargetBookmark::new("https://test_url.com", now, None, HashSet::new());
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         cache.add(content.to_owned(), &bookmark).await.unwrap();
         cache.remove(&bookmark).await.unwrap();
@@ -432,8 +433,8 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let bookmarks = vec![
-            TargetBookmark::new("https://test_url1.com", now, None),
-            TargetBookmark::new("https://test_url2.com", now, None),
+            TargetBookmark::new("https://test_url1.com", now, None, HashSet::new()),
+            TargetBookmark::new("https://test_url2.com", now, None, HashSet::new()),
         ];
 
         for bookmark in &bookmarks {
@@ -457,7 +458,12 @@ mod tests {
     async fn test_clear_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmarks = vec![TargetBookmark::new("https://test_url.com", now, None)];
+        let bookmarks = vec![TargetBookmark::new(
+            "https://test_url.com",
+            now,
+            None,
+            HashSet::new(),
+        )];
 
         for bookmark in &bookmarks {
             cache

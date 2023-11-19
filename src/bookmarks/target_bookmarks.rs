@@ -1,18 +1,19 @@
-use crate::SourceBookmarks;
+use crate::{SourceBookmarks, SourceType};
 use chrono::{DateTime, Utc};
 use log::{info, trace};
 use serde::{Deserialize, Serialize};
-use std::slice;
+use std::{collections::HashSet, slice};
 use uuid::Uuid;
 
 /// A standardized bookmark for internal bookkeeping that is created from the
 /// [`SourceBookmarks`].
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct TargetBookmark {
     pub id: String,
     pub url: String,
     pub last_imported: i64,
     pub last_cached: Option<i64>,
+    pub sources: HashSet<SourceType>,
 }
 
 impl TargetBookmark {
@@ -20,12 +21,14 @@ impl TargetBookmark {
         url: impl Into<String>,
         last_imported: DateTime<Utc>,
         last_cached: Option<DateTime<Utc>>,
+        sources: HashSet<SourceType>,
     ) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             url: url.into(),
             last_imported: last_imported.timestamp_millis(),
             last_cached: last_cached.map(|timestamp| timestamp.timestamp_millis()),
+            sources,
         }
     }
 }
@@ -65,7 +68,11 @@ impl TargetBookmarks {
         self.bookmarks.iter().find(|bookmark| bookmark.url == url)
     }
 
-    pub fn filter_to_add<'a>(&self, source_bookmarks: &'a SourceBookmarks) -> Vec<&'a str> {
+    pub fn filter_to_add<'a>(
+        &self,
+        source_bookmarks: &'a SourceBookmarks,
+        now: DateTime<Utc>,
+    ) -> Vec<TargetBookmark> {
         let mut bookmarks_to_add = vec![];
 
         for source_bookmark in source_bookmarks.as_ref() {
@@ -74,7 +81,9 @@ impl TargetBookmarks {
                 .iter()
                 .any(|target_bookmark| &target_bookmark.url == source_bookmark.0)
             {
-                bookmarks_to_add.push(source_bookmark.0.as_ref());
+                let source_bookmark =
+                    TargetBookmark::new(source_bookmark.0, now, None, source_bookmark.1.clone());
+                bookmarks_to_add.push(source_bookmark);
             }
         }
 
@@ -103,14 +112,11 @@ impl TargetBookmarks {
         }
 
         let now = Utc::now();
-        let urls_to_add = self.filter_to_add(source_bookmarks);
+        let bookmarks_to_add = self.filter_to_add(source_bookmarks, now);
         let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
-        let mut bookmarks_to_add = vec![];
 
-        for url in urls_to_add {
-            let bookmark = TargetBookmark::new(url, now, None);
-            self.add(&bookmark);
-            bookmarks_to_add.push(bookmark);
+        for bookmark in &bookmarks_to_add {
+            self.add(bookmark);
         }
 
         for bookmark in &bookmarks_to_remove {
@@ -154,7 +160,7 @@ impl From<SourceBookmarks> for TargetBookmarks {
             bookmarks: source_bookmarks
                 .inner()
                 .into_iter()
-                .map(|bookmark| TargetBookmark::new(bookmark.0, now, None))
+                .map(|bookmark| TargetBookmark::new(bookmark.0, now, None, bookmark.1))
                 .collect(),
         }
     }
@@ -175,13 +181,15 @@ mod tests {
             "id": "a87f7024-a7f5-4f9c-8a71-f64880b2f275",
             "url": "https://doc.rust-lang.org/book/title-page.html",
             "last_imported": 1694989714351,
-            "last_cached": null
+            "last_cached": null,
+            "sources": []
         },
         {
             "id": "511b1590-e6de-4989-bca4-96dc61730508",
             "url": "https://www.deepl.com/translator",
             "last_imported": 1694989714351,
-            "last_cached": null
+            "last_cached": null,
+            "sources": []
         }
     ]
 }"#;
@@ -205,10 +213,12 @@ mod tests {
                 "https://www.deepl.com/translator",
                 now,
                 None,
+                HashSet::new(),
             ), TargetBookmark::new(
                 "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
                 now,
                 None,
+                HashSet::new(),
             )],
         };
         let res = target_bookmarks.update(&source_bookmarks);
@@ -239,12 +249,14 @@ mod tests {
                     url: String::from("https://doc.rust-lang.org/book/title-page.html"),
                     last_imported: 1694989714351,
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
                 TargetBookmark {
                     id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
                     url: String::from("https://www.deepl.com/translator"),
                     last_imported: 1694989714351,
                     last_cached: None,
+                    sources: HashSet::new(),
                 }
             ]
         );
@@ -269,12 +281,14 @@ mod tests {
                 url: String::from("https://doc.rust-lang.org/book/title-page.html"),
                 last_imported: 1694989714351,
                 last_cached: None,
+                sources: HashSet::new(),
             },
             TargetBookmark {
                 id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
                 url: String::from("https://www.deepl.com/translator"),
                 last_imported: 1694989714351,
                 last_cached: None,
+                sources: HashSet::new(),
             },
         ]);
         let mut target_reader = Cursor::new(Vec::new());
