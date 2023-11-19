@@ -1,5 +1,5 @@
 use super::BookmarkReaders;
-use crate::{utils, ReadBookmark, Source, SourceBookmarks};
+use crate::{bookmarks::Source, utils, ReadBookmark, SourceBookmarks};
 use anyhow::anyhow;
 use log::debug;
 use std::{
@@ -136,10 +136,7 @@ mod tests {
         let source_folders = vec![];
         let source = Source::new(source_path, source_folders);
         let source_reader = SourceReader::init(&source).unwrap();
-        assert_eq!(
-            source_reader.bookmark_reader().name(),
-            "Chromium/Chrome/Edge"
-        );
+        assert_eq!(source_reader.bookmark_reader().name(), "Chromium");
     }
 
     #[test]
@@ -150,7 +147,7 @@ mod tests {
         let source_reader = SourceReader::init(&source).unwrap();
         assert_eq!(
             source_reader.bookmark_reader().name(),
-            "Chromium/Chrome/Edge (no extension)"
+            "Chromium (no extension)"
         );
     }
 

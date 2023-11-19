@@ -99,7 +99,7 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, test_utils, ReadBookmark, SimpleBookmarkReader, Source};
+    use crate::{bookmarks::Source, json, test_utils, ReadBookmark, SimpleBookmarkReader};
     use std::{
         collections::HashSet,
         io::{Cursor, Write},

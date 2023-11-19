@@ -1,6 +1,6 @@
 use crate::{
-    bookmark_reader::SourceReader, cache::CacheMode, json, utils, Config, ConfigArgs, Settings,
-    Source,
+    bookmark_reader::SourceReader, bookmarks::Source, cache::CacheMode, json, utils, Config,
+    ConfigArgs, Settings,
 };
 use anyhow::Context;
 use log::info;

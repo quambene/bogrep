@@ -1,5 +1,5 @@
 use super::ReadBookmark;
-use crate::{Source, SourceBookmarks};
+use crate::{Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
 use lz4::block;
@@ -135,6 +135,21 @@ impl ReadBookmark for FirefoxBookmarkReader {
         "Firefox"
     }
 
+    fn source_type(&self, source_path: &Path) -> Result<SourceType, anyhow::Error> {
+        let path_str = source_path
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
+        let source_type = if path_str.contains("firefox") || path_str.contains("Firefox") {
+            SourceType::Firefox
+        } else {
+            SourceType::Others
+        };
+        Ok(source_type)
+    }
+
     fn extension(&self) -> Option<&str> {
         Some("json")
     }
@@ -211,6 +226,21 @@ pub struct FirefoxCompressedBookmarkReader;
 impl ReadBookmark for FirefoxCompressedBookmarkReader {
     fn name(&self) -> &str {
         "Firefox (compressed)"
+    }
+
+    fn source_type(&self, source_path: &Path) -> Result<SourceType, anyhow::Error> {
+        let path_str = source_path
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
+        let source_type = if path_str.contains("firefox") || path_str.contains("Firefox") {
+            SourceType::Firefox
+        } else {
+            SourceType::Others
+        };
+        Ok(source_type)
     }
 
     fn extension(&self) -> Option<&str> {

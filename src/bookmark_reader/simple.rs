@@ -1,6 +1,9 @@
 use super::ReadBookmark;
-use crate::{Source, SourceBookmarks};
-use std::io::{BufRead, BufReader, Read};
+use crate::{bookmarks::Source, SourceBookmarks, SourceType};
+use std::{
+    io::{BufRead, BufReader, Read},
+    path::Path,
+};
 
 /// A bookmark reader to read bookmarks from a simple text file with one url per
 /// line.
@@ -10,6 +13,16 @@ pub struct SimpleBookmarkReader;
 impl ReadBookmark for SimpleBookmarkReader {
     fn name(&self) -> &str {
         "simple"
+    }
+
+    fn source_type(&self, source_path: &Path) -> Result<SourceType, anyhow::Error> {
+        let source_type =
+            if source_path.extension().map(|extension| extension.to_str()) == Some(Some("txt")) {
+                SourceType::Internal
+            } else {
+                SourceType::Others
+            };
+        Ok(source_type)
     }
 
     fn extension(&self) -> Option<&str> {

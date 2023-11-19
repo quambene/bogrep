@@ -47,8 +47,8 @@ pub use args::{Args, ConfigArgs, FetchArgs, InitArgs, Subcommands};
 pub use bookmark_reader::{
     ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark, SimpleBookmarkReader,
 };
-pub use bookmarks::{SourceBookmarks, TargetBookmark, TargetBookmarks};
+pub use bookmarks::{Source, SourceBookmarks, SourceType, TargetBookmark, TargetBookmarks};
 pub use cache::{Cache, Caching, MockCache};
 pub use client::{Client, Fetch, MockClient};
 pub use config::Config;
-pub use settings::{Settings, Source};
+pub use settings::Settings;

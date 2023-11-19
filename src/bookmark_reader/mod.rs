@@ -5,7 +5,7 @@ mod source_reader;
 mod target_reader;
 mod target_writer;
 
-use crate::{Source, SourceBookmarks};
+use crate::{Source, SourceBookmarks, SourceType};
 pub use chromium::{ChromiumBookmarkReader, ChromiumNoExtensionBookmarkReader};
 pub use firefox::{FirefoxBookmarkReader, FirefoxCompressedBookmarkReader};
 use log::debug;
@@ -23,6 +23,8 @@ pub use target_writer::WriteTarget;
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
 pub trait ReadBookmark: fmt::Debug {
     fn name(&self) -> &str;
+
+    fn source_type(&self, source_path: &Path) -> Result<SourceType, anyhow::Error>;
 
     fn extension(&self) -> Option<&str>;
 

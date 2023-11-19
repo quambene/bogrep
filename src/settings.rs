@@ -1,4 +1,4 @@
-use crate::{cache::CacheMode, json};
+use crate::{bookmarks::Source, cache::CacheMode, json};
 use anyhow::Context;
 use log::debug;
 use reqwest::Url;
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
     io::{Read, Write},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 /// The default `Settungs::max_concurrent_requests`.
@@ -122,31 +122,10 @@ impl Settings {
     }
 }
 
-/// The source of bookmarks.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Source {
-    /// The path to the source file.
-    #[serde(rename = "source")]
-    pub path: PathBuf,
-    /// The folders to be imported.
-    ///
-    /// If no folders are selected, all bookmarks in the source file will be
-    /// imported.
-    pub folders: Vec<String>,
-}
-
-impl Source {
-    pub fn new(path: impl Into<PathBuf>, folders: Vec<String>) -> Self {
-        Self {
-            path: path.into(),
-            folders,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_add_urls() {

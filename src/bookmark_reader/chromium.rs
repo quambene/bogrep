@@ -1,8 +1,9 @@
 use super::ReadBookmark;
-use crate::{Source, SourceBookmarks};
+use crate::{bookmarks::Source, SourceBookmarks, SourceType};
+use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
-use std::io::Read;
+use std::{io::Read, path::Path};
 
 pub struct Chromium;
 
@@ -88,7 +89,22 @@ pub struct ChromiumBookmarkReader;
 
 impl ReadBookmark for ChromiumBookmarkReader {
     fn name(&self) -> &'static str {
-        "Chromium/Chrome/Edge"
+        "Chromium"
+    }
+
+    fn source_type(&self, source_path: &Path) -> Result<SourceType, anyhow::Error> {
+        let path_str = source_path
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
+        let source_tpye = if path_str.contains("firefox") || path_str.contains("Firefox") {
+            SourceType::Firefox
+        } else {
+            SourceType::Others
+        };
+        Ok(source_tpye)
     }
 
     fn extension(&self) -> Option<&str> {
@@ -138,7 +154,23 @@ pub struct ChromiumNoExtensionBookmarkReader;
 
 impl ReadBookmark for ChromiumNoExtensionBookmarkReader {
     fn name(&self) -> &'static str {
-        "Chromium/Chrome/Edge (no extension)"
+        "Chromium (no extension)"
+    }
+
+    fn source_type(&self, source_path: &Path) -> Result<SourceType, anyhow::Error> {
+        let path_str = source_path
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+        let source_type = if path_str.contains("chromium") || path_str.contains("Chromium") {
+            SourceType::Chromium
+        } else if path_str.contains("chrome") || path_str.contains("Chrome") {
+            SourceType::Chrome
+        } else if path_str.contains("edge") || path_str.contains("Edge") {
+            SourceType::Edge
+        } else {
+            SourceType::Others
+        };
+        Ok(source_type)
     }
 
     fn extension(&self) -> Option<&str> {
