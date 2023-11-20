@@ -76,7 +76,7 @@ pub struct BookmarksJson {
 
 impl BookmarksJson {
     pub fn new(mut bookmarks: Vec<TargetBookmark>) -> Self {
-        bookmarks.sort_by(|a, b| Self::compare(a, b));
+        bookmarks.sort_by(Self::compare);
 
         Self { bookmarks }
     }
@@ -113,7 +113,7 @@ impl BookmarksJson {
 impl From<&TargetBookmarks> for BookmarksJson {
     fn from(target_bookmarks: &TargetBookmarks) -> Self {
         let mut bookmarks = target_bookmarks.values().cloned().collect::<Vec<_>>();
-        bookmarks.sort_by(|a, b| Self::compare(a, b));
+        bookmarks.sort_by(Self::compare);
         BookmarksJson { bookmarks }
     }
 }
