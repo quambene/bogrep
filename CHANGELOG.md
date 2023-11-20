@@ -3,7 +3,8 @@
 ### Unreleased
 
 - added
-  - Implement `bogrep import --urls <URLs>` (import specified URLs)
+  - Implement `bogrep add <URLs>` (add specified URLs to bookmarks)
+  - Implement `bogrep remove <URLs>` (remove specified URLs from bookmarks)
   - Implement `bogrep fetch --urls <URLs>` (fetch specified URLs)
   - Add sources to `SourceBookmark` and `TargetBookmark`
 
