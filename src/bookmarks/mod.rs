@@ -4,6 +4,7 @@ mod target_bookmarks;
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarks};
 use std::{
+    cmp::Ordering,
     path::{Path, PathBuf},
     slice::Iter,
 };
@@ -75,15 +76,7 @@ pub struct BookmarksJson {
 
 impl BookmarksJson {
     pub fn new(mut bookmarks: Vec<TargetBookmark>) -> Self {
-        // Sort by `last_cached` and then by `url`.
-        bookmarks.sort_by(|a, b| match (a.last_cached, b.last_cached) {
-            (Some(a_cached), Some(b_cached)) => {
-                a_cached.cmp(&b_cached).then_with(|| a.url.cmp(&b.url))
-            }
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => a.url.cmp(&b.url),
-        });
+        bookmarks.sort_by(|a, b| Self::compare(a, b));
 
         Self { bookmarks }
     }
@@ -103,13 +96,25 @@ impl BookmarksJson {
     pub fn len(&self) -> usize {
         self.bookmarks.len()
     }
+
+    // Sort by `last_cached` and then by `url`.
+    fn compare(a: &TargetBookmark, b: &TargetBookmark) -> Ordering {
+        match (a.last_cached, b.last_cached) {
+            (Some(a_cached), Some(b_cached)) => {
+                a_cached.cmp(&b_cached).then_with(|| a.url.cmp(&b.url))
+            }
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => a.url.cmp(&b.url),
+        }
+    }
 }
 
 impl From<&TargetBookmarks> for BookmarksJson {
     fn from(target_bookmarks: &TargetBookmarks) -> Self {
-        BookmarksJson {
-            bookmarks: target_bookmarks.values().cloned().collect(),
-        }
+        let mut bookmarks = target_bookmarks.values().cloned().collect::<Vec<_>>();
+        bookmarks.sort_by(|a, b| Self::compare(a, b));
+        BookmarksJson { bookmarks }
     }
 }
 
