@@ -1,6 +1,9 @@
-use super::ReadBookmark;
-use crate::{Source, SourceBookmarks};
-use std::io::{BufRead, BufReader, Read};
+use super::{ReadBookmark, ReaderName};
+use crate::{bookmarks::Source, SourceBookmark, SourceBookmarks, SourceType};
+use std::{
+    io::{BufRead, BufReader, Read},
+    path::Path,
+};
 
 /// A bookmark reader to read bookmarks from a simple text file with one url per
 /// line.
@@ -8,23 +11,23 @@ use std::io::{BufRead, BufReader, Read};
 pub struct SimpleBookmarkReader;
 
 impl ReadBookmark for SimpleBookmarkReader {
-    fn name(&self) -> &str {
-        "simple"
+    fn name(&self) -> ReaderName {
+        ReaderName::Simple
     }
 
     fn extension(&self) -> Option<&str> {
         Some("txt")
     }
 
-    fn is_selected(&self, _raw_bookmarks: &str) -> Result<bool, anyhow::Error> {
-        Ok(true)
+    fn select_source(&self, _source_path: &Path) -> Result<Option<SourceType>, anyhow::Error> {
+        Ok(Some(SourceType::Simple))
     }
 
     fn read_and_parse(
         &self,
         reader: &mut dyn Read,
-        _source: &Source,
-        bookmarks: &mut SourceBookmarks,
+        source: &Source,
+        source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         let buf_reader = BufReader::new(reader);
 
@@ -32,7 +35,8 @@ impl ReadBookmark for SimpleBookmarkReader {
             let url = line?;
 
             if !url.is_empty() {
-                bookmarks.insert(&url);
+                let source_bookmark = SourceBookmark::new(url, source.name.clone());
+                source_bookmarks.insert(source_bookmark);
             }
         }
 
@@ -44,7 +48,10 @@ impl ReadBookmark for SimpleBookmarkReader {
 mod tests {
     use super::*;
     use crate::utils;
-    use std::{collections::HashSet, path::Path};
+    use std::{
+        collections::{HashMap, HashSet},
+        path::Path,
+    };
 
     #[test]
     fn test_read_txt() {
@@ -53,7 +60,7 @@ mod tests {
         let mut source_bookmark_file = utils::open_file(source_path).unwrap();
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(source_path, vec![]);
+        let source = Source::new(SourceType::Simple, source_path, vec![]);
         let bookmark_reader = SimpleBookmarkReader;
 
         let res = bookmark_reader.read_and_parse(
@@ -63,11 +70,11 @@ mod tests {
         );
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        assert_eq!(source_bookmarks.inner(), HashMap::from_iter([
+            ("https://www.deepl.com/translator".to_owned(), HashSet::from_iter([SourceType::Simple])),
+            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::from_iter([SourceType::Simple])),
+            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::from_iter([SourceType::Simple])),
+            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::from_iter([SourceType::Simple])),
         ]))
     }
 }

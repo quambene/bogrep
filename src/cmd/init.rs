@@ -21,7 +21,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
     target_reader.read(&mut target_bookmarks)?;
 
-    if !target_bookmarks.bookmarks.is_empty() {
+    if !target_bookmarks.is_empty() {
         info!("Bookmarks already imported");
     } else {
         let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
@@ -61,11 +61,11 @@ async fn init_bookmarks(
 
     info!(
         "Imported {} bookmarks from {} sources: {}",
-        target_bookmarks.bookmarks.len(),
+        target_bookmarks.len(),
         source_reader.len(),
         source_reader
             .iter()
-            .map(|reader| reader.source().path.to_string_lossy())
+            .map(|reader| reader.source().path.to_owned())
             .collect::<Vec<_>>()
             .join(", ")
     );
@@ -73,7 +73,7 @@ async fn init_bookmarks(
     fetch_and_add_all(
         client,
         cache,
-        &mut target_bookmarks.bookmarks,
+        target_bookmarks.values_mut().collect(),
         max_concurrent_requests,
         false,
     )
@@ -85,7 +85,7 @@ async fn init_bookmarks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MockCache, MockClient, Source};
+    use crate::{bookmarks::RawSource, MockCache, MockClient};
     use std::{
         collections::{HashMap, HashSet},
         path::Path,
@@ -96,7 +96,7 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
-        let source = Source::new(bookmark_path, vec![]);
+        let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
@@ -127,21 +127,18 @@ mod tests {
         let target_bookmarks = res.unwrap();
         assert_eq!(
             target_bookmarks
-                .bookmarks
-                .iter()
+                .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
             expected_bookmarks,
         );
         assert!(target_bookmarks
-            .bookmarks
-            .iter()
+            .values()
             .all(|bookmark| bookmark.last_cached.is_some()));
         assert_eq!(
             cache.cache_map(),
             target_bookmarks
-                .bookmarks
-                .iter()
+                .values()
                 .fold(HashMap::new(), |mut acc, bookmark| {
                     acc.insert(
                         bookmark.id.clone(),
@@ -157,7 +154,7 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
-        let source = Source::new(bookmark_path, vec![]);
+        let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
@@ -188,21 +185,18 @@ mod tests {
         let target_bookmarks = res.unwrap();
         assert_eq!(
             target_bookmarks
-                .bookmarks
-                .iter()
+                .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
             expected_bookmarks,
         );
         assert!(target_bookmarks
-            .bookmarks
-            .iter()
+            .values()
             .all(|bookmark| bookmark.last_cached.is_some()));
         assert_eq!(
             cache.cache_map(),
             target_bookmarks
-                .bookmarks
-                .iter()
+                .values()
                 .fold(HashMap::new(), |mut acc, bookmark| {
                     acc.insert(bookmark.id.clone(), "Test content".to_owned());
                     acc

@@ -1,4 +1,4 @@
-use crate::{json, TargetBookmarks};
+use crate::{json, BookmarksJson, TargetBookmarks};
 use anyhow::Context;
 use std::io::{Seek, Write};
 
@@ -12,8 +12,10 @@ where
     T: Write + Seek,
 {
     fn write(&mut self, target_bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
-        let bookmarks_json = json::serialize(target_bookmarks)?;
-        self.write_all(&bookmarks_json)
+        let bookmarks = BookmarksJson::from(target_bookmarks);
+        let json = json::serialize(bookmarks)?;
+
+        self.write_all(&json)
             .context("Can't write to `bookmarks.json` file")?;
 
         // Rewind after writing.

@@ -56,7 +56,7 @@ fn search_bookmarks(
     };
     let regex = Regex::new(&re)?;
 
-    for bookmark in &bookmarks.bookmarks {
+    for bookmark in bookmarks.values() {
         if let Some(cache_file) = cache.open(bookmark)? {
             let reader = io::BufReader::new(cache_file);
             let matched_lines = find_matches(reader, &regex)?;

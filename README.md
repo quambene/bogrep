@@ -41,7 +41,9 @@ bogrep -i "reed-solomon code"
 cargo install bogrep
 ```
 
-To update bogrep to a new version, run `cargo install bogrep` again.
+To update bogrep to a new version, run `cargo install bogrep` again. Versions
+0.x.x will not be backwards compatible. Remove Bogrep's configuration directory
+before running Bogrep (see [Supported operating systems](#supported-operating-systems)).
 
 ### Install Bogrep from [github.com](https://github.com/quambene/bogrep)
 

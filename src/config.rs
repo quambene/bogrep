@@ -1,4 +1,4 @@
-use crate::{json, Settings, TargetBookmarks};
+use crate::{json, BookmarksJson, Settings};
 use anyhow::{anyhow, Context};
 use log::{debug, info};
 use std::{
@@ -78,13 +78,13 @@ impl Config {
                 "Create bookmarks file at {}",
                 target_bookmark_path.display()
             );
-            let target_bookmarks = TargetBookmarks::default();
-            let json = json::serialize(target_bookmarks)?;
+            let bookmarks_json = BookmarksJson::default();
+            let buf = json::serialize(bookmarks_json)?;
             let mut bookmark_file = File::create(&target_bookmark_path).context(format!(
                 "Can't create `bookmarks.json` file: {}",
                 target_bookmark_path.display()
             ))?;
-            bookmark_file.write_all(&json)?;
+            bookmark_file.write_all(&buf)?;
             bookmark_file.flush()?;
         }
 

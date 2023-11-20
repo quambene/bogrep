@@ -5,6 +5,7 @@ use crate::{
 };
 use chrono::Utc;
 use log::{info, trace};
+use std::collections::HashSet;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
@@ -65,8 +66,8 @@ fn import_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let bookmark = TargetBookmark::new(url, now, None);
-        target_bookmarks.add(&bookmark);
+        let bookmark = TargetBookmark::new(url, now, None, HashSet::new());
+        target_bookmarks.insert(bookmark);
     }
 
     target_writer.write(&target_bookmarks)?;
@@ -85,11 +86,11 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 
     info!(
         "Imported {} bookmarks from {} {source}: {}",
-        target_bookmarks.bookmarks.len(),
+        target_bookmarks.len(),
         source_reader.len(),
         source_reader
             .iter()
-            .map(|source_reader| source_reader.source().path.to_string_lossy())
+            .map(|source_reader| source_reader.source().path.clone())
             .collect::<Vec<_>>()
             .join(", ")
     );
@@ -99,19 +100,22 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, test_utils, ReadBookmark, SimpleBookmarkReader, Source};
+    use crate::{
+        bookmarks::{RawSource, Source},
+        json, test_utils, BookmarksJson, ReadBookmark, SimpleBookmarkReader, SourceType,
+    };
     use std::{
         collections::HashSet,
         io::{Cursor, Write},
         path::Path,
     };
 
-    fn test_import_source(source: &Source, expected_bookmarks: HashSet<String>) {
-        let target_bookmarks = TargetBookmarks::default();
-        let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
+    fn test_import_source(source: &RawSource, expected_bookmarks: HashSet<String>) {
+        let bookmarks_json = BookmarksJson::default();
+        let buf = json::serialize(&bookmarks_json).unwrap();
 
         let mut target_reader = Cursor::new(Vec::new());
-        target_reader.write_all(&target_bookmarks).unwrap();
+        target_reader.write_all(&buf).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
@@ -121,14 +125,12 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.into_inner();
-        let actual_bookmarks = json::deserialize::<TargetBookmarks>(&actual).unwrap();
+        let actual_bookmarks = json::deserialize::<BookmarksJson>(&actual).unwrap();
         assert!(actual_bookmarks
-            .bookmarks
             .iter()
             .all(|bookmark| bookmark.last_cached == None));
         assert_eq!(
             actual_bookmarks
-                .bookmarks
                 .iter()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
@@ -151,7 +153,6 @@ mod tests {
 
         let source_reader = SourceReader::new(
             source.clone(),
-            source.path.to_owned(),
             Box::new(source_reader_writer.clone()),
             Box::new(bookmark_reader),
         );
@@ -159,7 +160,7 @@ mod tests {
         let res = import_source(vec![source_reader], target_reader, target_writer);
 
         let actual = target_writer.get_ref();
-        let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual);
+        let actual_bookmarks = json::deserialize::<BookmarksJson>(actual);
         assert!(
             actual_bookmarks.is_ok(),
             "{}\n{}",
@@ -169,12 +170,10 @@ mod tests {
 
         let actual_bookmarks = actual_bookmarks.unwrap();
         assert!(actual_bookmarks
-            .bookmarks
             .iter()
             .all(|bookmark| bookmark.last_cached == None));
         assert_eq!(
             actual_bookmarks
-                .bookmarks
                 .iter()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
@@ -188,7 +187,7 @@ mod tests {
     fn test_import_source_firefox() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -203,7 +202,7 @@ mod tests {
     fn test_import_source_firefox_compressed() {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.mozilla.org/en-US/firefox/central/"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -219,7 +218,7 @@ mod tests {
     fn test_import_source_chrome() {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -234,7 +233,7 @@ mod tests {
     fn test_import_source_chromium_no_extension() {
         let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             String::from("https://www.deepl.com/translator"),
             String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
@@ -249,7 +248,7 @@ mod tests {
     fn test_import_source_simple() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let expected_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),
             "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"
@@ -264,16 +263,16 @@ mod tests {
     fn test_import_bookmarks_simple_add_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = Source::new(SourceType::Simple, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
 
-        let target_bookmarks = TargetBookmarks::default();
-        let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
+        let bookmarks_json = BookmarksJson::default();
+        let buf = json::serialize(&bookmarks_json).unwrap();
 
         let mut target_reader = Cursor::new(Vec::new());
-        target_reader.write_all(&target_bookmarks).unwrap();
+        target_reader.write_all(&buf).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
@@ -311,7 +310,7 @@ mod tests {
     fn test_import_bookmarks_simple_delete_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(source_path, source_folders);
+        let source = Source::new(SourceType::Simple, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),
@@ -321,11 +320,11 @@ mod tests {
             "https://doc.rust-lang.org/book/title-page.html".to_owned(),
         ]);
 
-        let target_bookmarks = TargetBookmarks::default();
-        let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
+        let bookmarks_json = BookmarksJson::default();
+        let buf = json::serialize(&bookmarks_json).unwrap();
 
         let mut target_reader = Cursor::new(Vec::new());
-        target_reader.write_all(&target_bookmarks).unwrap();
+        target_reader.write_all(&buf).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
@@ -364,15 +363,17 @@ mod tests {
         expected_urls.insert("https://test_url3.com".to_owned());
 
         let mut target_bookmarks = TargetBookmarks::default();
-        target_bookmarks.add(&TargetBookmark::new(
+        target_bookmarks.insert(TargetBookmark::new(
             "https://test_url1.com".to_owned(),
             Utc::now(),
             None,
+            HashSet::new(),
         ));
-        let target_bookmarks = json::serialize(&target_bookmarks).unwrap();
+        let bookmarks_json = BookmarksJson::from(&target_bookmarks);
+        let buf = json::serialize(bookmarks_json).unwrap();
 
-        let mut target_reader = Cursor::new(Vec::new());
-        target_reader.write_all(&target_bookmarks).unwrap();
+        let mut target_reader: Cursor<Vec<u8>> = Cursor::new(Vec::new());
+        target_reader.write_all(&buf).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
@@ -383,10 +384,10 @@ mod tests {
         ];
 
         let res = import_urls(&urls, &mut target_reader, &mut target_writer);
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();
-        let actual_bookmarks = json::deserialize::<TargetBookmarks>(actual);
+        let actual_bookmarks = json::deserialize::<BookmarksJson>(actual);
         assert!(
             actual_bookmarks.is_ok(),
             "{}\n{}",
@@ -396,12 +397,10 @@ mod tests {
 
         let actual_bookmarks = actual_bookmarks.unwrap();
         assert!(actual_bookmarks
-            .bookmarks
             .iter()
             .all(|bookmark| bookmark.last_cached == None));
         assert_eq!(
             actual_bookmarks
-                .bookmarks
                 .iter()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),

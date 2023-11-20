@@ -56,7 +56,6 @@ async fn update_bookmarks(
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
-    // TODO: fixed `last_cached` for `bookmarks_to_add`.
     let (mut bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(&source_bookmarks)?;
 
     if !bookmarks_to_add.is_empty() {
@@ -64,7 +63,7 @@ async fn update_bookmarks(
         fetch_and_add_all(
             client,
             cache,
-            &mut bookmarks_to_add,
+            bookmarks_to_add.iter_mut().collect(),
             max_concurrent_requests,
             false,
         )
@@ -76,15 +75,23 @@ async fn update_bookmarks(
         cache.remove(&bookmark).await?;
     }
 
+    // Update the `last_cached` timestamp.
+    for bookmark in bookmarks_to_add {
+        target_bookmarks.insert(bookmark)
+    }
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MockCache, MockClient, Source, TargetBookmark};
+    use crate::{bookmarks::RawSource, MockCache, MockClient, TargetBookmark};
     use chrono::Utc;
-    use std::{collections::HashSet, path::Path};
+    use std::{
+        collections::{HashMap, HashSet},
+        path::Path,
+    };
 
     #[tokio::test]
     async fn test_update_bookmarks_mode_html() {
@@ -92,7 +99,7 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
-        let source = Source::new(bookmark_path, vec![]);
+        let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
@@ -101,22 +108,25 @@ mod tests {
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
-        let mut target_bookmarks = TargetBookmarks {
-            bookmarks: vec![
+        let mut target_bookmarks = TargetBookmarks::new(
+            HashMap::from_iter([
+                ("https://www.deepl.com/translator".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: "https://www.deepl.com/translator".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
-                },
+                    sources: HashSet::new(),
+                }),("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
-                },
-            ],
-        };
+                    sources: HashSet::new()
+                }),
+            ]),
+            );
         for url in &expected_bookmarks {
             client
                 .add(
@@ -130,7 +140,9 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.bookmarks[0],
+                &target_bookmarks
+                    .get("https://www.deepl.com/translator")
+                    .unwrap(),
             )
             .await
             .unwrap();
@@ -138,7 +150,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.bookmarks[1],
+                &target_bookmarks.get("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
             )
             .await
             .unwrap();
@@ -154,8 +166,7 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(
             target_bookmarks
-                .bookmarks
-                .iter()
+                .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
                 HashSet::from_iter([
@@ -184,7 +195,7 @@ mod tests {
                 .cache_map()
                 .get(
                     &target_bookmarks
-                        .find("https://en.wikipedia.org/wiki/Design_Patterns")
+                        .get("https://en.wikipedia.org/wiki/Design_Patterns")
                         .unwrap()
                         .id
                 )
@@ -196,7 +207,7 @@ mod tests {
                 .cache_map()
                 .get(
                     &target_bookmarks
-                        .find("https://doc.rust-lang.org/book/title-page.html")
+                        .get("https://doc.rust-lang.org/book/title-page.html")
                         .unwrap()
                         .id
                 )
@@ -211,7 +222,7 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
-        let source = Source::new(bookmark_path, vec![]);
+        let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
         let expected_bookmarks: HashSet<String> = HashSet::from_iter([
@@ -220,22 +231,19 @@ mod tests {
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
-        let mut target_bookmarks = TargetBookmarks {
-            bookmarks: vec![
-                TargetBookmark {
-                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "https://www.deepl.com/translator".to_owned(),
-                    last_imported: now.timestamp_millis(),
-                    last_cached: Some(now.timestamp_millis()),
-                },
-                TargetBookmark {
-                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
-                    last_imported: now.timestamp_millis(),
-                    last_cached: Some(now.timestamp_millis()),
-                },
-            ],
-        };
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([("https://www.deepl.com/translator".to_owned(), TargetBookmark {
+            id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+            url: "https://www.deepl.com/translator".to_owned(),
+            last_imported: now.timestamp_millis(),
+            last_cached: Some(now.timestamp_millis()),
+            sources: HashSet::new()
+        }), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark {
+            id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+            url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
+            last_imported: now.timestamp_millis(),
+            last_cached: Some(now.timestamp_millis()),
+            sources: HashSet::new()
+        })]));
         for url in &expected_bookmarks {
             client
                 .add(
@@ -249,7 +257,9 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.bookmarks[0],
+                &target_bookmarks
+                    .get("https://www.deepl.com/translator")
+                    .unwrap(),
             )
             .await
             .unwrap();
@@ -257,7 +267,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.bookmarks[1],
+                &target_bookmarks.get("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
             )
             .await
             .unwrap();
@@ -273,8 +283,7 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(
             target_bookmarks
-                .bookmarks
-                .iter()
+                .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
                 HashSet::from_iter([
@@ -303,7 +312,7 @@ mod tests {
                 .cache_map()
                 .get(
                     &target_bookmarks
-                        .find("https://en.wikipedia.org/wiki/Design_Patterns")
+                        .get("https://en.wikipedia.org/wiki/Design_Patterns")
                         .unwrap()
                         .id
                 )
@@ -315,7 +324,7 @@ mod tests {
                 .cache_map()
                 .get(
                     &target_bookmarks
-                        .find("https://doc.rust-lang.org/book/title-page.html")
+                        .get("https://doc.rust-lang.org/book/title-page.html")
                         .unwrap()
                         .id
                 )

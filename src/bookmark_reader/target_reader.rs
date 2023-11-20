@@ -1,4 +1,4 @@
-use crate::{json, TargetBookmarks};
+use crate::{json, BookmarksJson, TargetBookmarks};
 use anyhow::Context;
 use std::io::{Read, Seek};
 
@@ -19,7 +19,12 @@ where
         // Rewind after reading.
         self.rewind()?;
 
-        *target_bookmarks = json::deserialize::<TargetBookmarks>(&buf)?;
+        let bookmarks = json::deserialize::<BookmarksJson>(&buf)?;
+
+        for bookmark in bookmarks {
+            target_bookmarks.insert(bookmark);
+        }
+
         Ok(())
     }
 }

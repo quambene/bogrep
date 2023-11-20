@@ -8,6 +8,7 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, info, trace, warn};
 use similar::{ChangeTag, TextDiff};
+use std::collections::HashSet;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -58,10 +59,10 @@ pub async fn fetch_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let mut bookmark = TargetBookmark::new(url, now, None);
+        let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new());
         fetch_and_add(client, cache, &mut bookmark, true).await?;
         info!("Fetched website for {url}");
-        target_bookmarks.add(&bookmark);
+        target_bookmarks.insert(bookmark);
     }
 
     target_writer.write(&target_bookmarks)?;
@@ -83,7 +84,7 @@ pub async fn fetch_and_cache(
     fetch_and_add_all(
         client,
         cache,
-        &mut target_bookmarks.bookmarks,
+        target_bookmarks.values_mut().collect(),
         max_concurrent_requests,
         fetch_all,
     )
@@ -101,7 +102,7 @@ pub async fn fetch_and_cache(
 pub async fn fetch_and_add_all(
     client: &impl Fetch,
     cache: &impl Caching,
-    bookmarks: &mut [TargetBookmark],
+    bookmarks: Vec<&mut TargetBookmark>,
     max_concurrent_requests: usize,
     fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
@@ -174,7 +175,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
     target_reader.read(&mut target_bookmarks)?;
 
     for url in args.diff {
-        let bookmark = target_bookmarks.find(&url);
+        let bookmark = target_bookmarks.get(&url);
 
         if let Some(bookmark) = bookmark {
             if let Some(cached_website_before) = cache.get(bookmark)? {
@@ -222,23 +223,29 @@ mod tests {
         let now = Utc::now();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
-        let mut target_bookmarks = TargetBookmarks {
-            bookmarks: vec![
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                "https://test_url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
+            ),
+            (
+                "https://test_url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
-            ],
-        };
-        for bookmark in &target_bookmarks.bookmarks {
+            ),
+        ]));
+        for bookmark in target_bookmarks.values() {
             client
                 .add(
                     "<html><head></head><body><img></img><p>Test content</p></body></html>"
@@ -248,8 +255,14 @@ mod tests {
                 .unwrap();
         }
 
-        let res =
-            fetch_and_add_all(&client, &cache, &mut target_bookmarks.bookmarks, 100, true).await;
+        let res = fetch_and_add_all(
+            &client,
+            &cache,
+            target_bookmarks.values_mut().collect(),
+            100,
+            true,
+        )
+        .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -271,23 +284,29 @@ mod tests {
         let now = Utc::now();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
-        let mut target_bookmarks = TargetBookmarks {
-            bookmarks: vec![
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                "https://test_url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: "https://test_url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
+            ),
+            (
+                "https://test_url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
-            ],
-        };
-        for bookmark in &target_bookmarks.bookmarks {
+            ),
+        ]));
+        for bookmark in target_bookmarks.values() {
             client
                 .add(
                     "<html><head></head><body><img></img><p>Test content</p></body></html>"
@@ -297,8 +316,14 @@ mod tests {
                 .unwrap();
         }
 
-        let res =
-            fetch_and_add_all(&client, &cache, &mut target_bookmarks.bookmarks, 100, true).await;
+        let res = fetch_and_add_all(
+            &client,
+            &cache,
+            target_bookmarks.values_mut().collect(),
+            100,
+            true,
+        )
+        .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -317,26 +342,32 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_and_add_all_if_not_exists_mode_html() {
-        let now = Utc::now();
+        let now = Utc::now().timestamp_millis();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
-        let mut target_bookmarks = TargetBookmarks {
-            bookmarks: vec![
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                "https://test_url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: "https://test_url1.com".to_owned(),
-                    last_imported: now.timestamp_millis(),
-                    last_cached: None,
+                    last_imported: now,
+                    last_cached: Some(now),
+                    sources: HashSet::new(),
                 },
+            ),
+            (
+                "https://test_url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
-                    last_imported: now.timestamp_millis(),
+                    last_imported: now,
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
-            ],
-        };
-        for bookmark in &target_bookmarks.bookmarks {
+            ),
+        ]));
+        for bookmark in target_bookmarks.values() {
             client
                 .add(
                     "<html><head></head><body><img></img><p>Test content (fetched)</p></body></html>"
@@ -349,13 +380,19 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.bookmarks[0],
+                &target_bookmarks.get("https://test_url1.com").unwrap(),
             )
             .await
             .unwrap();
 
-        let res =
-            fetch_and_add_all(&client, &cache, &mut target_bookmarks.bookmarks, 100, false).await;
+        let res = fetch_and_add_all(
+            &client,
+            &cache,
+            target_bookmarks.values_mut().collect(),
+            100,
+            false,
+        )
+        .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -376,26 +413,32 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_and_add_all_if_not_exists_mode_text() {
-        let now = Utc::now();
+        let now = Utc::now().timestamp_millis();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
-        let mut target_bookmarks = TargetBookmarks {
-            bookmarks: vec![
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                "https://test_url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: "https://test_url1.com".to_owned(),
-                    last_imported: now.timestamp_millis(),
-                    last_cached: None,
+                    last_imported: now,
+                    last_cached: Some(now),
+                    sources: HashSet::new(),
                 },
+            ),
+            (
+                "https://test_url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://test_url2.com".to_owned(),
-                    last_imported: now.timestamp_millis(),
+                    last_imported: now,
                     last_cached: None,
+                    sources: HashSet::new(),
                 },
-            ],
-        };
-        for bookmark in &target_bookmarks.bookmarks {
+            ),
+        ]));
+        for bookmark in target_bookmarks.values() {
             client
                 .add(
                     "<html><head></head><body><img></img><p>Test content (fetched)</p></body></html>"
@@ -408,13 +451,19 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.bookmarks[0],
+                &target_bookmarks.get("https://test_url1.com").unwrap(),
             )
             .await
             .unwrap();
 
-        let res =
-            fetch_and_add_all(&client, &cache, &mut target_bookmarks.bookmarks, 100, false).await;
+        let res = fetch_and_add_all(
+            &client,
+            &cache,
+            target_bookmarks.values_mut().collect(),
+            100,
+            false,
+        )
+        .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
