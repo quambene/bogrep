@@ -49,8 +49,8 @@ pub trait ReadBookmark: fmt::Debug {
 
     /// Identify and select the source.
     ///
-    /// A bookmark reader can read from multiple source. For example, the
-    /// standard from Chromium is used for Chrome and Edge as well.
+    /// A bookmark reader can read from multiple sources. For example, the json
+    /// format for bookmarks from Chromium can be used for Chrome and Edge.
     fn select_source(&self, source_path: &Path) -> Result<Option<SourceType>, anyhow::Error>;
 
     /// Select the bookmarks file if the source is given as a directory.
