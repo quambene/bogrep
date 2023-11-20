@@ -142,7 +142,7 @@ async fn fetch_and_add(
                 warn!("Can't fetch website: {}", err);
             }
         }
-    } else if bookmark.last_cached.is_none() {
+    } else if !cache.exists(bookmark) {
         match client.fetch(bookmark).await {
             Ok(website) => {
                 trace!("Fetched website: {website}");
