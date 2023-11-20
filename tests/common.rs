@@ -1,4 +1,4 @@
-use bogrep::{json, utils, TargetBookmark, TargetBookmarks};
+use bogrep::{json, utils, BookmarksJson};
 use std::{collections::HashMap, fs::File, io::Read, path::Path};
 use wiremock::{
     matchers::{method, path},
@@ -19,7 +19,7 @@ pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, Strin
 }
 
 #[allow(dead_code)]
-pub fn test_bookmarks(temp_path: &Path) -> Vec<TargetBookmark> {
+pub fn test_bookmarks(temp_path: &Path) -> BookmarksJson {
     let bookmarks_path = temp_path.join("bookmarks.json");
     assert!(
         bookmarks_path.exists(),
@@ -30,7 +30,7 @@ pub fn test_bookmarks(temp_path: &Path) -> Vec<TargetBookmark> {
     let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");
     assert!(!bookmarks_lock_path.exists());
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let res = json::deserialize::<TargetBookmarks>(&bookmarks);
+    let res = json::deserialize::<BookmarksJson>(&bookmarks);
     assert!(
         res.is_ok(),
         "Can't deserialize bookmarks: {}\n{}",
@@ -40,7 +40,7 @@ pub fn test_bookmarks(temp_path: &Path) -> Vec<TargetBookmark> {
 
     let bookmarks = res.unwrap();
     println!("Bookmarks:  {bookmarks:#?}");
-    bookmarks.bookmarks
+    bookmarks
 }
 
 #[allow(dead_code)]

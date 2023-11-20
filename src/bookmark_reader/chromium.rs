@@ -103,7 +103,7 @@ impl ReadBookmark for ChromiumBookmarkReader {
     }
 
     fn select_source(&self, source_path: &Path) -> Result<Option<SourceType>, anyhow::Error> {
-        let raw_bookmarks = utils::read_file_to_string(&source_path)?;
+        let raw_bookmarks = utils::read_file_to_string(source_path)?;
         let value: Value = serde_json::from_str(&raw_bookmarks)?;
 
         match value {
@@ -167,7 +167,7 @@ impl ReadBookmark for ChromiumNoExtensionBookmarkReader {
     }
 
     fn select_source(&self, source_path: &Path) -> Result<Option<SourceType>, anyhow::Error> {
-        let raw_bookmarks = utils::read_file_to_string(&source_path)?;
+        let raw_bookmarks = utils::read_file_to_string(source_path)?;
         let value: Value = serde_json::from_str(&raw_bookmarks)?;
 
         match value {

@@ -220,7 +220,7 @@ impl Caching for Cache {
 
     async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
         debug!("Remove all cached websites");
-        for bookmark in &bookmarks.bookmarks {
+        for bookmark in bookmarks.values() {
             let cache_path = self.bookmark_path(&bookmark.id);
 
             if cache_path.exists() {
@@ -240,7 +240,7 @@ impl Caching for Cache {
         debug!("Clear cache");
         let cache_modes = Cache::modes();
 
-        for bookmark in &bookmarks.bookmarks {
+        for bookmark in bookmarks.values() {
             for cache_mode in &cache_modes {
                 let cache_path = self.bookmark_path_by_cache_mode(&bookmark.id, cache_mode);
 
@@ -338,7 +338,7 @@ impl Caching for MockCache {
     async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
         let mut cache_map = self.cache_map.lock().unwrap();
 
-        for bookmark in &bookmarks.bookmarks {
+        for bookmark in bookmarks.values() {
             cache_map.remove(&bookmark.id);
         }
 
@@ -432,12 +432,18 @@ mod tests {
     async fn test_remove_all_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmarks = vec![
-            TargetBookmark::new("https://test_url1.com", now, None, HashSet::new()),
-            TargetBookmark::new("https://test_url2.com", now, None, HashSet::new()),
-        ];
+        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                "https://test_url1.com".to_owned(),
+                TargetBookmark::new("https://test_url1.com", now, None, HashSet::new()),
+            ),
+            (
+                "https://test_url2.com".to_owned(),
+                TargetBookmark::new("https://test_url2.com", now, None, HashSet::new()),
+            ),
+        ]));
 
-        for bookmark in &bookmarks {
+        for bookmark in target_bookmarks.values() {
             cache
                 .add(
                     "<html><head></head><body><p>Test content</p></body></html>".to_owned(),
@@ -446,8 +452,6 @@ mod tests {
                 .await
                 .unwrap();
         }
-
-        let target_bookmarks = TargetBookmarks { bookmarks };
 
         cache.remove_all(&target_bookmarks).await.unwrap();
         let cache_map = cache.cache_map.lock().unwrap();
@@ -458,14 +462,12 @@ mod tests {
     async fn test_clear_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmarks = vec![TargetBookmark::new(
-            "https://test_url.com",
-            now,
-            None,
-            HashSet::new(),
-        )];
+        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([(
+            "https://test_url.com".to_owned(),
+            TargetBookmark::new("https://test_url.com", now, None, HashSet::new()),
+        )]));
 
-        for bookmark in &bookmarks {
+        for bookmark in target_bookmarks.values() {
             cache
                 .add(
                     "<html><head></head><body><p>Test content</p></body></html>".to_owned(),
@@ -474,8 +476,6 @@ mod tests {
                 .await
                 .unwrap();
         }
-
-        let target_bookmarks = TargetBookmarks { bookmarks };
 
         cache.clear(&target_bookmarks).unwrap();
         let cache_map = cache.cache_map.lock().unwrap();

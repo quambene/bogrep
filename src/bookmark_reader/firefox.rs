@@ -165,7 +165,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
     }
 
     fn select_source(&self, source_file: &Path) -> Result<Option<SourceType>, anyhow::Error> {
-        let raw_bookmarks = utils::read_file_to_string(&source_file)?;
+        let raw_bookmarks = utils::read_file_to_string(source_file)?;
         let value: Value = serde_json::from_str(&raw_bookmarks)?;
 
         match value {
@@ -251,7 +251,7 @@ impl ReadBookmark for FirefoxCompressedBookmarkReader {
     }
 
     fn select_source(&self, source_file: &Path) -> Result<Option<SourceType>, anyhow::Error> {
-        let mut bookmarks_file = utils::open_file(&source_file)?;
+        let mut bookmarks_file = utils::open_file(source_file)?;
         let mut compressed_data = Vec::new();
         bookmarks_file.read_to_end(&mut compressed_data)?;
 

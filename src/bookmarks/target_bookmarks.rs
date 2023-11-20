@@ -1,8 +1,11 @@
 use crate::{SourceBookmarks, SourceType};
 use chrono::{DateTime, Utc};
-use log::{info, trace};
+use log::{debug, info, trace};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, slice};
+use std::collections::{
+    hash_map::{Entry, IntoIter, IntoValues, Iter, IterMut, Keys, Values, ValuesMut},
+    HashMap, HashSet,
+};
 use uuid::Uuid;
 
 /// A standardized bookmark for internal bookkeeping that is created from the
@@ -35,65 +38,96 @@ impl TargetBookmark {
 
 /// A wrapper for a collection of [`TargetBookmark`]s that is stored in the
 /// `bookmarks.json` file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
-pub struct TargetBookmarks {
-    pub bookmarks: Vec<TargetBookmark>,
-}
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct TargetBookmarks(HashMap<String, TargetBookmark>);
 
 impl TargetBookmarks {
-    pub fn new(bookmarks: Vec<TargetBookmark>) -> Self {
-        Self { bookmarks }
+    pub fn new(bookmarks: HashMap<String, TargetBookmark>) -> Self {
+        Self(bookmarks)
     }
 
-    pub fn add(&mut self, bookmark: &TargetBookmark) {
-        self.bookmarks.push(bookmark.to_owned());
-    }
-
-    pub fn remove(&mut self, bookmark: &TargetBookmark) {
-        let index = self
-            .bookmarks
-            .iter()
-            .position(|target_bookmark| target_bookmark == bookmark);
-
-        if let Some(index) = index {
-            self.bookmarks.remove(index);
-        }
+    pub fn inner(self) -> HashMap<String, TargetBookmark> {
+        self.0
     }
 
     pub fn is_empty(&self) -> bool {
-        self.bookmarks.is_empty()
+        self.0.is_empty()
     }
 
-    pub fn find(&self, url: &str) -> Option<&TargetBookmark> {
-        self.bookmarks.iter().find(|bookmark| bookmark.url == url)
+    pub fn get(&self, url: &str) -> Option<&TargetBookmark> {
+        self.0.get(url)
     }
 
-    pub fn filter_to_add<'a>(
-        &self,
-        source_bookmarks: &'a SourceBookmarks,
-        now: DateTime<Utc>,
-    ) -> Vec<TargetBookmark> {
-        let mut bookmarks_to_add = vec![];
+    pub fn get_mut(&mut self, url: &str) -> Option<&mut TargetBookmark> {
+        self.0.get_mut(url)
+    }
 
-        for source_bookmark in source_bookmarks.as_ref() {
-            if !self
-                .bookmarks
-                .iter()
-                .any(|target_bookmark| &target_bookmark.url == source_bookmark.0)
-            {
-                let source_bookmark =
-                    TargetBookmark::new(source_bookmark.0, now, None, source_bookmark.1.clone());
-                bookmarks_to_add.push(source_bookmark);
+    pub fn keys(&self) -> Keys<String, TargetBookmark> {
+        self.0.keys()
+    }
+
+    pub fn values(&self) -> Values<String, TargetBookmark> {
+        self.0.values()
+    }
+
+    pub fn values_mut(&mut self) -> ValuesMut<String, TargetBookmark> {
+        self.0.values_mut()
+    }
+
+    pub fn into_values(self) -> IntoValues<String, TargetBookmark> {
+        self.0.into_values()
+    }
+
+    pub fn contains_key(&self, url: &str) -> bool {
+        self.0.contains_key(url)
+    }
+
+    pub fn iter(&self) -> Iter<String, TargetBookmark> {
+        self.0.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<String, TargetBookmark> {
+        self.0.iter_mut()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn insert(&mut self, bookmark: TargetBookmark) {
+        let url = &bookmark.url;
+        let entry = self.0.entry(url.clone());
+
+        match entry {
+            Entry::Occupied(entry) => {
+                let url = entry.key().clone();
+                let target_bookmark = entry.into_mut();
+                debug!("Overwrite duplicate target bookmark: {}", url);
+                *target_bookmark = bookmark;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(bookmark);
             }
         }
+    }
 
-        bookmarks_to_add
+    pub fn remove(&mut self, bookmark: &TargetBookmark) {
+        self.0.remove(&bookmark.url);
+    }
+
+    pub fn filter_to_add<'a>(&self, source_bookmarks: &'a SourceBookmarks) -> Vec<&'a str> {
+        source_bookmarks
+            .keys()
+            .filter(|url| !self.0.contains_key(*url))
+            .map(|url| url.as_str())
+            .collect()
     }
 
     pub fn filter_to_remove(&self, source_bookmarks: &SourceBookmarks) -> Vec<TargetBookmark> {
-        self.bookmarks
+        self.0
             .iter()
-            .filter(|target_bookmark| !source_bookmarks.contains(&target_bookmark.url))
+            .filter(|(url, _)| !source_bookmarks.contains_key(url))
+            .map(|(_, target_bookmark)| target_bookmark)
             .cloned()
             .collect()
     }
@@ -106,21 +140,22 @@ impl TargetBookmarks {
         &mut self,
         source_bookmarks: &SourceBookmarks,
     ) -> Result<(Vec<TargetBookmark>, Vec<TargetBookmark>), anyhow::Error> {
-        if self.bookmarks.is_empty() {
-            self.bookmarks = Self::from(source_bookmarks.clone()).bookmarks;
-            return Ok((vec![], vec![]));
-        }
-
         let now = Utc::now();
-        let bookmarks_to_add = self.filter_to_add(source_bookmarks, now);
         let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
-
-        for bookmark in &bookmarks_to_add {
-            self.add(bookmark);
-        }
+        let urls_to_add = self.filter_to_add(source_bookmarks);
+        let mut bookmarks_to_add = vec![];
 
         for bookmark in &bookmarks_to_remove {
             self.remove(bookmark);
+        }
+
+        for url in urls_to_add {
+            if let Some(sources) = source_bookmarks.get(url) {
+                let target_bookmark =
+                    TargetBookmark::new(url.to_owned(), now, None, sources.to_owned());
+                bookmarks_to_add.push(target_bookmark.clone());
+                self.insert(target_bookmark);
+            }
         }
 
         if !bookmarks_to_add.is_empty() {
@@ -136,7 +171,7 @@ impl TargetBookmarks {
             trace!("Removed bookmarks: {bookmarks_to_remove:#?}");
         }
 
-        if bookmarks_to_add.is_empty() && bookmarks_to_remove.is_empty() {
+        if bookmarks_to_remove.is_empty() && bookmarks_to_remove.is_empty() {
             info!("Bookmarks are already up to date");
         }
 
@@ -144,25 +179,27 @@ impl TargetBookmarks {
     }
 }
 
-impl<'a> IntoIterator for &'a TargetBookmarks {
-    type Item = &'a TargetBookmark;
-    type IntoIter = slice::Iter<'a, TargetBookmark>;
+impl IntoIterator for TargetBookmarks {
+    type Item = (String, TargetBookmark);
+    type IntoIter = IntoIter<String, TargetBookmark>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.bookmarks.iter()
+        self.0.into_iter()
     }
 }
 
 impl From<SourceBookmarks> for TargetBookmarks {
     fn from(source_bookmarks: SourceBookmarks) -> Self {
         let now = Utc::now();
-        TargetBookmarks {
-            bookmarks: source_bookmarks
-                .inner()
-                .into_iter()
-                .map(|bookmark| TargetBookmark::new(bookmark.0, now, None, bookmark.1))
-                .collect(),
+        let mut target_bookmarks = TargetBookmarks::default();
+
+        for source_bookmark in source_bookmarks.into_iter() {
+            let target_bookmark =
+                TargetBookmark::new(source_bookmark.0, now, None, source_bookmark.1);
+            target_bookmarks.insert(target_bookmark)
         }
+
+        target_bookmarks
     }
 }
 
@@ -208,28 +245,22 @@ mod tests {
             ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::new()),
         ]);
         let source_bookmarks = SourceBookmarks::new(expected_bookmarks.clone());
-        let mut target_bookmarks = TargetBookmarks {
-            bookmarks: vec![TargetBookmark::new(
-                "https://www.deepl.com/translator",
-                now,
-                None,
-                HashSet::new(),
-            ), TargetBookmark::new(
-                "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
-                now,
-                None,
-                HashSet::new(),
-            )],
-        };
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([("https://www.deepl.com/translator".to_owned(), TargetBookmark::new(
+            "https://www.deepl.com/translator",
+            now,
+            None,
+            HashSet::new(),
+        )), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark::new(
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
+            now,
+            None,
+            HashSet::new())),
+        ]));
         let res = target_bookmarks.update(&source_bookmarks);
         assert!(res.is_ok());
         assert_eq!(
-            target_bookmarks
-                .bookmarks
-                .iter()
-                .map(|bookmark| bookmark.url.clone())
-                .collect::<HashSet<_>>(),
-            expected_bookmarks.keys().cloned().collect(),
+            target_bookmarks.keys().collect::<HashSet<_>>(),
+            expected_bookmarks.keys().collect(),
         );
     }
 
@@ -242,23 +273,29 @@ mod tests {
         let res = target_reader.read(&mut target_bookmarks);
         assert!(res.is_ok());
         assert_eq!(
-            target_bookmarks.bookmarks,
-            vec![
-                TargetBookmark {
-                    id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
-                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
-                    last_imported: 1694989714351,
-                    last_cached: None,
-                    sources: HashSet::new(),
-                },
-                TargetBookmark {
-                    id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
-                    url: String::from("https://www.deepl.com/translator"),
-                    last_imported: 1694989714351,
-                    last_cached: None,
-                    sources: HashSet::new(),
-                }
-            ]
+            target_bookmarks,
+            TargetBookmarks::new(HashMap::from_iter([
+                (
+                    String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    TargetBookmark {
+                        id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
+                        url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                        last_imported: 1694989714351,
+                        last_cached: None,
+                        sources: HashSet::new(),
+                    }
+                ),
+                (
+                    String::from("https://www.deepl.com/translator"),
+                    TargetBookmark {
+                        id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                        url: String::from("https://www.deepl.com/translator"),
+                        last_imported: 1694989714351,
+                        last_cached: None,
+                        sources: HashSet::new(),
+                    }
+                )
+            ]))
         );
     }
 
@@ -270,27 +307,33 @@ mod tests {
 
         let res = target_reader.read(&mut target_bookmarks);
         assert!(res.is_ok());
-        assert!(target_bookmarks.bookmarks.is_empty());
+        assert!(target_bookmarks.is_empty());
     }
 
     #[test]
     fn test_write_target_bookmarks() {
-        let target_bookmarks = TargetBookmarks::new(vec![
-            TargetBookmark {
-                id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
-                url: String::from("https://doc.rust-lang.org/book/title-page.html"),
-                last_imported: 1694989714351,
-                last_cached: None,
-                sources: HashSet::new(),
-            },
-            TargetBookmark {
-                id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
-                url: String::from("https://www.deepl.com/translator"),
-                last_imported: 1694989714351,
-                last_cached: None,
-                sources: HashSet::new(),
-            },
-        ]);
+        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                String::from("https://doc.rust-lang.org/book/title-page.html"),
+                TargetBookmark {
+                    id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
+                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                    sources: HashSet::new(),
+                },
+            ),
+            (
+                String::from("https://www.deepl.com/translator"),
+                TargetBookmark {
+                    id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                    url: String::from("https://www.deepl.com/translator"),
+                    last_imported: 1694989714351,
+                    last_cached: None,
+                    sources: HashSet::new(),
+                },
+            ),
+        ]));
         let mut target_reader = Cursor::new(Vec::new());
         let res = target_reader.write(&target_bookmarks);
         assert!(res.is_ok());

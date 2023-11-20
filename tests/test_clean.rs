@@ -1,7 +1,7 @@
 mod common;
 
 use assert_cmd::Command;
-use bogrep::{json, utils, TargetBookmarks};
+use bogrep::{json, utils, BookmarksJson};
 use std::{
     fs::{self, File},
     io::Write,
@@ -51,9 +51,9 @@ async fn test_clean() {
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let bookmarks = json::deserialize::<TargetBookmarks>(&bookmarks).unwrap();
+    let bookmarks = json::deserialize::<BookmarksJson>(&bookmarks).unwrap();
 
-    for bookmark in &bookmarks.bookmarks {
+    for bookmark in &bookmarks {
         let cache_path = temp_path.join(format!("cache/{}.txt", bookmark.id));
         assert!(cache_path.exists());
 
@@ -68,7 +68,7 @@ async fn test_clean() {
     let res = cmd.output();
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
-    for bookmark in &bookmarks.bookmarks {
+    for bookmark in &bookmarks {
         let cache_path = temp_path.join(format!("cache/{}.txt", bookmark.id));
         // Text files are now deleted.
         assert!(!cache_path.exists());
@@ -122,9 +122,9 @@ async fn test_clean_all() {
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let bookmarks = json::deserialize::<TargetBookmarks>(&bookmarks).unwrap();
+    let bookmarks = json::deserialize::<BookmarksJson>(&bookmarks).unwrap();
 
-    for bookmark in &bookmarks.bookmarks {
+    for bookmark in &bookmarks {
         let cache_file = temp_path.join(format!("cache/{}.txt", bookmark.id));
         assert!(cache_file.exists());
 
@@ -140,7 +140,7 @@ async fn test_clean_all() {
     assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
     assert!(cache_path.exists());
 
-    for bookmark in &bookmarks.bookmarks {
+    for bookmark in &bookmarks {
         let cache_file = temp_path.join(format!("cache/{}.txt", bookmark.id));
         // Text files are now deleted.
         assert!(!cache_file.exists());

@@ -3,7 +3,10 @@ mod target_bookmarks;
 
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarks};
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    slice::Iter,
+};
 pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
 
 /// The type used to identify a source.
@@ -62,5 +65,82 @@ impl Source {
             path: path.to_string_lossy().to_string(),
             folders,
         }
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct BookmarksJson {
+    pub bookmarks: Vec<TargetBookmark>,
+}
+
+impl BookmarksJson {
+    pub fn new(mut bookmarks: Vec<TargetBookmark>) -> Self {
+        // Sort by `last_cached` and then by `url`.
+        bookmarks.sort_by(|a, b| match (a.last_cached, b.last_cached) {
+            (Some(a_cached), Some(b_cached)) => {
+                a_cached.cmp(&b_cached).then_with(|| a.url.cmp(&b.url))
+            }
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a.url.cmp(&b.url),
+        });
+
+        Self { bookmarks }
+    }
+
+    pub fn iter(&self) -> Iter<TargetBookmark> {
+        self.bookmarks.iter()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&TargetBookmark> {
+        self.bookmarks.get(index)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bookmarks.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.bookmarks.len()
+    }
+}
+
+impl From<&TargetBookmarks> for BookmarksJson {
+    fn from(target_bookmarks: &TargetBookmarks) -> Self {
+        BookmarksJson {
+            bookmarks: target_bookmarks.values().cloned().collect(),
+        }
+    }
+}
+
+impl IntoIterator for BookmarksJson {
+    type Item = TargetBookmark;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.bookmarks.into_iter()
+    }
+}
+
+pub struct BookmarksJsonIterator<'a> {
+    bookmarks_iter: Iter<'a, TargetBookmark>,
+}
+
+impl<'a> IntoIterator for &'a BookmarksJson {
+    type Item = &'a TargetBookmark;
+    type IntoIter = BookmarksJsonIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        BookmarksJsonIterator {
+            bookmarks_iter: self.bookmarks.iter(),
+        }
+    }
+}
+
+impl<'a> Iterator for BookmarksJsonIterator<'a> {
+    type Item = &'a TargetBookmark;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bookmarks_iter.next()
     }
 }

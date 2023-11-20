@@ -116,7 +116,12 @@ async fn test_fetch_diff() {
     println!("Execute 'bogrep fetch --diff'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["fetch", "--diff", &bookmarks[0].url, &bookmarks[1].url]);
+    cmd.args([
+        "fetch",
+        "--diff",
+        &bookmarks.get(0).unwrap().url,
+        &bookmarks.get(1).unwrap().url,
+    ]);
     cmd.assert().success().stdout(
         str::contains("-Test content 10+Test content 11")
             .and(str::contains("-Test content 20+Test content 21")),

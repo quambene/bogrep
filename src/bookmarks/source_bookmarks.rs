@@ -1,12 +1,15 @@
 use crate::SourceType;
 use log::debug;
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::{
+    hash_map::{Entry, IntoIter, Iter, Keys},
+    HashMap, HashSet,
+};
 
 /// A bookmark from a specific source, like Firefox or Chrome.
 #[derive(Debug, Clone)]
 pub struct SourceBookmark {
-    url: String,
-    source_type: SourceType,
+    pub url: String,
+    pub source_type: SourceType,
 }
 
 impl SourceBookmark {
@@ -28,16 +31,32 @@ impl SourceBookmarks {
         self.0
     }
 
-    pub fn insert(&mut self, source_bookmark: SourceBookmark) {
-        let url = source_bookmark.url;
-        let source_type = source_bookmark.source_type;
+    pub fn get(&self, url: &str) -> Option<&HashSet<SourceType>> {
+        self.0.get(url)
+    }
+
+    pub fn keys(&self) -> Keys<String, HashSet<SourceType>> {
+        self.0.keys()
+    }
+
+    pub fn contains_key(&self, url: &str) -> bool {
+        self.0.contains_key(url)
+    }
+
+    pub fn iter(&self) -> Iter<String, HashSet<SourceType>> {
+        self.0.iter()
+    }
+
+    pub fn insert(&mut self, bookmark: SourceBookmark) {
+        let url = bookmark.url;
+        let source_type = bookmark.source_type;
         let entry = self.0.entry(url);
 
         match entry {
             Entry::Occupied(entry) => {
                 let url = entry.key().clone();
                 let source_types = entry.into_mut();
-                debug!("Overwrite duplicate bookmark: {}", url);
+                debug!("Overwrite duplicate source bookmark: {}", url);
                 source_types.insert(source_type);
             }
             Entry::Vacant(entry) => {
@@ -47,9 +66,14 @@ impl SourceBookmarks {
             }
         }
     }
+}
 
-    pub fn contains(&self, url: &str) -> bool {
-        self.0.contains_key(url)
+impl IntoIterator for SourceBookmarks {
+    type Item = (String, HashSet<SourceType>);
+    type IntoIter = IntoIter<String, HashSet<SourceType>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

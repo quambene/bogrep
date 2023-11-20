@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use bogrep::{json, test_utils, utils, TargetBookmarks};
+use bogrep::{json, test_utils, utils, BookmarksJson};
 use predicates::{prelude::PredicateBooleanExt, str};
 use std::{collections::HashSet, fs, io::Write, path::Path};
 use tempfile::tempdir;
@@ -31,11 +31,11 @@ fn test_import(source: &str, temp_path: &Path) {
     assert!(!bookmarks_lock_path.exists());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let res = json::deserialize::<TargetBookmarks>(&bookmarks);
+    let res = json::deserialize::<BookmarksJson>(&bookmarks);
     assert!(res.is_ok());
 
     let bookmarks = res.unwrap();
-    assert_eq!(bookmarks.bookmarks.len(), 4);
+    assert_eq!(bookmarks.len(), 4);
 }
 
 #[test]
@@ -182,6 +182,6 @@ fn test_import_consecutive() {
     assert!(!bookmarks_lock_path.exists());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let bookmarks = json::deserialize::<TargetBookmarks>(&bookmarks).unwrap();
-    assert_eq!(bookmarks.bookmarks.len(), 1);
+    let bookmarks = json::deserialize::<BookmarksJson>(&bookmarks).unwrap();
+    assert_eq!(bookmarks.len(), 1);
 }
