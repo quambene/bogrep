@@ -5,6 +5,7 @@ use clap::{ArgAction, Args as ClapArgs, Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
+    /// The search term.
     pub pattern: Option<String>,
     #[arg(short, long, action = ArgAction::Count)]
     pub verbose: u8,
@@ -37,6 +38,10 @@ pub enum Subcommands {
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
     Clean(CleanArgs),
+    /// Add a new bookmark.
+    Add(AddArgs),
+    /// Remove a bookmark.
+    Remove(RemoveArgs),
 }
 
 /// Describes the arguments for the `config` subcommand.
@@ -80,13 +85,7 @@ pub struct SetIgnoredUrls {
 
 /// Describes the arguments for the `import` subcommand.
 #[derive(ClapArgs, Debug)]
-pub struct ImportArgs {
-    /// Import specified URLs as bookmark.
-    ///
-    /// Multiple URLs are separated by a whitespace.
-    #[arg(long, num_args = 0.., value_delimiter = ' ')]
-    pub urls: Vec<String>,
-}
+pub struct ImportArgs;
 
 /// Describes the arguments for the `fetch` subcommand.
 #[derive(ClapArgs, Debug)]
@@ -140,4 +139,24 @@ pub struct CleanArgs {
     /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
+}
+
+/// Describes the arguments for the `add` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct AddArgs {
+    /// Add specified URLs as bookmark.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    #[arg(num_args = 0.., value_name = "URLs", value_delimiter = ' ')]
+    pub urls: Vec<String>,
+}
+
+/// Describes the arguments for the `remove` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct RemoveArgs {
+    /// Remove specified URLs from bookmark.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    #[arg(long, num_args = 0.., value_delimiter = ' ')]
+    pub urls: Vec<String>,
 }

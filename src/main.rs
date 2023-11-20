@@ -25,6 +25,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             }
             Subcommands::Clean(args) => cmd::clean(&config, &args).await?,
+            Subcommands::Add(args) => cmd::add(config, args).await?,
+            Subcommands::Remove(args) => cmd::remove(config, args).await?,
         }
     } else if let Some(pattern) = &args.pattern {
         cmd::search(pattern, &config, &args)?;
