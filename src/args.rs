@@ -157,6 +157,6 @@ pub struct RemoveArgs {
     /// Remove specified URLs from bookmark.
     ///
     /// Multiple URLs are separated by a whitespace.
-    #[arg(long, num_args = 0.., value_delimiter = ' ')]
+    #[arg(num_args = 0.., value_name = "URLs", value_delimiter = ' ')]
     pub urls: Vec<String>,
 }

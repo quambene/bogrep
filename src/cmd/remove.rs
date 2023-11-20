@@ -1,21 +1,19 @@
 use crate::{
-    args::AddArgs,
+    args::RemoveArgs,
     bookmark_reader::{ReadTarget, WriteTarget},
-    utils, Config, SourceType, TargetBookmark, TargetBookmarks,
+    utils, Config, TargetBookmarks,
 };
 use anyhow::anyhow;
-use chrono::Utc;
 use log::info;
-use std::collections::HashSet;
 
-pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
+pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Error> {
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
     if !args.urls.is_empty() {
-        add_urls(&args.urls, &mut target_reader, &mut target_writer)?;
+        remove_urls(&args.urls, &mut target_reader, &mut target_writer)?;
     } else {
-        return Err(anyhow!("Invalid argument: Specify the URLs to be added"));
+        return Err(anyhow!("Invalid argument: Specify the URLs to be removed"));
     }
 
     utils::close_and_rename(
@@ -26,26 +24,25 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn add_urls(
+fn remove_urls(
     urls: &[String],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
-    let now = Utc::now();
+    let mut counter = 0;
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut sources = HashSet::new();
-    sources.insert(SourceType::Internal);
 
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let bookmark = TargetBookmark::new(url, now, None, sources.clone());
-        target_bookmarks.insert(bookmark);
+        if let Some(_) = target_bookmarks.remove(url) {
+            counter += 1;
+        }
     }
 
     target_writer.write(&target_bookmarks)?;
 
-    info!("Added {} bookmarks", urls.len());
+    info!("Removed {} bookmarks", counter);
 
     Ok(())
 }
@@ -53,16 +50,30 @@ fn add_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, BookmarksJson};
-    use std::io::{Cursor, Write};
+    use crate::{json, BookmarksJson, SourceType, TargetBookmark};
+    use chrono::{DateTime, Utc};
+    use std::{
+        collections::HashSet,
+        io::{Cursor, Write},
+    };
+
+    fn create_target_bookmark(url: &str, now: DateTime<Utc>) -> TargetBookmark {
+        let mut sources = HashSet::new();
+        sources.insert(SourceType::Internal);
+        TargetBookmark::new(url, now, None, sources)
+    }
 
     #[test]
-    fn test_add_urls() {
+    fn test_remove_urls() {
+        let now = Utc::now();
+
         let mut expected_urls = HashSet::new();
         expected_urls.insert("https://test_url1.com".to_owned());
-        expected_urls.insert("https://test_url2.com".to_owned());
 
-        let target_bookmarks = TargetBookmarks::default();
+        let mut target_bookmarks = TargetBookmarks::default();
+        target_bookmarks.insert(create_target_bookmark("https://test_url1.com", now));
+        target_bookmarks.insert(create_target_bookmark("https://test_url2.com", now));
+        target_bookmarks.insert(create_target_bookmark("https://test_url3.com", now));
         let bookmarks_json = BookmarksJson::from(&target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
 
@@ -73,11 +84,11 @@ mod tests {
         let mut target_writer = Cursor::new(Vec::new());
 
         let urls = vec![
-            "https://test_url1.com".to_owned(),
             "https://test_url2.com".to_owned(),
+            "https://test_url3.com".to_owned(),
         ];
 
-        let res = add_urls(&urls, &mut target_reader, &mut target_writer);
+        let res = remove_urls(&urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();
@@ -90,14 +101,10 @@ mod tests {
         );
 
         let actual_bookmarks = actual_bookmarks.unwrap();
-        assert_eq!(actual_bookmarks.len(), 2);
-        assert!(
-            actual_bookmarks
-                .iter()
-                .all(|bookmark| bookmark.last_cached == None
-                    && bookmark.sources.contains(&SourceType::Internal)),
-            "actual: {actual_bookmarks:#?}"
-        );
+        assert_eq!(actual_bookmarks.len(), 1);
+        assert!(actual_bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached == None));
         assert_eq!(
             actual_bookmarks
                 .iter()

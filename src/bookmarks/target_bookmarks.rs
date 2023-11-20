@@ -111,8 +111,8 @@ impl TargetBookmarks {
         }
     }
 
-    pub fn remove(&mut self, bookmark: &TargetBookmark) {
-        self.0.remove(&bookmark.url);
+    pub fn remove(&mut self, url: &str) -> Option<TargetBookmark> {
+        self.0.remove(url)
     }
 
     pub fn filter_to_add<'a>(&self, source_bookmarks: &'a SourceBookmarks) -> Vec<&'a str> {
@@ -146,7 +146,7 @@ impl TargetBookmarks {
         let mut bookmarks_to_add = vec![];
 
         for bookmark in &bookmarks_to_remove {
-            self.remove(bookmark);
+            self.remove(&bookmark.url);
         }
 
         for url in urls_to_add {
