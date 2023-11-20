@@ -166,7 +166,6 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(
             target_bookmarks
-                
                 .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
@@ -258,7 +257,9 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.get("https://www.deepl.com/translator").unwrap(),
+                &target_bookmarks
+                    .get("https://www.deepl.com/translator")
+                    .unwrap(),
             )
             .await
             .unwrap();
@@ -282,7 +283,6 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(
             target_bookmarks
-                
                 .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
