@@ -28,6 +28,7 @@ bogrep -i "reed-solomon code"
 - [Specify bookmark folders](#specify-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
 - [Diff websites](#diff-websites)
+- [Manage internal bookmarks](#manage-internal-bookmarks)
 - [Request throttling](#request-throttling)
 - [Supported operating systems](#supported-operating-systems)
 - [Testing](#testing)
@@ -187,6 +188,21 @@ Fetch difference between cached and fetched website for multiple urls, and displ
 
 ``` bash
 bogrep fetch --diff <url1> <url2> ...
+```
+
+## Manage internal bookmarks
+
+If you need to add specific URLs to the search index, use the `bogrep add` subcommand.
+
+``` bash
+# Add URLs to search index
+bogrep add <url1> <url2> ...
+
+# Remove URLs from search index
+bogrep remove <url1> <url2> ...
+
+# Add URLs to search index and fetch content from URLs
+bogrep fetch <url1> <url2> ...
 ```
 
 ## Request throttling
