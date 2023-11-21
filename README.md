@@ -79,7 +79,7 @@ bogrep <pattern>
 ### Search
 
 ``` bash
-bogrep <pattern>
+bogrep [OPTIONS] [PATTERN]
 ```
 
 ``` properties
