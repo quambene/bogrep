@@ -35,7 +35,7 @@ fn remove_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        if let Some(_) = target_bookmarks.remove(url) {
+        if target_bookmarks.remove(url).is_some() {
             counter += 1;
         }
     }
