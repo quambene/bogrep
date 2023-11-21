@@ -1,5 +1,8 @@
 coverage:
-  # We are aiming for >60% coverage
+  # Customize the visible colors:
+  #   <60%: red
+  #   <80%: yellow
+  #   >=80%: green
   range: 60..80
 ignore:
   - "tests"
