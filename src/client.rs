@@ -29,10 +29,11 @@ impl Client {
         let request_throttling = config.settings.request_throttling;
         let client = ReqwestClient::builder()
             .timeout(Duration::from_millis(request_timeout))
-            // Workaround for "Too many open files" (see <https://github.com/hyperium/hyper/issues/1422>).
-            .pool_idle_timeout(Duration::from_millis(0))
-            // Workaround for "Too many open files" (see <https://github.com/hyperium/hyper/issues/1422>).
-            .pool_max_idle_per_host(0)
+            // Fix "Too many open files" and DNS errors (rate limit for DNS
+            // server) by choosing a sensible value for `pool_idle_timeout()`
+            // and `pool_max_idle_per_host()`.
+            .pool_idle_timeout(Duration::from_secs(5))
+            .pool_max_idle_per_host(100)
             .build()?;
         let throttler = Some(Throttler::new(request_throttling));
         Ok(Self { client, throttler })
