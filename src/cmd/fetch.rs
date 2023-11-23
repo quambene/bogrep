@@ -133,7 +133,7 @@ async fn fetch_and_add(
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.replace(html, bookmark).await {
-                    warn!("Can't replace website {} in cache: {}", bookmark.url, err);
+                    warn!("Can't replace website ({}) in cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
                 }
@@ -149,13 +149,13 @@ async fn fetch_and_add(
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.add(html, bookmark).await {
-                    warn!("Can't add website '{}' to cache: {}", bookmark.url, err);
+                    warn!("Can't add website ({}) to cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
                 }
             }
             Err(err) => {
-                warn!("Can't fetch website from '{}': {}", bookmark.url, err);
+                warn!("Can't fetch website: {}", err);
             }
         }
     }
