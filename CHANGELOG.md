@@ -7,6 +7,7 @@
   - Implement `bogrep remove <URLs>` (remove specified URLs from bookmarks)
   - Implement `bogrep fetch --urls <URLs>` (fetch specified URLs)
   - Add sources to `SourceBookmark` and `TargetBookmark`
+  - Fix dns errors for fetching bookmarks
 
 ### v0.4.0
 
