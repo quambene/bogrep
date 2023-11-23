@@ -128,34 +128,36 @@ async fn fetch_and_add(
 ) -> Result<(), anyhow::Error> {
     if fetch_all {
         match client.fetch(bookmark).await {
-            Ok(website) => {
+            Ok(Some(website)) => {
                 trace!("Fetched website: {website}");
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.replace(html, bookmark).await {
-                    warn!("Can't replace website {} in cache: {}", bookmark.url, err);
+                    warn!("Can't replace website ({}) in cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
                 }
             }
+            Ok(None) => (),
             Err(err) => {
                 warn!("Can't fetch website: {}", err);
             }
         }
     } else if !cache.exists(bookmark) {
         match client.fetch(bookmark).await {
-            Ok(website) => {
+            Ok(Some(website)) => {
                 trace!("Fetched website: {website}");
                 let html = html::filter_html(&website)?;
 
                 if let Err(err) = cache.add(html, bookmark).await {
-                    warn!("Can't add website '{}' to cache: {}", bookmark.url, err);
+                    warn!("Can't add website ({}) to cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
                 }
             }
+            Ok(None) => (),
             Err(err) => {
-                warn!("Can't fetch website from '{}': {}", bookmark.url, err);
+                warn!("Can't fetch website: {}", err);
             }
         }
     }
@@ -179,28 +181,29 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
 
         if let Some(bookmark) = bookmark {
             if let Some(cached_website_before) = cache.get(bookmark)? {
-                let fetched_website = client.fetch(bookmark).await?;
-                trace!("Fetched website: {fetched_website}");
-                let html = html::filter_html(&fetched_website)?;
+                if let Some(fetched_website) = client.fetch(bookmark).await? {
+                    trace!("Fetched website: {fetched_website}");
+                    let html = html::filter_html(&fetched_website)?;
 
-                // Cache fetched website
-                let cached_website_after = cache.replace(html, bookmark).await?;
+                    // Cache fetched website
+                    let cached_website_after = cache.replace(html, bookmark).await?;
 
-                let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
+                    let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
 
-                for change in diff.iter_all_changes() {
-                    match change.tag() {
-                        ChangeTag::Delete => {
-                            if let Some(change) = change.as_str() {
-                                print!("{}{}", "-".red(), change.red());
+                    for change in diff.iter_all_changes() {
+                        match change.tag() {
+                            ChangeTag::Delete => {
+                                if let Some(change) = change.as_str() {
+                                    print!("{}{}", "-".red(), change.red());
+                                }
                             }
-                        }
-                        ChangeTag::Insert => {
-                            if let Some(change) = change.as_str() {
-                                print!("{}{}", "+".green(), change.green());
+                            ChangeTag::Insert => {
+                                if let Some(change) = change.as_str() {
+                                    print!("{}{}", "+".green(), change.green());
+                                }
                             }
+                            ChangeTag::Equal => continue,
                         }
-                        ChangeTag::Equal => continue,
                     }
                 }
             }

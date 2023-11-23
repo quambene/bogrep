@@ -14,7 +14,7 @@ use tokio::time::{self, Duration};
 #[async_trait]
 pub trait Fetch {
     /// Fetch content of a website as HTML.
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error>;
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error>;
 }
 
 /// A client to fetch websites.
@@ -29,10 +29,11 @@ impl Client {
         let request_throttling = config.settings.request_throttling;
         let client = ReqwestClient::builder()
             .timeout(Duration::from_millis(request_timeout))
-            // Workaround for "Too many open files" (see <https://github.com/hyperium/hyper/issues/1422>).
-            .pool_idle_timeout(Duration::from_millis(0))
-            // Workaround for "Too many open files" (see <https://github.com/hyperium/hyper/issues/1422>).
-            .pool_max_idle_per_host(0)
+            // Fix "Too many open files" and DNS errors (rate limit for DNS
+            // server) by choosing a sensible value for `pool_idle_timeout()`
+            // and `pool_max_idle_per_host()`.
+            .pool_idle_timeout(Duration::from_secs(5))
+            .pool_max_idle_per_host(100)
             .build()?;
         let throttler = Some(Throttler::new(request_throttling));
         Ok(Self { client, throttler })
@@ -41,7 +42,7 @@ impl Client {
 
 #[async_trait]
 impl Fetch for Client {
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error> {
         debug!("Fetch bookmark: {}", bookmark.url);
 
         if let Some(throttler) = &self.throttler {
@@ -62,12 +63,17 @@ impl Fetch for Client {
                     || content_type.starts_with("video/"))
                 {
                     let html = response.text().await?;
-                    return Ok(html);
+
+                    if !html.is_empty() {
+                        return Ok(Some(html));
+                    } else {
+                        return Ok(None);
+                    }
                 }
             }
         }
 
-        Ok(String::default())
+        Ok(None)
     }
 }
 
@@ -166,11 +172,11 @@ impl MockClient {
 
 #[async_trait]
 impl Fetch for MockClient {
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error> {
         let html = self
             .get(&bookmark.url)
             .ok_or(anyhow!("Can't fetch bookmark"))?;
-        Ok(html)
+        Ok(Some(html))
     }
 }
 
