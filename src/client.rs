@@ -14,7 +14,7 @@ use tokio::time::{self, Duration};
 #[async_trait]
 pub trait Fetch {
     /// Fetch content of a website as HTML.
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error>;
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error>;
 }
 
 /// A client to fetch websites.
@@ -41,7 +41,7 @@ impl Client {
 
 #[async_trait]
 impl Fetch for Client {
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error> {
         debug!("Fetch bookmark: {}", bookmark.url);
 
         if let Some(throttler) = &self.throttler {
@@ -62,12 +62,17 @@ impl Fetch for Client {
                     || content_type.starts_with("video/"))
                 {
                     let html = response.text().await?;
-                    return Ok(html);
+
+                    if !html.is_empty() {
+                        return Ok(Some(html));
+                    } else {
+                        return Ok(None);
+                    }
                 }
             }
         }
 
-        Ok(String::default())
+        Ok(None)
     }
 }
 
@@ -166,11 +171,11 @@ impl MockClient {
 
 #[async_trait]
 impl Fetch for MockClient {
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error> {
         let html = self
             .get(&bookmark.url)
             .ok_or(anyhow!("Can't fetch bookmark"))?;
-        Ok(html)
+        Ok(Some(html))
     }
 }
 
