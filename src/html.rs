@@ -226,8 +226,8 @@ mod tests {
         "#;
         let expected_markdown = " title_content\n\nparagraph_content_1\n\nparagraph_content_2";
 
-        let markdown = convert_to_markdown(&html);
+        let markdown = convert_to_markdown(html);
         // TODO: fix superfluous backslashes
-        assert_eq!(markdown.replace("\\", ""), expected_markdown);
+        assert_eq!(markdown.replace('\\', ""), expected_markdown);
     }
 }

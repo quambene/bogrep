@@ -15,7 +15,7 @@ const BOOKMARKS_LOCK_FILE: &str = "bookmarks-lock.json";
 const CACHE_DIR: &str = "cache";
 
 /// A configuration for running Bogrep.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Config {
     /// The log level of the program.
     pub verbosity: u8,
@@ -114,23 +114,5 @@ impl Config {
         }
 
         Ok(config)
-    }
-}
-
-#[cfg(test)]
-pub mod tests {
-    use super::*;
-
-    impl Default for Config {
-        fn default() -> Self {
-            Self {
-                verbosity: u8::default(),
-                settings_path: PathBuf::default(),
-                cache_path: PathBuf::default(),
-                target_bookmark_file: PathBuf::default(),
-                target_bookmark_lock_file: PathBuf::default(),
-                settings: Settings::default(),
-            }
-        }
     }
 }

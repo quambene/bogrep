@@ -383,7 +383,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.get("https://test_url1.com").unwrap(),
+                target_bookmarks.get("https://test_url1.com").unwrap(),
             )
             .await
             .unwrap();
@@ -454,7 +454,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                &target_bookmarks.get("https://test_url1.com").unwrap(),
+                target_bookmarks.get("https://test_url1.com").unwrap(),
             )
             .await
             .unwrap();
