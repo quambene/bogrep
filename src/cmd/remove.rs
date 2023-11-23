@@ -104,7 +104,7 @@ mod tests {
         assert_eq!(actual_bookmarks.len(), 1);
         assert!(actual_bookmarks
             .iter()
-            .all(|bookmark| bookmark.last_cached == None));
+            .all(|bookmark| bookmark.last_cached.is_none()));
         assert_eq!(
             actual_bookmarks
                 .iter()

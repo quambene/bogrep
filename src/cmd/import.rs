@@ -92,7 +92,7 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
 
-        let source_reader = SourceReader::init(&source).unwrap();
+        let source_reader = SourceReader::init(source).unwrap();
         let res = import_source(vec![source_reader], &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
@@ -100,7 +100,7 @@ mod tests {
         let actual_bookmarks = json::deserialize::<BookmarksJson>(&actual).unwrap();
         assert!(actual_bookmarks
             .iter()
-            .all(|bookmark| bookmark.last_cached == None));
+            .all(|bookmark| bookmark.last_cached.is_none()));
         assert_eq!(
             actual_bookmarks
                 .iter()
@@ -143,7 +143,7 @@ mod tests {
         let actual_bookmarks = actual_bookmarks.unwrap();
         assert!(actual_bookmarks
             .iter()
-            .all(|bookmark| bookmark.last_cached == None));
+            .all(|bookmark| bookmark.last_cached.is_none()));
         assert_eq!(
             actual_bookmarks
                 .iter()

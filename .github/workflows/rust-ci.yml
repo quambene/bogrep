@@ -18,8 +18,8 @@ jobs:
     steps:
         - uses: actions/checkout@v4
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo clippy -- -D warnings
-          run: cargo clippy -- -D warnings
+        - name: cargo clippy --all-features --all-targets -- -D warnings
+          run: cargo clippy --all-features --all-targets -- -D warnings
   doc:
     runs-on: ubuntu-latest
     steps:

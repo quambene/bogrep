@@ -7,11 +7,11 @@ use wiremock::{
 
 #[allow(dead_code)]
 pub fn compare_files(actual_path: &Path, expected_path: &Path) -> (String, String) {
-    let mut actual_file = File::open(&actual_path).unwrap();
+    let mut actual_file = File::open(actual_path).unwrap();
     let mut actual = String::new();
     actual_file.read_to_string(&mut actual).unwrap();
 
-    let mut expected_file = File::open(&expected_path).unwrap();
+    let mut expected_file = File::open(expected_path).unwrap();
     let mut expected = String::new();
     expected_file.read_to_string(&mut expected).unwrap();
 
@@ -65,7 +65,7 @@ pub async fn mount_mocks(mock_server: &MockServer, num_mocks: u32) -> HashMap<St
         Mock::given(method("GET"))
             .and(path(endpoint))
             .respond_with(ResponseTemplate::new(200).set_body_string(response))
-            .mount(&mock_server)
+            .mount(mock_server)
             .await;
     }
 
@@ -103,7 +103,7 @@ pub async fn mount_mock_scoped(
     let mock_guard = Mock::given(method("GET"))
         .and(path(endpoint))
         .respond_with(ResponseTemplate::new(200).set_body_string(response))
-        .mount_as_scoped(&mock_server)
+        .mount_as_scoped(mock_server)
         .await;
 
     MockWebsite::new(url, content, mock_guard)

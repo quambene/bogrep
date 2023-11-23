@@ -94,7 +94,7 @@ mod tests {
         assert!(
             actual_bookmarks
                 .iter()
-                .all(|bookmark| bookmark.last_cached == None
+                .all(|bookmark| bookmark.last_cached.is_none()
                     && bookmark.sources.contains(&SourceType::Internal)),
             "actual: {actual_bookmarks:#?}"
         );
