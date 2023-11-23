@@ -1,9 +1,16 @@
+# see https://docs.codecov.com/docs/codecovyml-reference
 coverage:
   # Customize the visible colors:
   #   <60%: red
   #   <80%: yellow
   #   >=80%: green
   range: 60..80
+  status:
+    # see https://docs.codecov.com/docs/commit-status
+    project:
+      default:
+        # Allow the coverage to drop by 1%.
+        threshold: 1%
 ignore:
   - "tests"
   - "benches"
