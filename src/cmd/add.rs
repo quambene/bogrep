@@ -32,14 +32,15 @@ fn add_urls(
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
     let now = Utc::now();
-    let mut target_bookmarks = TargetBookmarks::default();
+    let cache_modes = HashSet::new();
     let mut sources = HashSet::new();
     sources.insert(SourceType::Internal);
+    let mut target_bookmarks = TargetBookmarks::default();
 
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let bookmark = TargetBookmark::new(url, now, None, sources.clone());
+        let bookmark = TargetBookmark::new(url, now, None, sources.clone(), cache_modes.clone());
         target_bookmarks.insert(bookmark);
     }
 

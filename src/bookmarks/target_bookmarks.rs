@@ -1,4 +1,4 @@
-use crate::{SourceBookmarks, SourceType};
+use crate::{cache::CacheMode, SourceBookmarks, SourceType};
 use chrono::{DateTime, Utc};
 use log::{debug, info, trace};
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,7 @@ pub struct TargetBookmark {
     pub last_imported: i64,
     pub last_cached: Option<i64>,
     pub sources: HashSet<SourceType>,
+    pub cache_modes: HashSet<CacheMode>,
 }
 
 impl TargetBookmark {
@@ -25,6 +26,7 @@ impl TargetBookmark {
         last_imported: DateTime<Utc>,
         last_cached: Option<DateTime<Utc>>,
         sources: HashSet<SourceType>,
+        cache_modes: HashSet<CacheMode>,
     ) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -32,6 +34,7 @@ impl TargetBookmark {
             last_imported: last_imported.timestamp_millis(),
             last_cached: last_cached.map(|timestamp| timestamp.timestamp_millis()),
             sources,
+            cache_modes,
         }
     }
 }
@@ -151,8 +154,13 @@ impl TargetBookmarks {
 
         for url in urls_to_add {
             if let Some(sources) = source_bookmarks.get(url) {
-                let target_bookmark =
-                    TargetBookmark::new(url.to_owned(), now, None, sources.to_owned());
+                let target_bookmark = TargetBookmark::new(
+                    url.to_owned(),
+                    now,
+                    None,
+                    sources.to_owned(),
+                    HashSet::new(),
+                );
                 bookmarks_to_add.push(target_bookmark.clone());
                 self.insert(target_bookmark);
             }
@@ -194,8 +202,13 @@ impl From<SourceBookmarks> for TargetBookmarks {
         let mut target_bookmarks = TargetBookmarks::default();
 
         for source_bookmark in source_bookmarks.into_iter() {
-            let target_bookmark =
-                TargetBookmark::new(source_bookmark.0, now, None, source_bookmark.1);
+            let target_bookmark = TargetBookmark::new(
+                source_bookmark.0,
+                now,
+                None,
+                source_bookmark.1,
+                HashSet::new(),
+            );
             target_bookmarks.insert(target_bookmark)
         }
 
@@ -219,14 +232,16 @@ mod tests {
             "url": "https://doc.rust-lang.org/book/title-page.html",
             "last_imported": 1694989714351,
             "last_cached": null,
-            "sources": []
+            "sources": [],
+            "cache_modes": []
         },
         {
             "id": "511b1590-e6de-4989-bca4-96dc61730508",
             "url": "https://www.deepl.com/translator",
             "last_imported": 1694989714351,
             "last_cached": null,
-            "sources": []
+            "sources": [],
+            "cache_modes": []
         }
     ]
 }"#;
@@ -250,11 +265,12 @@ mod tests {
             now,
             None,
             HashSet::new(),
+            HashSet::new()
         )), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark::new(
             "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
             now,
             None,
-            HashSet::new())),
+            HashSet::new(),HashSet::new())),
         ]));
         let res = target_bookmarks.update(&source_bookmarks);
         assert!(res.is_ok());
@@ -283,6 +299,7 @@ mod tests {
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
+                        cache_modes: HashSet::new()
                     }
                 ),
                 (
@@ -293,6 +310,7 @@ mod tests {
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
+                        cache_modes: HashSet::new()
                     }
                 )
             ]))
@@ -321,6 +339,7 @@ mod tests {
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
             (
@@ -331,6 +350,7 @@ mod tests {
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
         ]));

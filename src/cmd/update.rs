@@ -56,7 +56,8 @@ async fn update_bookmarks(
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
-    let (mut bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(&source_bookmarks)?;
+    let (mut bookmarks_to_add, mut bookmarks_to_remove) =
+        target_bookmarks.update(&source_bookmarks)?;
 
     if !bookmarks_to_add.is_empty() {
         // Fetch and cache new bookmarks.
@@ -71,8 +72,8 @@ async fn update_bookmarks(
     }
 
     // Clean up cache for missing bookmarks.
-    for bookmark in bookmarks_to_remove {
-        cache.remove(&bookmark).await?;
+    for bookmark in bookmarks_to_remove.iter_mut() {
+        cache.remove(bookmark).await?;
     }
 
     // Update the `last_cached` timestamp.
@@ -117,13 +118,15 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new()
                 }),("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
-                    sources: HashSet::new()
+                    sources: HashSet::new(),
+                    cache_modes: HashSet::new()
                 }),
             ]),
             );
@@ -141,7 +144,7 @@ mod tests {
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
                 target_bookmarks
-                    .get("https://www.deepl.com/translator")
+                    .get_mut("https://www.deepl.com/translator")
                     .unwrap(),
             )
             .await
@@ -150,7 +153,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+                target_bookmarks.get_mut("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
             )
             .await
             .unwrap();
@@ -236,13 +239,15 @@ mod tests {
             url: "https://www.deepl.com/translator".to_owned(),
             last_imported: now.timestamp_millis(),
             last_cached: Some(now.timestamp_millis()),
-            sources: HashSet::new()
+            sources: HashSet::new(),
+            cache_modes: HashSet::new()
         }), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark {
             id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
             url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
             last_imported: now.timestamp_millis(),
             last_cached: Some(now.timestamp_millis()),
-            sources: HashSet::new()
+            sources: HashSet::new(),
+            cache_modes: HashSet::new()
         })]));
         for url in &expected_bookmarks {
             client
@@ -258,7 +263,7 @@ mod tests {
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
                 target_bookmarks
-                    .get("https://www.deepl.com/translator")
+                    .get_mut("https://www.deepl.com/translator")
                     .unwrap(),
             )
             .await
@@ -267,7 +272,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+                target_bookmarks.get_mut("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
             )
             .await
             .unwrap();

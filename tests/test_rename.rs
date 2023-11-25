@@ -26,6 +26,7 @@ fn test_rename() {
             Utc::now(),
             None,
             HashSet::new(),
+            HashSet::new(),
         ));
         let buf = json::serialize(&bookmarks_json).unwrap();
         let mut bookmarks_lock_file = utils::open_and_truncate_file(&bookmarks_lock_path).unwrap();

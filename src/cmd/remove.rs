@@ -60,7 +60,7 @@ mod tests {
     fn create_target_bookmark(url: &str, now: DateTime<Utc>) -> TargetBookmark {
         let mut sources = HashSet::new();
         sources.insert(SourceType::Internal);
-        TargetBookmark::new(url, now, None, sources)
+        TargetBookmark::new(url, now, None, sources, HashSet::new())
     }
 
     #[test]

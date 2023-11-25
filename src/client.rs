@@ -197,11 +197,13 @@ mod tests {
             now,
             None,
             HashSet::new(),
+            HashSet::new(),
         );
         let bookmark2 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
             now,
             None,
+            HashSet::new(),
             HashSet::new(),
         );
 
@@ -227,11 +229,13 @@ mod tests {
             now,
             None,
             HashSet::new(),
+            HashSet::new(),
         );
         let bookmark2 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
             now,
             None,
+            HashSet::new(),
             HashSet::new(),
         );
 
