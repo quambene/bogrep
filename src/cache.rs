@@ -5,6 +5,7 @@ use crate::{
     TargetBookmarks,
 };
 use async_trait::async_trait;
+use chrono::Utc;
 use clap::ValueEnum;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -80,23 +81,27 @@ pub trait Caching {
     fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error>;
 
     /// Add the content of a bookmark to cache.
-    async fn add(&self, html: String, bookmark: &TargetBookmark) -> Result<String, anyhow::Error>;
+    async fn add(
+        &self,
+        html: String,
+        bookmark: &mut TargetBookmark,
+    ) -> Result<String, anyhow::Error>;
 
     /// Replace the content of a bookmark in cache.
     async fn replace(
         &self,
         html: String,
-        bookmark: &TargetBookmark,
+        bookmark: &mut TargetBookmark,
     ) -> Result<String, anyhow::Error>;
 
     /// Remove the content of a bookmark from cache.
-    async fn remove(&self, bookmark: &TargetBookmark) -> Result<(), anyhow::Error>;
+    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), anyhow::Error>;
 
     /// Remove the content of multiple bookmarks from cache.
-    async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error>;
+    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error>;
 
     /// Clear the cache, i.e. remove all files in the cache directory.
-    fn clear(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error>;
+    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error>;
 }
 
 /// A cache to store the fetched bookmarks.
@@ -169,7 +174,11 @@ impl Caching for Cache {
         }
     }
 
-    async fn add(&self, html: String, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
+    async fn add(
+        &self,
+        html: String,
+        bookmark: &mut TargetBookmark,
+    ) -> Result<String, anyhow::Error> {
         let cache_path = self.bookmark_path(&bookmark.id);
 
         let content = match self.mode {
@@ -182,6 +191,9 @@ impl Caching for Cache {
             let mut cache_file = utils::create_file_async(&cache_path).await?;
             cache_file.write_all(content.as_bytes()).await?;
             cache_file.flush().await?;
+
+            bookmark.last_cached = Some(Utc::now().timestamp_millis());
+            bookmark.cache_modes.insert(self.mode.clone());
         }
 
         Ok(content)
@@ -190,7 +202,7 @@ impl Caching for Cache {
     async fn replace(
         &self,
         html: String,
-        bookmark: &TargetBookmark,
+        bookmark: &mut TargetBookmark,
     ) -> Result<String, anyhow::Error> {
         let cache_path = self.bookmark_path(&bookmark.id);
         debug!("Replace website in cache: {}", cache_path.display());
@@ -203,28 +215,36 @@ impl Caching for Cache {
         let mut cache_file = utils::create_file_async(&cache_path).await?;
         cache_file.write_all(content.as_bytes()).await?;
         cache_file.flush().await?;
+
+        bookmark.last_cached = Some(Utc::now().timestamp_millis());
+        bookmark.cache_modes.insert(self.mode.clone());
+
         Ok(content)
     }
 
-    async fn remove(&self, bookmark: &TargetBookmark) -> Result<(), anyhow::Error> {
+    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), anyhow::Error> {
         let cache_path = self.bookmark_path(&bookmark.id);
 
         if cache_path.exists() {
             debug!("Remove website from cache: {}", cache_path.display());
             fs::remove_file(cache_path).await?;
+            bookmark.last_cached = None;
+            bookmark.cache_modes.remove(&self.mode);
         }
 
         Ok(())
     }
 
-    async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
+    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
         debug!("Remove all cached websites");
-        for bookmark in bookmarks.values() {
+        for bookmark in bookmarks.values_mut() {
             let cache_path = self.bookmark_path(&bookmark.id);
 
             if cache_path.exists() {
                 debug!("Remove website from cache: {}", cache_path.display());
                 fs::remove_file(cache_path).await?;
+                bookmark.last_cached = None;
+                bookmark.cache_modes.remove(&self.mode);
             }
         }
 
@@ -235,17 +255,19 @@ impl Caching for Cache {
     ///
     /// Note: For safety reasons, `clear` iterates over the given `bookmarks`
     /// instead of using [`std::fs::remove_dir_all`] for the cache directory.
-    fn clear(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
+    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
         debug!("Clear cache");
         let cache_modes = Cache::modes();
 
-        for bookmark in bookmarks.values() {
+        for bookmark in bookmarks.values_mut() {
             for cache_mode in &cache_modes {
                 let cache_path = self.bookmark_path_by_cache_mode(&bookmark.id, cache_mode);
 
                 if cache_path.exists() {
                     debug!("Remove website from cache: {}", cache_path.display());
                     std::fs::remove_file(cache_path)?;
+                    bookmark.last_cached = None;
+                    bookmark.cache_modes.clear();
                 }
             }
         }
@@ -304,20 +326,10 @@ impl Caching for MockCache {
         Ok(content)
     }
 
-    async fn add(&self, html: String, bookmark: &TargetBookmark) -> Result<String, anyhow::Error> {
-        let mut cache_map = self.cache_map.lock().unwrap();
-        let content = match self.mode {
-            CacheMode::Html => html,
-            CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
-        };
-        cache_map.insert(bookmark.id.clone(), content.clone());
-        Ok(content)
-    }
-
-    async fn replace(
+    async fn add(
         &self,
         html: String,
-        bookmark: &TargetBookmark,
+        bookmark: &mut TargetBookmark,
     ) -> Result<String, anyhow::Error> {
         let mut cache_map = self.cache_map.lock().unwrap();
         let content = match self.mode {
@@ -325,28 +337,63 @@ impl Caching for MockCache {
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
         };
         cache_map.insert(bookmark.id.clone(), content.clone());
+
+        bookmark.last_cached = Some(Utc::now().timestamp_millis());
+        bookmark.cache_modes.insert(self.mode.clone());
+
         Ok(content)
     }
 
-    async fn remove(&self, bookmark: &TargetBookmark) -> Result<(), anyhow::Error> {
+    async fn replace(
+        &self,
+        html: String,
+        bookmark: &mut TargetBookmark,
+    ) -> Result<String, anyhow::Error> {
+        let mut cache_map = self.cache_map.lock().unwrap();
+        let content = match self.mode {
+            CacheMode::Html => html,
+            CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
+        };
+        cache_map.insert(bookmark.id.clone(), content.clone());
+
+        bookmark.last_cached = Some(Utc::now().timestamp_millis());
+        bookmark.cache_modes.insert(self.mode.clone());
+
+        Ok(content)
+    }
+
+    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), anyhow::Error> {
         let mut cache_map = self.cache_map.lock().unwrap();
         cache_map.remove(&bookmark.id);
+
+        bookmark.last_cached = None;
+        bookmark.cache_modes.remove(&self.mode);
+
         Ok(())
     }
 
-    async fn remove_all(&self, bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
+    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
         let mut cache_map = self.cache_map.lock().unwrap();
 
-        for bookmark in bookmarks.values() {
+        for bookmark in bookmarks.values_mut() {
             cache_map.remove(&bookmark.id);
+
+            bookmark.last_cached = None;
+            bookmark.cache_modes.remove(&self.mode);
         }
 
         Ok(())
     }
 
-    fn clear(&self, _bookmarks: &TargetBookmarks) -> Result<(), anyhow::Error> {
+    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
         let mut cache_map = self.cache_map.lock().unwrap();
         cache_map.clear();
+
+        for bookmark in bookmarks.values_mut() {
+            bookmark.last_cached = None;
+            bookmark.cache_modes.clear();
+        }
+
         Ok(())
     }
 }
@@ -361,7 +408,7 @@ mod tests {
     async fn test_add_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new(
+        let mut bookmark = TargetBookmark::new(
             "https://test_url.com",
             now,
             None,
@@ -369,20 +416,22 @@ mod tests {
             HashSet::new(),
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
-        let cached_content = cache.add(content.to_owned(), &bookmark).await.unwrap();
+        let cached_content = cache.add(content.to_owned(), &mut bookmark).await.unwrap();
         assert_eq!(
             cached_content,
             "<html><head></head><body><p>Test content</p></body></html>"
         );
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 1);
+        assert!(bookmark.last_cached.is_some());
+        assert!(bookmark.cache_modes.contains(&CacheMode::Html));
     }
 
     #[tokio::test]
     async fn test_add_mode_text() {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new(
+        let mut bookmark = TargetBookmark::new(
             "https://test_url.com",
             now,
             None,
@@ -390,17 +439,19 @@ mod tests {
             HashSet::new(),
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
-        let cached_content = cache.add(content.to_owned(), &bookmark).await.unwrap();
+        let cached_content = cache.add(content.to_owned(), &mut bookmark).await.unwrap();
         assert_eq!(cached_content, "Test content");
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 1);
+        assert!(bookmark.last_cached.is_some());
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
     }
 
     #[tokio::test]
     async fn test_replace_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new(
+        let mut bookmark = TargetBookmark::new(
             "https://test_url.com",
             now,
             None,
@@ -408,9 +459,12 @@ mod tests {
             HashSet::new(),
         );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
-        cache.add(content1.to_owned(), &bookmark).await.unwrap();
+        cache.add(content1.to_owned(), &mut bookmark).await.unwrap();
         let content2 = "<html><head></head><body><p>Test content 2</p></body></html>";
-        let replaced_content = cache.replace(content2.to_owned(), &bookmark).await.unwrap();
+        let replaced_content = cache
+            .replace(content2.to_owned(), &mut bookmark)
+            .await
+            .unwrap();
         assert_eq!(
             replaced_content,
             "<html><head></head><body><p>Test content 2</p></body></html>"
@@ -423,7 +477,7 @@ mod tests {
     async fn test_replace_mode_text() {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new(
+        let mut bookmark = TargetBookmark::new(
             "https://test_url.com",
             now,
             None,
@@ -431,9 +485,12 @@ mod tests {
             HashSet::new(),
         );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
-        cache.add(content1.to_owned(), &bookmark).await.unwrap();
+        cache.add(content1.to_owned(), &mut bookmark).await.unwrap();
         let content2 = "<html><head></head><body><p>Test content 2</p></body></html>";
-        let replaced_content = cache.replace(content2.to_owned(), &bookmark).await.unwrap();
+        let replaced_content = cache
+            .replace(content2.to_owned(), &mut bookmark)
+            .await
+            .unwrap();
         assert_eq!(replaced_content, "Test content 2");
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 1);
@@ -443,7 +500,7 @@ mod tests {
     async fn test_remove_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let bookmark = TargetBookmark::new(
+        let mut bookmark = TargetBookmark::new(
             "https://test_url.com",
             now,
             None,
@@ -451,8 +508,14 @@ mod tests {
             HashSet::new(),
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
-        cache.add(content.to_owned(), &bookmark).await.unwrap();
-        cache.remove(&bookmark).await.unwrap();
+
+        cache.add(content.to_owned(), &mut bookmark).await.unwrap();
+        assert!(bookmark.last_cached.is_some());
+        assert!(bookmark.cache_modes.contains(&CacheMode::Html));
+
+        cache.remove(&mut bookmark).await.unwrap();
+        assert!(bookmark.last_cached.is_none());
+        assert!(bookmark.cache_modes.is_empty());
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 0);
     }
@@ -461,7 +524,7 @@ mod tests {
     async fn test_remove_all_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 "https://test_url1.com".to_owned(),
                 TargetBookmark::new(
@@ -484,7 +547,7 @@ mod tests {
             ),
         ]));
 
-        for bookmark in target_bookmarks.values() {
+        for bookmark in target_bookmarks.values_mut() {
             cache
                 .add(
                     "<html><head></head><body><p>Test content</p></body></html>".to_owned(),
@@ -494,7 +557,7 @@ mod tests {
                 .unwrap();
         }
 
-        cache.remove_all(&target_bookmarks).await.unwrap();
+        cache.remove_all(&mut target_bookmarks).await.unwrap();
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 0);
     }
@@ -503,7 +566,7 @@ mod tests {
     async fn test_clear_mode_html() {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
-        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([(
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([(
             "https://test_url.com".to_owned(),
             TargetBookmark::new(
                 "https://test_url.com",
@@ -514,7 +577,7 @@ mod tests {
             ),
         )]));
 
-        for bookmark in target_bookmarks.values() {
+        for bookmark in target_bookmarks.values_mut() {
             cache
                 .add(
                     "<html><head></head><body><p>Test content</p></body></html>".to_owned(),
@@ -524,7 +587,7 @@ mod tests {
                 .unwrap();
         }
 
-        cache.clear(&target_bookmarks).unwrap();
+        cache.clear(&mut target_bookmarks).unwrap();
         let cache_map = cache.cache_map.lock().unwrap();
         assert_eq!(cache_map.keys().len(), 0);
     }

@@ -134,9 +134,6 @@ async fn fetch_and_add(
 
                 if let Err(err) = cache.replace(html, bookmark).await {
                     warn!("Can't replace website ({}) in cache: {}", bookmark.url, err);
-                } else {
-                    bookmark.last_cached = Some(Utc::now().timestamp_millis());
-                    bookmark.cache_modes.insert(cache.mode().clone());
                 }
             }
             Ok(None) => (),
@@ -152,9 +149,6 @@ async fn fetch_and_add(
 
                 if let Err(err) = cache.add(html, bookmark).await {
                     warn!("Can't add website ({}) to cache: {}", bookmark.url, err);
-                } else {
-                    bookmark.last_cached = Some(Utc::now().timestamp_millis());
-                    bookmark.cache_modes.insert(cache.mode().clone());
                 }
             }
             Ok(None) => (),
@@ -179,7 +173,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
     target_reader.read(&mut target_bookmarks)?;
 
     for url in args.diff {
-        let bookmark = target_bookmarks.get(&url);
+        let bookmark = target_bookmarks.get_mut(&url);
 
         if let Some(bookmark) = bookmark {
             if let Some(cached_website_before) = cache.get(bookmark)? {
@@ -391,7 +385,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get("https://test_url1.com").unwrap(),
+                target_bookmarks.get_mut("https://test_url1.com").unwrap(),
             )
             .await
             .unwrap();
@@ -464,7 +458,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get("https://test_url1.com").unwrap(),
+                target_bookmarks.get_mut("https://test_url1.com").unwrap(),
             )
             .await
             .unwrap();

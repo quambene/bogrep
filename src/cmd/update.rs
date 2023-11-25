@@ -56,7 +56,8 @@ async fn update_bookmarks(
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
-    let (mut bookmarks_to_add, bookmarks_to_remove) = target_bookmarks.update(&source_bookmarks)?;
+    let (mut bookmarks_to_add, mut bookmarks_to_remove) =
+        target_bookmarks.update(&source_bookmarks)?;
 
     if !bookmarks_to_add.is_empty() {
         // Fetch and cache new bookmarks.
@@ -71,8 +72,8 @@ async fn update_bookmarks(
     }
 
     // Clean up cache for missing bookmarks.
-    for bookmark in bookmarks_to_remove {
-        cache.remove(&bookmark).await?;
+    for bookmark in bookmarks_to_remove.iter_mut() {
+        cache.remove(bookmark).await?;
     }
 
     // Update the `last_cached` timestamp.
@@ -143,7 +144,7 @@ mod tests {
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
                 target_bookmarks
-                    .get("https://www.deepl.com/translator")
+                    .get_mut("https://www.deepl.com/translator")
                     .unwrap(),
             )
             .await
@@ -152,7 +153,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+                target_bookmarks.get_mut("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
             )
             .await
             .unwrap();
@@ -262,7 +263,7 @@ mod tests {
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
                 target_bookmarks
-                    .get("https://www.deepl.com/translator")
+                    .get_mut("https://www.deepl.com/translator")
                     .unwrap(),
             )
             .await
@@ -271,7 +272,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+                target_bookmarks.get_mut("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
             )
             .await
             .unwrap();
