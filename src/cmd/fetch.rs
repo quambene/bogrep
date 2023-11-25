@@ -59,7 +59,7 @@ pub async fn fetch_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new());
+        let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new());
         fetch_and_add(client, cache, &mut bookmark, true).await?;
         info!("Fetched website for {url}");
         target_bookmarks.insert(bookmark);
@@ -136,6 +136,7 @@ async fn fetch_and_add(
                     warn!("Can't replace website ({}) in cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
+                    bookmark.cache_modes.insert(cache.mode().clone());
                 }
             }
             Ok(None) => (),
@@ -153,6 +154,7 @@ async fn fetch_and_add(
                     warn!("Can't add website ({}) to cache: {}", bookmark.url, err);
                 } else {
                     bookmark.last_cached = Some(Utc::now().timestamp_millis());
+                    bookmark.cache_modes.insert(cache.mode().clone());
                 }
             }
             Ok(None) => (),
@@ -235,6 +237,7 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
             (
@@ -245,6 +248,7 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
         ]));
@@ -296,6 +300,7 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
             (
@@ -306,6 +311,7 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
         ]));
@@ -357,6 +363,7 @@ mod tests {
                     last_imported: now,
                     last_cached: Some(now),
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
             (
@@ -367,6 +374,7 @@ mod tests {
                     last_imported: now,
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
         ]));
@@ -428,6 +436,7 @@ mod tests {
                     last_imported: now,
                     last_cached: Some(now),
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
             (
@@ -438,6 +447,7 @@ mod tests {
                     last_imported: now,
                     last_cached: None,
                     sources: HashSet::new(),
+                    cache_modes: HashSet::new(),
                 },
             ),
         ]));
