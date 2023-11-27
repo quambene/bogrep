@@ -43,8 +43,10 @@ cargo install bogrep
 ```
 
 To update bogrep to a new version, run `cargo install bogrep` again. Versions
-0.x.x will not be backwards compatible. Remove Bogrep's configuration directory
-before running Bogrep (see [Supported operating systems](#supported-operating-systems)).
+0.x will not be backwards compatible and breaking changes are expected. Remove
+Bogrep's configuration directory (see [Supported operating
+systems](#supported-operating-systems)) if you experience an issue when running
+Bogrep.
 
 ### Install Bogrep from [github.com](https://github.com/quambene/bogrep)
 
