@@ -55,4 +55,6 @@ pub enum BogrepError {
     RemoveCache { url: String, err: tokio::io::Error },
     #[error("Mock error: {0}")]
     Mock(String),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }

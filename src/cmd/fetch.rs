@@ -1,14 +1,15 @@
 use crate::{
     bookmark_reader::{ReadTarget, WriteTarget},
     cache::CacheMode,
+    errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
-use log::{debug, info, trace, warn};
+use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::collections::HashSet;
+use std::{collections::HashSet, io::Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -20,6 +21,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 
     if args.urls.is_empty() {
         fetch_and_cache(
+            config.verbosity,
             &client,
             &cache,
             &mut target_reader,
@@ -61,7 +63,7 @@ pub async fn fetch_urls(
     for url in urls {
         let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new());
         fetch_and_add(client, cache, &mut bookmark, true).await?;
-        info!("Fetched website for {url}");
+        println!("Fetched website for {url}");
         target_bookmarks.insert(bookmark);
     }
 
@@ -71,6 +73,7 @@ pub async fn fetch_urls(
 }
 
 pub async fn fetch_and_cache(
+    verbosity: u8,
     client: &impl Fetch,
     cache: &impl Caching,
     target_reader: &mut impl ReadTarget,
@@ -81,7 +84,17 @@ pub async fn fetch_and_cache(
     let mut target_bookmarks = TargetBookmarks::default();
     target_reader.read(&mut target_bookmarks)?;
 
+    if cache.is_empty() {
+        // If the cache was removed, reset the cache values in
+        // the target bookmarks
+        for bookmark in target_bookmarks.values_mut() {
+            bookmark.last_cached = None;
+            bookmark.cache_modes.clear();
+        }
+    }
+
     fetch_and_add_all(
+        verbosity,
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -100,21 +113,48 @@ pub async fn fetch_and_cache(
 
 /// Fetch all bookmarks and add them to cache.
 pub async fn fetch_and_add_all(
+    verbosity: u8,
     client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: Vec<&mut TargetBookmark>,
     max_concurrent_requests: usize,
     fetch_all: bool,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), BogrepError> {
+    let mut processed = 0;
+    let mut cached = 0;
+    let mut failed = 0;
+    let total = bookmarks.len();
+
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| fetch_and_add(client, cache, bookmark, fetch_all))
         .buffer_unordered(max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
+        processed += 1;
+
+        print!("Processing bookmarks ({processed}/{total})\r");
+        std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
+
         if let Err(err) = item {
-            warn!("Can't fetch bookmark: {err}");
+            match err {
+                BogrepError::FetchError(err) => {
+                    if verbosity >= 1 {
+                        eprintln!("warning: {err}");
+                    }
+                }
+                // We are aborting if there is an unexpected error.
+                err => {
+                    return Err(err);
+                }
+            }
+            failed += 1;
+        } else {
+            cached += 1;
         }
     }
+
+    println!("");
+    println!("Processed {total} bookmarks, {cached} cached, {failed} failed");
 
     Ok(())
 }
@@ -125,36 +165,18 @@ async fn fetch_and_add(
     cache: &impl Caching,
     bookmark: &mut TargetBookmark,
     fetch_all: bool,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), BogrepError> {
     if fetch_all {
-        match client.fetch(bookmark).await {
-            Ok(Some(website)) => {
-                trace!("Fetched website: {website}");
-                let html = html::filter_html(&website)?;
-
-                if let Err(err) = cache.replace(html, bookmark).await {
-                    warn!("Can't replace website ({}) in cache: {}", bookmark.url, err);
-                }
-            }
-            Ok(None) => (),
-            Err(err) => {
-                warn!("Can't fetch website: {}", err);
-            }
+        if let Some(website) = client.fetch(bookmark).await? {
+            trace!("Fetched website: {website}");
+            let html = html::filter_html(&website)?;
+            cache.replace(html, bookmark).await?;
         }
     } else if !cache.exists(bookmark) {
-        match client.fetch(bookmark).await {
-            Ok(Some(website)) => {
-                trace!("Fetched website: {website}");
-                let html = html::filter_html(&website)?;
-
-                if let Err(err) = cache.add(html, bookmark).await {
-                    warn!("Can't add website ({}) to cache: {}", bookmark.url, err);
-                }
-            }
-            Ok(None) => (),
-            Err(err) => {
-                warn!("Can't fetch website: {}", err);
-            }
+        if let Some(website) = client.fetch(bookmark).await? {
+            trace!("Fetched website: {website}");
+            let html = html::filter_html(&website)?;
+            cache.add(html, bookmark).await?;
         }
     }
 
@@ -162,7 +184,7 @@ async fn fetch_and_add(
 }
 
 /// Fetch difference between cached and fetched website, and display changes.
-pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::Error> {
+pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepError> {
     debug!("Diff content for urls: {:#?}", args.diff);
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
@@ -257,6 +279,7 @@ mod tests {
         }
 
         let res = fetch_and_add_all(
+            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -320,6 +343,7 @@ mod tests {
         }
 
         let res = fetch_and_add_all(
+            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -391,6 +415,7 @@ mod tests {
             .unwrap();
 
         let res = fetch_and_add_all(
+            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -464,6 +489,7 @@ mod tests {
             .unwrap();
 
         let res = fetch_and_add_all(
+            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),

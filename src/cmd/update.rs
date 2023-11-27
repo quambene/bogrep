@@ -26,6 +26,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     target_reader.read(&mut target_bookmarks)?;
 
     update_bookmarks(
+        config.verbosity,
         &client,
         &cache,
         &mut source_reader,
@@ -44,6 +45,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
 }
 
 async fn update_bookmarks(
+    verbosity: u8,
     client: &impl Fetch,
     cache: &impl Caching,
     source_reader: &mut [SourceReader],
@@ -62,6 +64,7 @@ async fn update_bookmarks(
     if !bookmarks_to_add.is_empty() {
         // Fetch and cache new bookmarks.
         fetch_and_add_all(
+            verbosity,
             client,
             cache,
             bookmarks_to_add.iter_mut().collect(),
@@ -159,6 +162,7 @@ mod tests {
             .unwrap();
 
         let res = update_bookmarks(
+            0,
             &client,
             &cache,
             &mut [source_reader],
@@ -278,6 +282,7 @@ mod tests {
             .unwrap();
 
         let res = update_bookmarks(
+            0,
             &client,
             &cache,
             &mut [source_reader],

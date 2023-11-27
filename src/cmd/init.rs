@@ -28,6 +28,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         let cache = Cache::new(&config.cache_path, cache_mode);
         let client = Client::new(config)?;
         let target_bookmarks = init_bookmarks(
+            config.verbosity,
             &client,
             &cache,
             source_reader.as_mut(),
@@ -46,6 +47,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
 }
 
 async fn init_bookmarks(
+    verbosity: u8,
     client: &impl Fetch,
     cache: &impl Caching,
     source_reader: &mut [SourceReader],
@@ -71,6 +73,7 @@ async fn init_bookmarks(
     );
 
     fetch_and_add_all(
+        verbosity,
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -116,6 +119,7 @@ mod tests {
         }
 
         let res = init_bookmarks(
+            0,
             &client,
             &cache,
             &mut [source_reader],
@@ -174,6 +178,7 @@ mod tests {
         }
 
         let res = init_bookmarks(
+            0,
             &client,
             &cache,
             &mut [source_reader],
