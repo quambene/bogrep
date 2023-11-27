@@ -120,7 +120,9 @@ pub async fn fetch_and_add_all(
 ) -> Result<(), BogrepError> {
     let mut processed = 0;
     let mut cached = 0;
-    let mut failed = 0;
+    let mut failed_response = 0;
+    let mut binary_response = 0;
+    let mut empty_response = 0;
     let total = bookmarks.len();
 
     let mut stream = stream::iter(bookmarks)
@@ -134,19 +136,31 @@ pub async fn fetch_and_add_all(
 
         if let Err(err) = item {
             match err {
-                BogrepError::FetchError(err) => {
+                BogrepError::HttpResponse(_) => {
                     // Usually, a lot of fetching errors are expected because of
                     // invalid or outdated urls in the bookmarks, so we are
                     // using a debug instead of a warn message to keep the
                     // output minimal.
                     debug!("{err}");
+                    failed_response += 1;
+                }
+                BogrepError::HttpStatus(_) => {
+                    debug!("{err}");
+                    failed_response += 1;
+                }
+                BogrepError::BinaryResponse => {
+                    debug!("{err}");
+                    binary_response += 1;
+                }
+                BogrepError::EmptyResponse => {
+                    debug!("{err}");
+                    empty_response += 1;
                 }
                 // We are aborting if there is an unexpected error.
                 err => {
                     return Err(err);
                 }
             }
-            failed += 1;
         } else {
             cached += 1;
         }
@@ -155,7 +169,10 @@ pub async fn fetch_and_add_all(
     }
 
     println!("");
-    println!("Processed {total} bookmarks, {cached} cached, {failed} failed");
+    println!(
+        "Processed {total} bookmarks, {cached} cached, {} ignored, {failed_response} failed",
+        binary_response + empty_response
+    );
 
     Ok(())
 }
@@ -168,17 +185,15 @@ async fn fetch_and_add(
     fetch_all: bool,
 ) -> Result<(), BogrepError> {
     if fetch_all {
-        if let Some(website) = client.fetch(bookmark).await? {
-            trace!("Fetched website: {website}");
-            let html = html::filter_html(&website)?;
-            cache.replace(html, bookmark).await?;
-        }
+        let website = client.fetch(bookmark).await?;
+        trace!("Fetched website: {website}");
+        let html = html::filter_html(&website)?;
+        cache.replace(html, bookmark).await?;
     } else if !cache.exists(bookmark) {
-        if let Some(website) = client.fetch(bookmark).await? {
-            trace!("Fetched website: {website}");
-            let html = html::filter_html(&website)?;
-            cache.add(html, bookmark).await?;
-        }
+        let website = client.fetch(bookmark).await?;
+        trace!("Fetched website: {website}");
+        let html = html::filter_html(&website)?;
+        cache.add(html, bookmark).await?;
     }
 
     Ok(())
@@ -200,29 +215,28 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 
         if let Some(bookmark) = bookmark {
             if let Some(cached_website_before) = cache.get(bookmark)? {
-                if let Some(fetched_website) = client.fetch(bookmark).await? {
-                    trace!("Fetched website: {fetched_website}");
-                    let html = html::filter_html(&fetched_website)?;
+                let fetched_website = client.fetch(bookmark).await?;
+                trace!("Fetched website: {fetched_website}");
+                let html = html::filter_html(&fetched_website)?;
 
-                    // Cache fetched website
-                    let cached_website_after = cache.replace(html, bookmark).await?;
+                // Cache fetched website
+                let cached_website_after = cache.replace(html, bookmark).await?;
 
-                    let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
+                let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
 
-                    for change in diff.iter_all_changes() {
-                        match change.tag() {
-                            ChangeTag::Delete => {
-                                if let Some(change) = change.as_str() {
-                                    print!("{}{}", "-".red(), change.red());
-                                }
+                for change in diff.iter_all_changes() {
+                    match change.tag() {
+                        ChangeTag::Delete => {
+                            if let Some(change) = change.as_str() {
+                                print!("{}{}", "-".red(), change.red());
                             }
-                            ChangeTag::Insert => {
-                                if let Some(change) = change.as_str() {
-                                    print!("{}{}", "+".green(), change.green());
-                                }
-                            }
-                            ChangeTag::Equal => continue,
                         }
+                        ChangeTag::Insert => {
+                            if let Some(change) = change.as_str() {
+                                print!("{}{}", "+".green(), change.green());
+                            }
+                        }
+                        ChangeTag::Equal => continue,
                     }
                 }
             }

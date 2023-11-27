@@ -5,6 +5,18 @@ use url::ParseError;
 
 #[derive(Debug, Error)]
 pub enum BogrepError {
+    #[error("Can't create client: {}", 0.to_string())]
+    CreateClient(reqwest::Error),
+    #[error("Can't fetch website: {}", 0.to_string())]
+    HttpResponse(reqwest::Error),
+    #[error("Invalid status code: {0}")]
+    HttpStatus(String),
+    #[error("Can't fetch website: {}", 0.to_string())]
+    ParseHttpResponse(reqwest::Error),
+    #[error("Can't fetch binary bookmark")]
+    BinaryResponse,
+    #[error("Can't fetch empty bookmark")]
+    EmptyResponse,
     #[error("Can't serialize json: {}", 0.to_string())]
     SerializeJson(serde_json::Error),
     #[error("Can't deserialize json: {}", 0.to_string())]
@@ -43,12 +55,6 @@ pub enum BogrepError {
     FlushFile(io::Error),
     #[error("Can't rewind file: {0}")]
     RewindFile(String),
-    #[error("Can't create client: {}", 0.to_string())]
-    CreateClient(reqwest::Error),
-    #[error("Can't fetch website: {}", 0.to_string())]
-    FetchError(reqwest::Error),
-    #[error("Can't fetch website: {}", 0.to_string())]
-    HttpError(reqwest::Error),
     #[error("Can't convert header to string: {0}")]
     ConvertToStr(#[from] ToStrError),
     #[error("Can't remove website ({url}) from cache: {err}")]

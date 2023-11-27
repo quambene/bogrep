@@ -14,7 +14,7 @@ use tokio::time::{self, Duration};
 #[async_trait]
 pub trait Fetch {
     /// Fetch content of a website as HTML.
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError>;
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError>;
 }
 
 /// A client to fetch websites.
@@ -43,7 +43,7 @@ impl Client {
 
 #[async_trait]
 impl Fetch for Client {
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError> {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError> {
         debug!("Fetch bookmark ({})", bookmark.url);
 
         if let Some(throttler) = &self.throttler {
@@ -55,7 +55,7 @@ impl Fetch for Client {
             .get(&bookmark.url)
             .send()
             .await
-            .map_err(BogrepError::FetchError)?;
+            .map_err(BogrepError::HttpResponse)?;
 
         if response.status().is_success() {
             if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
@@ -66,18 +66,25 @@ impl Fetch for Client {
                     || content_type.starts_with("audio/")
                     || content_type.starts_with("video/"))
                 {
-                    let html = response.text().await.map_err(BogrepError::HttpError)?;
+                    let html = response
+                        .text()
+                        .await
+                        .map_err(BogrepError::ParseHttpResponse)?;
 
                     if !html.is_empty() {
-                        return Ok(Some(html));
+                        Ok(html)
                     } else {
-                        return Ok(None);
+                        Err(BogrepError::EmptyResponse)
                     }
+                } else {
+                    Err(BogrepError::BinaryResponse)
                 }
+            } else {
+                Err(BogrepError::BinaryResponse)
             }
+        } else {
+            Err(BogrepError::HttpStatus(response.status().to_string()))
         }
-
-        Ok(None)
     }
 }
 
@@ -178,11 +185,11 @@ impl MockClient {
 
 #[async_trait]
 impl Fetch for MockClient {
-    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError> {
+    async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError> {
         let html = self
             .get(&bookmark.url)
             .ok_or(anyhow!("Can't fetch bookmark"))?;
-        Ok(Some(html))
+        Ok(html)
     }
 }
 
