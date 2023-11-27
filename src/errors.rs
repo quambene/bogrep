@@ -5,13 +5,13 @@ use url::ParseError;
 
 #[derive(Debug, Error)]
 pub enum BogrepError {
-    #[error("Can't serialize json: {0}")]
+    #[error("Can't serialize json: {}", 0.to_string())]
     SerializeJson(serde_json::Error),
-    #[error("Can't deserialize json: {0}")]
+    #[error("Can't deserialize json: {}", 0.to_string())]
     DeserializeJson(serde_json::Error),
-    #[error("Can't parse url: {0}")]
+    #[error("Can't parse url")]
     ParseUrl(#[from] ParseError),
-    #[error("Can't parse url: {0}")]
+    #[error("Can't parse url: {}", 0.to_string())]
     ConvertHtml(readability::error::Error),
     #[error("Can't get host for url: {0}")]
     ConvertHost(String),
@@ -43,18 +43,16 @@ pub enum BogrepError {
     FlushFile(io::Error),
     #[error("Can't rewind file: {0}")]
     RewindFile(String),
-    #[error("Can't create client: {0}")]
+    #[error("Can't create client: {}", 0.to_string())]
     CreateClient(reqwest::Error),
     #[error("Can't fetch website: {}", 0.to_string())]
     FetchError(reqwest::Error),
-    #[error("Can't fetch website: {0}")]
+    #[error("Can't fetch website: {}", 0.to_string())]
     HttpError(reqwest::Error),
     #[error("Can't convert header to string: {0}")]
     ConvertToStr(#[from] ToStrError),
     #[error("Can't remove website ({url}) from cache: {err}")]
     RemoveCache { url: String, err: tokio::io::Error },
-    #[error("Mock error: {0}")]
-    Mock(String),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }

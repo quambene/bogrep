@@ -1,4 +1,5 @@
 use crate::{bookmarks::TargetBookmark, errors::BogrepError, Config};
+use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use log::debug;
@@ -178,9 +179,9 @@ impl MockClient {
 #[async_trait]
 impl Fetch for MockClient {
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError> {
-        let html = self.get(&bookmark.url).ok_or(BogrepError::Mock(
-            "Missing url for `MockClient`".to_string(),
-        ))?;
+        let html = self
+            .get(&bookmark.url)
+            .ok_or(anyhow!("Can't fetch bookmark"))?;
         Ok(Some(html))
     }
 }
