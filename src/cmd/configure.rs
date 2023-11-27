@@ -3,15 +3,13 @@ use crate::{
     ConfigArgs, Settings,
 };
 use anyhow::Context;
-use log::info;
+use log::debug;
 use std::{fs, io::Write};
 
 /// Configure the source files to import the bookmarks, the cache mode, or the
 /// ignoure urls .
 pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> {
-    if config.verbosity >= 1 {
-        info!("{args:?}");
-    }
+    debug!("{args:?}");
 
     let cache_mode = args.set_cache_mode.cache_mode;
     let source_path = args

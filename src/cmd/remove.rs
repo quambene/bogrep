@@ -4,9 +4,11 @@ use crate::{
     utils, Config, TargetBookmarks,
 };
 use anyhow::anyhow;
-use log::info;
+use log::debug;
 
 pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Error> {
+    debug!("{args:?}");
+
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
@@ -42,7 +44,7 @@ fn remove_urls(
 
     target_writer.write(&target_bookmarks)?;
 
-    info!("Removed {} bookmarks", counter);
+    println!("Removed {} bookmarks", counter);
 
     Ok(())
 }

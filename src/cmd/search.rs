@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::anyhow;
 use colored::Colorize;
-use log::info;
+use log::debug;
 use regex::{Captures, Regex};
 use std::{
     borrow::Cow,
@@ -15,9 +15,7 @@ use std::{
 const MAX_COLUMNS: usize = 1000;
 
 pub fn search(pattern: &str, config: &Config, args: &Args) -> Result<(), anyhow::Error> {
-    if config.verbosity >= 1 {
-        info!("{:?}", pattern);
-    }
+    debug!("{:?}", pattern);
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);

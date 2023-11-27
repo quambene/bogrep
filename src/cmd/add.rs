@@ -5,10 +5,12 @@ use crate::{
 };
 use anyhow::anyhow;
 use chrono::Utc;
-use log::info;
+use log::debug;
 use std::collections::HashSet;
 
 pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
+    debug!("{args:?}");
+
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
@@ -46,7 +48,7 @@ fn add_urls(
 
     target_writer.write(&target_bookmarks)?;
 
-    info!("Added {} bookmarks", urls.len());
+    println!("Added {} bookmarks", urls.len());
 
     Ok(())
 }

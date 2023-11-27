@@ -1,6 +1,6 @@
 use crate::{json, BookmarksJson, Settings};
 use anyhow::{anyhow, Context};
-use log::{debug, info};
+use log::{debug, trace};
 use std::{
     env,
     fs::{self, File},
@@ -17,8 +17,6 @@ const CACHE_DIR: &str = "cache";
 /// A configuration for running Bogrep.
 #[derive(Debug, PartialEq, Default)]
 pub struct Config {
-    /// The log level of the program.
-    pub verbosity: u8,
     /// The path of the settings file.
     pub settings_path: PathBuf,
     /// The path to the cached websites.
@@ -33,7 +31,6 @@ pub struct Config {
 
 impl Config {
     fn new(
-        verbosity: u8,
         settings_path: &Path,
         cache_path: &Path,
         target_bookmark_file: &Path,
@@ -41,7 +38,6 @@ impl Config {
         settings: Settings,
     ) -> Self {
         Self {
-            verbosity,
             settings_path: settings_path.to_owned(),
             cache_path: cache_path.to_owned(),
             target_bookmark_file: target_bookmark_file.to_owned(),
@@ -50,7 +46,7 @@ impl Config {
         }
     }
 
-    pub fn init(verbosity: u8) -> Result<Config, anyhow::Error> {
+    pub fn init() -> Result<Config, anyhow::Error> {
         let config_path = if let Ok(bogreg_home) = env::var("BOGREP_HOME") {
             PathBuf::from(bogreg_home)
         } else if let Some(config_path) = dirs::config_dir() {
@@ -96,12 +92,9 @@ impl Config {
             ))?;
         }
 
-        if verbosity >= 1 {
-            info!("Read config from {}", settings_path.display());
-        }
+        debug!("Reading config from {}", settings_path.display());
 
         let config = Config::new(
-            verbosity,
             &settings_path,
             &cache_path,
             &target_bookmark_path,
@@ -109,9 +102,7 @@ impl Config {
             settings,
         );
 
-        if verbosity >= 1 {
-            info!("Config: {:#?}", config);
-        }
+        trace!("Config: {:#?}", config);
 
         Ok(config)
     }

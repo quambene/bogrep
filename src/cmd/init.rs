@@ -4,11 +4,13 @@ use crate::{
     cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks, TargetBookmarks,
 };
-use log::info;
+use log::debug;
 
 /// Import bookmarks, fetch bookmarks from url, and save fetched websites in
 /// cache if bookmarks were not imported yet.
 pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error> {
+    debug!("{args:?}");
+
     let mut source_reader = config
         .settings
         .sources
@@ -22,13 +24,12 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
     target_reader.read(&mut target_bookmarks)?;
 
     if !target_bookmarks.is_empty() {
-        info!("Bookmarks already imported");
+        println!("Bookmarks already imported");
     } else {
         let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
         let cache = Cache::new(&config.cache_path, cache_mode);
         let client = Client::new(config)?;
         let target_bookmarks = init_bookmarks(
-            config.verbosity,
             &client,
             &cache,
             source_reader.as_mut(),
@@ -47,7 +48,6 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
 }
 
 async fn init_bookmarks(
-    verbosity: u8,
     client: &impl Fetch,
     cache: &impl Caching,
     source_reader: &mut [SourceReader],
@@ -61,7 +61,7 @@ async fn init_bookmarks(
 
     let mut target_bookmarks = TargetBookmarks::from(source_bookmarks);
 
-    info!(
+    println!(
         "Imported {} bookmarks from {} sources: {}",
         target_bookmarks.len(),
         source_reader.len(),
@@ -73,7 +73,6 @@ async fn init_bookmarks(
     );
 
     fetch_and_add_all(
-        verbosity,
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -119,7 +118,6 @@ mod tests {
         }
 
         let res = init_bookmarks(
-            0,
             &client,
             &cache,
             &mut [source_reader],
@@ -178,7 +176,6 @@ mod tests {
         }
 
         let res = init_bookmarks(
-            0,
             &client,
             &cache,
             &mut [source_reader],

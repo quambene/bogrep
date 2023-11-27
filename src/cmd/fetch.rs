@@ -13,6 +13,8 @@ use std::{collections::HashSet, io::Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
+    debug!("{args:?}");
+
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
@@ -21,7 +23,6 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 
     if args.urls.is_empty() {
         fetch_and_cache(
-            config.verbosity,
             &client,
             &cache,
             &mut target_reader,
@@ -73,7 +74,6 @@ pub async fn fetch_urls(
 }
 
 pub async fn fetch_and_cache(
-    verbosity: u8,
     client: &impl Fetch,
     cache: &impl Caching,
     target_reader: &mut impl ReadTarget,
@@ -94,7 +94,6 @@ pub async fn fetch_and_cache(
     }
 
     fetch_and_add_all(
-        verbosity,
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -113,7 +112,6 @@ pub async fn fetch_and_cache(
 
 /// Fetch all bookmarks and add them to cache.
 pub async fn fetch_and_add_all(
-    verbosity: u8,
     client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: Vec<&mut TargetBookmark>,
@@ -137,9 +135,11 @@ pub async fn fetch_and_add_all(
         if let Err(err) = item {
             match err {
                 BogrepError::FetchError(err) => {
-                    if verbosity >= 1 {
-                        eprintln!("warning: {err}");
-                    }
+                    // Usually, a lot of fetching errors are expected because of
+                    // invalid or outdated urls in the bookmarks, so we are
+                    // using a debug instead of a warn message to keep the
+                    // output minimal.
+                    debug!("{err}");
                 }
                 // We are aborting if there is an unexpected error.
                 err => {
@@ -280,7 +280,6 @@ mod tests {
         }
 
         let res = fetch_and_add_all(
-            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -344,7 +343,6 @@ mod tests {
         }
 
         let res = fetch_and_add_all(
-            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -416,7 +414,6 @@ mod tests {
             .unwrap();
 
         let res = fetch_and_add_all(
-            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -490,7 +487,6 @@ mod tests {
             .unwrap();
 
         let res = fetch_and_add_all(
-            0,
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),

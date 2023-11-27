@@ -1,15 +1,12 @@
 use anyhow::anyhow;
-use bogrep::{cmd, Args, Config, Subcommands};
+use bogrep::{cmd, Args, Config, Logger, Subcommands};
 use clap::Parser;
-use env_logger::{Builder, Env};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    // Default to INFO level logs if RUST_LOG is not set.
-    Builder::from_env(Env::default().default_filter_or("bogrep=info")).init();
-
     let args = Args::parse();
-    let config = Config::init(args.verbose)?;
+    Logger::init(args.verbose);
+    let config = Config::init()?;
 
     if let Some(subcommands) = args.subcommands {
         match subcommands {

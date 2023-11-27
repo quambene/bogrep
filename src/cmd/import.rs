@@ -3,11 +3,13 @@ use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     utils, Config, SourceBookmarks, TargetBookmarks,
 };
-use log::{info, trace};
+use log::{debug, trace};
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
-pub fn import(config: &Config, _args: ImportArgs) -> Result<(), anyhow::Error> {
+pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
+    debug!("{args:?}");
+
     let source_reader = config
         .settings
         .sources
@@ -56,7 +58,7 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
         "sources"
     };
 
-    info!(
+    println!(
         "Imported {} bookmarks from {} {source}: {}",
         target_bookmarks.len(),
         source_reader.len(),

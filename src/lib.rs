@@ -38,6 +38,9 @@ pub mod errors;
 pub mod html;
 /// Helper function to work with JSON.
 pub mod json;
+/// Initialize a simple logger based on the verbosity level (or the `RUST_LOG`
+/// environment variable).
+mod logger;
 /// The settings used in Bogrep.
 mod settings;
 /// Utilities used in testing.
@@ -56,4 +59,5 @@ pub use bookmarks::{
 pub use cache::{Cache, Caching, MockCache};
 pub use client::{Client, Fetch, MockClient};
 pub use config::Config;
+pub use logger::Logger;
 pub use settings::Settings;

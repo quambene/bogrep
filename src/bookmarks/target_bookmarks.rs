@@ -1,6 +1,6 @@
 use crate::{cache::CacheMode, SourceBookmarks, SourceType};
 use chrono::{DateTime, Utc};
-use log::{debug, info, trace};
+use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 use std::collections::{
     hash_map::{Entry, IntoIter, IntoValues, Iter, IterMut, Keys, Values, ValuesMut},
@@ -167,7 +167,7 @@ impl TargetBookmarks {
         }
 
         if !bookmarks_to_add.is_empty() {
-            info!("Added {} new bookmarks", bookmarks_to_add.len());
+            println!("Added {} new bookmarks", bookmarks_to_add.len());
             trace!(
                 "Added new bookmarks: {:#?}",
                 bookmarks_to_add.iter().map(|bookmark| &bookmark.url)
@@ -175,12 +175,12 @@ impl TargetBookmarks {
         }
 
         if !bookmarks_to_remove.is_empty() {
-            info!("Removed {} bookmarks", bookmarks_to_remove.len());
+            println!("Removed {} bookmarks", bookmarks_to_remove.len());
             trace!("Removed bookmarks: {bookmarks_to_remove:#?}");
         }
 
         if bookmarks_to_remove.is_empty() && bookmarks_to_remove.is_empty() {
-            info!("Bookmarks are already up to date");
+            println!("Bookmarks are already up to date");
         }
 
         Ok((bookmarks_to_add, bookmarks_to_remove))
