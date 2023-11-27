@@ -18,7 +18,7 @@ fn test_import(source: &str, temp_path: &Path) {
     // Info messages are logged to stderr.
     cmd.assert()
         .success()
-        .stderr(str::contains("Imported 4 bookmarks from 1 source"));
+        .stdout(str::contains("Imported 4 bookmarks from 1 source"));
 
     let bookmarks_path = temp_path.join("bookmarks.json");
     assert!(

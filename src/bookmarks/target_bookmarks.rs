@@ -179,7 +179,7 @@ impl TargetBookmarks {
             trace!("Removed bookmarks: {bookmarks_to_remove:#?}");
         }
 
-        if bookmarks_to_remove.is_empty() && bookmarks_to_remove.is_empty() {
+        if bookmarks_to_add.is_empty() && bookmarks_to_remove.is_empty() {
             println!("Bookmarks are already up to date");
         }
 
