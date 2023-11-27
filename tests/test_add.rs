@@ -17,10 +17,9 @@ fn test_add() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["add", url1, url2]);
-    // Info messages are logged to stderr.
     cmd.assert()
         .success()
-        .stderr(str::contains("Added 2 bookmarks"));
+        .stdout(str::contains("Added 2 bookmarks"));
 
     // Lock file was cleaned up.
     let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");

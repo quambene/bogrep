@@ -154,7 +154,7 @@ fn test_import_consecutive() {
     // Info messages are logged to stderr.
     cmd.assert()
         .success()
-        .stderr(str::contains("Imported 4 bookmarks from 1 source"));
+        .stdout(str::contains("Imported 4 bookmarks from 1 source"));
 
     // Truncate file and simulate change of source bookmarks.
     let mut source_file = utils::open_and_truncate_file(&source_path).unwrap();
@@ -170,7 +170,7 @@ fn test_import_consecutive() {
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
     // Info messages are logged to stderr.
-    cmd.assert().success().stderr(
+    cmd.assert().success().stdout(
         str::contains("Imported 1 bookmarks from 1 source")
             .and(str::contains("Removed 3 bookmarks")),
     );
