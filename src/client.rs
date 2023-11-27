@@ -32,8 +32,10 @@ impl Client {
             // Fix "Too many open files" and DNS errors (rate limit for DNS
             // server) by choosing a sensible value for `pool_idle_timeout()`
             // and `pool_max_idle_per_host()`.
-            .pool_idle_timeout(Duration::from_secs(5))
-            .pool_max_idle_per_host(100)
+            .pool_idle_timeout(Duration::from_millis(
+                config.settings.idle_connections_timeout,
+            ))
+            .pool_max_idle_per_host(config.settings.max_idle_connections_per_host)
             .build()
             .map_err(BogrepError::CreateClient)?;
         let throttler = Some(Throttler::new(request_throttling));

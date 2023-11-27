@@ -18,6 +18,12 @@ const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 /// The default for `Settings::request_throttling`.
 const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
+/// The  default for `Setting::max_idle_connections_per_host`.
+const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 100;
+
+/// The  default for `Setting::idle_connections_timeout`.
+const IDLE_CONNECTIONS_TIMEOUT: u64 = 5_000;
+
 /// Describes the settings used in Bogrep.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Settings {
@@ -35,6 +41,10 @@ pub struct Settings {
     pub request_timeout: u64,
     /// The throttling between requests in milliseconds.
     pub request_throttling: u64,
+    /// The maximum number of idle connections allowed in the connection pool.
+    pub max_idle_connections_per_host: usize,
+    /// The timeout for idle connections to be kept alive in milliseconds.
+    pub idle_connections_timeout: u64,
 }
 
 impl Default for Settings {
@@ -46,6 +56,8 @@ impl Default for Settings {
             max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
             request_timeout: REQUEST_TIMEOUT_DEFAULT,
             request_throttling: REQUEST_THROTTLING_DEFAULT,
+            max_idle_connections_per_host: MAX_IDLE_CONNECTIONS_PER_HOST,
+            idle_connections_timeout: IDLE_CONNECTIONS_TIMEOUT,
         }
     }
 }
@@ -58,6 +70,8 @@ impl Settings {
         max_concurrent_requests: usize,
         request_timeout: u64,
         request_throttling: u64,
+        max_idle_connections_per_host: usize,
+        idle_connections_timeout: u64,
     ) -> Self {
         Self {
             sources,
@@ -66,6 +80,8 @@ impl Settings {
             max_concurrent_requests,
             request_timeout,
             request_throttling,
+            max_idle_connections_per_host,
+            idle_connections_timeout,
         }
     }
 
