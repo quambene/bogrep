@@ -14,7 +14,7 @@ pub fn filter_html(html: &str) -> Result<String, BogrepError> {
     let dom = parse_document(RcDom::default(), ParseOpts::default())
         .from_utf8()
         .read_from(&mut html.as_bytes())
-        .map_err(|err| BogrepError::ReadHtml(err))?;
+        .map_err(BogrepError::ReadHtml)?;
 
     let filtered_dom = filter_dom(dom);
 
@@ -28,7 +28,7 @@ pub fn filter_html(html: &str) -> Result<String, BogrepError> {
             create_missing_parent: true,
         },
     )
-    .map_err(|err| BogrepError::SerializeHtml(err))?;
+    .map_err(BogrepError::SerializeHtml)?;
     let html = String::from_utf8(bytes)?;
     Ok(html)
 }

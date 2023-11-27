@@ -168,7 +168,7 @@ pub async fn fetch_and_add_all(
         std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
     }
 
-    println!("");
+    println!();
     println!(
         "Processed {total} bookmarks, {cached} cached, {} ignored, {failed_response} failed",
         binary_response + empty_response

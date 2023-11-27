@@ -145,13 +145,8 @@ impl Caching for Cache {
     }
 
     fn is_empty(&self) -> bool {
-        if self.path.exists()
+        self.path.exists()
             && std::fs::read_dir(&self.path).is_ok_and(|mut file| file.next().is_some())
-        {
-            false
-        } else {
-            true
-        }
     }
 
     fn exists(&self, bookmark: &TargetBookmark) -> bool {
