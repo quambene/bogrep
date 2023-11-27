@@ -1,3 +1,4 @@
+use crate::errors::BogrepError;
 use html5ever::{
     parse_document,
     rcdom::{Node, NodeData, RcDom},
@@ -9,10 +10,11 @@ use readability::extractor;
 use reqwest::Url;
 use std::{borrow::BorrowMut, io::Cursor, rc::Rc};
 
-pub fn filter_html(html: &str) -> Result<String, anyhow::Error> {
+pub fn filter_html(html: &str) -> Result<String, BogrepError> {
     let dom = parse_document(RcDom::default(), ParseOpts::default())
         .from_utf8()
-        .read_from(&mut html.as_bytes())?;
+        .read_from(&mut html.as_bytes())
+        .map_err(|err| BogrepError::ReadHtml(err))?;
 
     let filtered_dom = filter_dom(dom);
 
@@ -25,7 +27,8 @@ pub fn filter_html(html: &str) -> Result<String, anyhow::Error> {
             traversal_scope: html5ever::serialize::TraversalScope::ChildrenOnly(None),
             create_missing_parent: true,
         },
-    )?;
+    )
+    .map_err(|err| BogrepError::SerializeHtml(err))?;
     let html = String::from_utf8(bytes)?;
     Ok(html)
 }
@@ -90,10 +93,11 @@ fn is_filtered_tag(tag_name: &QualName) -> bool {
         || tag_name.local.contains("script")
 }
 
-pub fn convert_to_text(html: &str, bookmark_url: &str) -> Result<String, anyhow::Error> {
+pub fn convert_to_text(html: &str, bookmark_url: &str) -> Result<String, BogrepError> {
     let mut cursor = Cursor::new(html);
-    let bookmark_url = Url::parse(bookmark_url)?;
-    let product = extractor::extract(&mut cursor, &bookmark_url)?;
+    let bookmark_url = Url::parse(bookmark_url).map_err(BogrepError::ParseUrl)?;
+    let product =
+        extractor::extract(&mut cursor, &bookmark_url).map_err(BogrepError::ConvertHtml)?;
     Ok(product.text)
 }
 

@@ -32,6 +32,8 @@ mod client;
 pub mod cmd;
 /// The configuration used in Bogrep.
 mod config;
+/// The errors which can occur in Bogrep.
+pub mod errors;
 /// Helper functions to work with HTML.
 pub mod html;
 /// Helper function to work with JSON.
