@@ -5,10 +5,13 @@ use crate::{
     cache::CacheMode,
     utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
+use log::debug;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
 pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
+    debug!("{args:?}");
+
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;

@@ -1,17 +1,20 @@
 use crate::{
     bookmark_reader::{ReadTarget, WriteTarget},
     cache::CacheMode,
+    errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
 use futures::{stream, StreamExt};
-use log::{debug, info, trace, warn};
+use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::collections::HashSet;
+use std::{collections::HashSet, io::Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
+    debug!("{args:?}");
+
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
@@ -61,7 +64,7 @@ pub async fn fetch_urls(
     for url in urls {
         let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new());
         fetch_and_add(client, cache, &mut bookmark, true).await?;
-        info!("Fetched website for {url}");
+        println!("Fetched website for {url}");
         target_bookmarks.insert(bookmark);
     }
 
@@ -80,6 +83,15 @@ pub async fn fetch_and_cache(
 ) -> Result<(), anyhow::Error> {
     let mut target_bookmarks = TargetBookmarks::default();
     target_reader.read(&mut target_bookmarks)?;
+
+    if cache.is_empty() {
+        // If the cache was removed, reset the cache values in
+        // the target bookmarks
+        for bookmark in target_bookmarks.values_mut() {
+            bookmark.last_cached = None;
+            bookmark.cache_modes.clear();
+        }
+    }
 
     fetch_and_add_all(
         client,
@@ -105,16 +117,62 @@ pub async fn fetch_and_add_all(
     bookmarks: Vec<&mut TargetBookmark>,
     max_concurrent_requests: usize,
     fetch_all: bool,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), BogrepError> {
+    let mut processed = 0;
+    let mut cached = 0;
+    let mut failed_response = 0;
+    let mut binary_response = 0;
+    let mut empty_response = 0;
+    let total = bookmarks.len();
+
     let mut stream = stream::iter(bookmarks)
         .map(|bookmark| fetch_and_add(client, cache, bookmark, fetch_all))
         .buffer_unordered(max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
+        processed += 1;
+
+        print!("Processing bookmarks ({processed}/{total})\r");
+
         if let Err(err) = item {
-            warn!("Can't fetch bookmark: {err}");
+            match err {
+                BogrepError::HttpResponse(_) => {
+                    // Usually, a lot of fetching errors are expected because of
+                    // invalid or outdated urls in the bookmarks, so we are
+                    // using a debug instead of a warn message to keep the
+                    // output minimal.
+                    debug!("{err}");
+                    failed_response += 1;
+                }
+                BogrepError::HttpStatus(_) => {
+                    debug!("{err}");
+                    failed_response += 1;
+                }
+                BogrepError::BinaryResponse => {
+                    debug!("{err}");
+                    binary_response += 1;
+                }
+                BogrepError::EmptyResponse => {
+                    debug!("{err}");
+                    empty_response += 1;
+                }
+                // We are aborting if there is an unexpected error.
+                err => {
+                    return Err(err);
+                }
+            }
+        } else {
+            cached += 1;
         }
+
+        std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
     }
+
+    println!();
+    println!(
+        "Processed {total} bookmarks, {cached} cached, {} ignored, {failed_response} failed",
+        binary_response + empty_response
+    );
 
     Ok(())
 }
@@ -125,44 +183,24 @@ async fn fetch_and_add(
     cache: &impl Caching,
     bookmark: &mut TargetBookmark,
     fetch_all: bool,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), BogrepError> {
     if fetch_all {
-        match client.fetch(bookmark).await {
-            Ok(Some(website)) => {
-                trace!("Fetched website: {website}");
-                let html = html::filter_html(&website)?;
-
-                if let Err(err) = cache.replace(html, bookmark).await {
-                    warn!("Can't replace website ({}) in cache: {}", bookmark.url, err);
-                }
-            }
-            Ok(None) => (),
-            Err(err) => {
-                warn!("Can't fetch website: {}", err);
-            }
-        }
+        let website = client.fetch(bookmark).await?;
+        trace!("Fetched website: {website}");
+        let html = html::filter_html(&website)?;
+        cache.replace(html, bookmark).await?;
     } else if !cache.exists(bookmark) {
-        match client.fetch(bookmark).await {
-            Ok(Some(website)) => {
-                trace!("Fetched website: {website}");
-                let html = html::filter_html(&website)?;
-
-                if let Err(err) = cache.add(html, bookmark).await {
-                    warn!("Can't add website ({}) to cache: {}", bookmark.url, err);
-                }
-            }
-            Ok(None) => (),
-            Err(err) => {
-                warn!("Can't fetch website: {}", err);
-            }
-        }
+        let website = client.fetch(bookmark).await?;
+        trace!("Fetched website: {website}");
+        let html = html::filter_html(&website)?;
+        cache.add(html, bookmark).await?;
     }
 
     Ok(())
 }
 
 /// Fetch difference between cached and fetched website, and display changes.
-pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::Error> {
+pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepError> {
     debug!("Diff content for urls: {:#?}", args.diff);
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
@@ -177,29 +215,28 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), anyhow::
 
         if let Some(bookmark) = bookmark {
             if let Some(cached_website_before) = cache.get(bookmark)? {
-                if let Some(fetched_website) = client.fetch(bookmark).await? {
-                    trace!("Fetched website: {fetched_website}");
-                    let html = html::filter_html(&fetched_website)?;
+                let fetched_website = client.fetch(bookmark).await?;
+                trace!("Fetched website: {fetched_website}");
+                let html = html::filter_html(&fetched_website)?;
 
-                    // Cache fetched website
-                    let cached_website_after = cache.replace(html, bookmark).await?;
+                // Cache fetched website
+                let cached_website_after = cache.replace(html, bookmark).await?;
 
-                    let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
+                let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
 
-                    for change in diff.iter_all_changes() {
-                        match change.tag() {
-                            ChangeTag::Delete => {
-                                if let Some(change) = change.as_str() {
-                                    print!("{}{}", "-".red(), change.red());
-                                }
+                for change in diff.iter_all_changes() {
+                    match change.tag() {
+                        ChangeTag::Delete => {
+                            if let Some(change) = change.as_str() {
+                                print!("{}{}", "-".red(), change.red());
                             }
-                            ChangeTag::Insert => {
-                                if let Some(change) = change.as_str() {
-                                    print!("{}{}", "+".green(), change.green());
-                                }
-                            }
-                            ChangeTag::Equal => continue,
                         }
+                        ChangeTag::Insert => {
+                            if let Some(change) = change.as_str() {
+                                print!("{}{}", "+".green(), change.green());
+                            }
+                        }
+                        ChangeTag::Equal => continue,
                     }
                 }
             }

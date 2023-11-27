@@ -27,7 +27,7 @@ fn test_remove() {
     // Info messages are logged to stderr.
     cmd.assert()
         .success()
-        .stderr(str::contains("Removed 2 bookmarks"));
+        .stdout(str::contains("Removed 2 bookmarks"));
 
     // Lock file was cleaned up.
     let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");

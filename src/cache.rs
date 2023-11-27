@@ -1,5 +1,6 @@
 use crate::{
     bookmarks::TargetBookmark,
+    errors::BogrepError,
     html,
     utils::{self},
     TargetBookmarks,
@@ -17,7 +18,6 @@ use std::{
     path::{Path, PathBuf},
     sync::Mutex,
 };
-use tokio::{fs, io::AsyncWriteExt};
 
 #[derive(Debug, ValueEnum, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -69,39 +69,39 @@ pub trait Caching {
     // Get the available cache modes.
     fn modes() -> [CacheMode; 2];
 
+    // Check if the cache directory exists or is empty
+    fn is_empty(&self) -> bool;
+
     /// Check if content of bookmark exists in cache.
     fn exists(&self, bookmark: &TargetBookmark) -> bool;
 
     /// Open the cached file for a bookmark.
     // TODO: return `Result<Option<impl Read>, anyhow::Error>` (see <https://github.com/rust-lang/rust/issues/91611>).
-    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, anyhow::Error>;
+    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, BogrepError>;
 
     /// Get the content of a bookmark from cache.
     // TODO: make get async
-    fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error>;
+    fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError>;
 
     /// Add the content of a bookmark to cache.
-    async fn add(
-        &self,
-        html: String,
-        bookmark: &mut TargetBookmark,
-    ) -> Result<String, anyhow::Error>;
+    async fn add(&self, html: String, bookmark: &mut TargetBookmark)
+        -> Result<String, BogrepError>;
 
     /// Replace the content of a bookmark in cache.
     async fn replace(
         &self,
         html: String,
         bookmark: &mut TargetBookmark,
-    ) -> Result<String, anyhow::Error>;
+    ) -> Result<String, BogrepError>;
 
     /// Remove the content of a bookmark from cache.
-    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), anyhow::Error>;
+    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError>;
 
     /// Remove the content of multiple bookmarks from cache.
-    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error>;
+    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError>;
 
     /// Clear the cache, i.e. remove all files in the cache directory.
-    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error>;
+    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError>;
 }
 
 /// A cache to store the fetched bookmarks.
@@ -144,11 +144,16 @@ impl Caching for Cache {
         [CacheMode::Text, CacheMode::Html]
     }
 
+    fn is_empty(&self) -> bool {
+        self.path.exists()
+            && std::fs::read_dir(&self.path).is_ok_and(|mut file| file.next().is_some())
+    }
+
     fn exists(&self, bookmark: &TargetBookmark) -> bool {
         bookmark.cache_modes.contains(self.mode())
     }
 
-    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, anyhow::Error> {
+    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, BogrepError> {
         let cache_path = self.bookmark_path(&bookmark.id);
         debug!("Open website: {}", cache_path.display());
 
@@ -160,14 +165,16 @@ impl Caching for Cache {
         }
     }
 
-    fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error> {
+    fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError> {
         if let Some(mut cache_file) = self.open(bookmark)? {
             debug!(
                 "Get website from cache: {}",
                 self.bookmark_path(&bookmark.id).display()
             );
             let mut buf = String::new();
-            cache_file.read_to_string(&mut buf)?;
+            cache_file
+                .read_to_string(&mut buf)
+                .map_err(|err| BogrepError::ReadFile(err.to_string()))?;
             Ok(Some(buf))
         } else {
             Ok(None)
@@ -178,7 +185,7 @@ impl Caching for Cache {
         &self,
         html: String,
         bookmark: &mut TargetBookmark,
-    ) -> Result<String, anyhow::Error> {
+    ) -> Result<String, BogrepError> {
         let cache_path = self.bookmark_path(&bookmark.id);
 
         let content = match self.mode {
@@ -188,9 +195,7 @@ impl Caching for Cache {
 
         if !cache_path.exists() {
             debug!("Add website to cache: {}", cache_path.display());
-            let mut cache_file = utils::create_file_async(&cache_path).await?;
-            cache_file.write_all(content.as_bytes()).await?;
-            cache_file.flush().await?;
+            utils::write_file_async(&cache_path, content.as_bytes()).await?;
 
             bookmark.last_cached = Some(Utc::now().timestamp_millis());
             bookmark.cache_modes.insert(self.mode.clone());
@@ -203,7 +208,7 @@ impl Caching for Cache {
         &self,
         html: String,
         bookmark: &mut TargetBookmark,
-    ) -> Result<String, anyhow::Error> {
+    ) -> Result<String, BogrepError> {
         let cache_path = self.bookmark_path(&bookmark.id);
         debug!("Replace website in cache: {}", cache_path.display());
 
@@ -212,9 +217,7 @@ impl Caching for Cache {
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
         };
 
-        let mut cache_file = utils::create_file_async(&cache_path).await?;
-        cache_file.write_all(content.as_bytes()).await?;
-        cache_file.flush().await?;
+        utils::write_file_async(&cache_path, content.as_bytes()).await?;
 
         bookmark.last_cached = Some(Utc::now().timestamp_millis());
         bookmark.cache_modes.insert(self.mode.clone());
@@ -222,12 +225,12 @@ impl Caching for Cache {
         Ok(content)
     }
 
-    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), anyhow::Error> {
+    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
         let cache_path = self.bookmark_path(&bookmark.id);
 
         if cache_path.exists() {
             debug!("Remove website from cache: {}", cache_path.display());
-            fs::remove_file(cache_path).await?;
+            utils::remove_file_async(&cache_path).await?;
             bookmark.last_cached = None;
             bookmark.cache_modes.remove(&self.mode);
         }
@@ -235,14 +238,14 @@ impl Caching for Cache {
         Ok(())
     }
 
-    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
+    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         debug!("Remove all cached websites");
         for bookmark in bookmarks.values_mut() {
             let cache_path = self.bookmark_path(&bookmark.id);
 
             if cache_path.exists() {
                 debug!("Remove website from cache: {}", cache_path.display());
-                fs::remove_file(cache_path).await?;
+                utils::remove_file_async(&cache_path).await?;
                 bookmark.last_cached = None;
                 bookmark.cache_modes.remove(&self.mode);
             }
@@ -255,7 +258,7 @@ impl Caching for Cache {
     ///
     /// Note: For safety reasons, `clear` iterates over the given `bookmarks`
     /// instead of using [`std::fs::remove_dir_all`] for the cache directory.
-    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
+    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         debug!("Clear cache");
         let cache_modes = Cache::modes();
 
@@ -265,7 +268,7 @@ impl Caching for Cache {
 
                 if cache_path.exists() {
                     debug!("Remove website from cache: {}", cache_path.display());
-                    std::fs::remove_file(cache_path)?;
+                    utils::remove_file(&cache_path)?;
                     bookmark.last_cached = None;
                     bookmark.cache_modes.clear();
                 }
@@ -310,15 +313,20 @@ impl Caching for MockCache {
         [CacheMode::Text, CacheMode::Html]
     }
 
+    fn is_empty(&self) -> bool {
+        let cache_map = self.cache_map.lock().unwrap();
+        cache_map.is_empty()
+    }
+
     fn exists(&self, bookmark: &TargetBookmark) -> bool {
         self.get(bookmark).unwrap().is_some()
     }
 
-    fn open(&self, _bookmark: &TargetBookmark) -> Result<Option<File>, anyhow::Error> {
+    fn open(&self, _bookmark: &TargetBookmark) -> Result<Option<File>, BogrepError> {
         Ok(None)
     }
 
-    fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, anyhow::Error> {
+    fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError> {
         let cache_map = self.cache_map.lock().unwrap();
         let content = cache_map
             .get(&bookmark.id)
@@ -330,7 +338,7 @@ impl Caching for MockCache {
         &self,
         html: String,
         bookmark: &mut TargetBookmark,
-    ) -> Result<String, anyhow::Error> {
+    ) -> Result<String, BogrepError> {
         let mut cache_map = self.cache_map.lock().unwrap();
         let content = match self.mode {
             CacheMode::Html => html,
@@ -348,7 +356,7 @@ impl Caching for MockCache {
         &self,
         html: String,
         bookmark: &mut TargetBookmark,
-    ) -> Result<String, anyhow::Error> {
+    ) -> Result<String, BogrepError> {
         let mut cache_map = self.cache_map.lock().unwrap();
         let content = match self.mode {
             CacheMode::Html => html,
@@ -362,7 +370,7 @@ impl Caching for MockCache {
         Ok(content)
     }
 
-    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), anyhow::Error> {
+    async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
         let mut cache_map = self.cache_map.lock().unwrap();
         cache_map.remove(&bookmark.id);
 
@@ -372,7 +380,7 @@ impl Caching for MockCache {
         Ok(())
     }
 
-    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
+    async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         let mut cache_map = self.cache_map.lock().unwrap();
 
         for bookmark in bookmarks.values_mut() {
@@ -385,7 +393,7 @@ impl Caching for MockCache {
         Ok(())
     }
 
-    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), anyhow::Error> {
+    fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         let mut cache_map = self.cache_map.lock().unwrap();
         cache_map.clear();
 

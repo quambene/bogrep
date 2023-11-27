@@ -9,6 +9,7 @@
   - Add sources to `SourceBookmark` and `TargetBookmark`
   - Add cache modes to `TargetBookmark`
   - Fix dns errors for fetching bookmarks
+  - Implement progress bar and status report for processing fetched bookmarks
 
 ### v0.4.0
 
