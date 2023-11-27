@@ -133,7 +133,6 @@ pub async fn fetch_and_add_all(
         processed += 1;
 
         print!("Processing bookmarks ({processed}/{total})\r");
-        std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
 
         if let Err(err) = item {
             match err {
@@ -151,6 +150,8 @@ pub async fn fetch_and_add_all(
         } else {
             cached += 1;
         }
+
+        std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
     }
 
     println!("");
