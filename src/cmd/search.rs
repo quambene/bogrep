@@ -100,9 +100,11 @@ fn find_matches(reader: impl BufRead, regex: &Regex) -> Result<Vec<String>, anyh
                 end_index = line.len();
             }
 
-            let truncated_line = &line[start_index..end_index];
-
-            matched_lines.push(truncated_line.to_owned());
+            if let Some(truncated_line) = line.get(start_index..end_index) {
+                matched_lines.push(truncated_line.to_owned());
+            } else {
+                matched_lines.push(line.to_owned());
+            }
         }
     }
 
