@@ -3,6 +3,12 @@
 ### Unreleased
 
 - added
+- changed
+- removed
+
+### v0.5.0
+
+- added
   - Implement `bogrep add <URLs>` (add specified URLs to bookmarks)
   - Implement `bogrep remove <URLs>` (remove specified URLs from bookmarks)
   - Implement `bogrep fetch --urls <URLs>` (fetch specified URLs)
