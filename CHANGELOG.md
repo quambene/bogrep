@@ -10,7 +10,7 @@
   - Add cache modes to `TargetBookmark`
   - Implement progress bar and status report for processing fetched bookmarks
 - changed
-  - Fix dns errors for fetching bookmarks
+  - Fix dns errors for `bogrep fetch`
   - Fix panic for `bogrep <pattern>`
 
 ### v0.4.0
