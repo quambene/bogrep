@@ -63,6 +63,7 @@ impl Default for Settings {
 }
 
 impl Settings {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         sources: Vec<RawSource>,
         ignored_urls: Vec<String>,
