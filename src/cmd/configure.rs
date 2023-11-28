@@ -101,7 +101,9 @@ mod tests {
     "cache_mode": "text",
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
-    "request_throttling": 3000
+    "request_throttling": 3000,
+    "max_idle_connections_per_host": 100,
+    "idle_connections_timeout": 5000
 }"#;
         assert_eq!(actual_settings, expected_settings);
     }
@@ -121,7 +123,9 @@ mod tests {
     "cache_mode": "html",
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
-    "request_throttling": 3000
+    "request_throttling": 3000,
+    "max_idle_connections_per_host": 100,
+    "idle_connections_timeout": 5000
 }"#;
         assert_eq!(actual_settings, expected_settings);
     }
@@ -147,7 +151,9 @@ mod tests {
     "cache_mode": "text",
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
-    "request_throttling": 3000
+    "request_throttling": 3000,
+    "max_idle_connections_per_host": 100,
+    "idle_connections_timeout": 5000
 }"#;
         assert_eq!(actual_settings, expected_settings);
     }
