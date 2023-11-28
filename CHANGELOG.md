@@ -8,8 +8,10 @@
   - Implement `bogrep fetch --urls <URLs>` (fetch specified URLs)
   - Add sources to `SourceBookmark` and `TargetBookmark`
   - Add cache modes to `TargetBookmark`
-  - Fix dns errors for fetching bookmarks
   - Implement progress bar and status report for processing fetched bookmarks
+- changed
+  - Fix dns errors for `bogrep fetch`
+  - Fix panic for `bogrep <pattern>`
 
 ### v0.4.0
 
