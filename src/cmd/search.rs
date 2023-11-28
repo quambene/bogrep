@@ -71,7 +71,7 @@ fn search_bookmarks(
 
             if !args.files_with_matches {
                 for matched_line in &matched_lines {
-                    println!("{}", color_matches(matched_line, &regex));
+                    println!("{}\n", color_matches(matched_line, &regex));
                 }
             }
         }
