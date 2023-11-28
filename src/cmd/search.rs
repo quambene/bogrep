@@ -31,6 +31,8 @@ pub fn search(pattern: &str, config: &Config, args: &Args) -> Result<(), anyhow:
 
         if matches == 0 {
             println!("No matches in bookmarks");
+        } else {
+            println!("Found {matches} bookmarks");
         }
 
         Ok(())
