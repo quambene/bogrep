@@ -148,6 +148,10 @@ pub async fn fetch_and_add_all(
                     debug!("{err}");
                     failed_response += 1;
                 }
+                BogrepError::ParseHttpResponse(_) => {
+                    debug!("{err}");
+                    failed_response += 1;
+                }
                 BogrepError::BinaryResponse => {
                     debug!("{err}");
                     binary_response += 1;
