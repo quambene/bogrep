@@ -155,7 +155,7 @@ impl Caching for Cache {
 
     fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, BogrepError> {
         let cache_path = self.bookmark_path(&bookmark.id);
-        debug!("Open website: {}", cache_path.display());
+        debug!("Open cache: {}", cache_path.display());
 
         if cache_path.exists() {
             let cache_file = utils::open_file(&cache_path)?;
