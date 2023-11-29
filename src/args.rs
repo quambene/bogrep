@@ -18,6 +18,9 @@ pub struct Args {
     /// Print only URLs of bookmarks with selected lines.
     #[arg(short = 'l', long)]
     pub files_with_matches: bool,
+    /// Use fuzzy matching for search.
+    #[arg(short = 'f', long)]
+    pub fuzzy_search: bool,
     #[command(subcommand)]
     pub subcommands: Option<Subcommands>,
 }
