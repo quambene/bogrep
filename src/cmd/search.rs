@@ -73,7 +73,7 @@ fn search_bookmarks(
 
                 if !args.files_with_matches {
                     for (matched_line, matched_chars) in &matched_lines {
-                        println!("{}\n", color_substring(matched_line, &matched_chars));
+                        println!("{}\n", color_substring(matched_line, matched_chars));
                     }
                 }
             } else {
@@ -187,7 +187,7 @@ fn color_substring(matched_line: &str, indices: &[usize]) -> String {
 
     for &index in indices {
         if let Some(chars) = matched_line.get(last_end..index) {
-            colored_string.push_str(&chars);
+            colored_string.push_str(chars);
         }
 
         if let Some(char) = matched_line.get(index..=index) {
