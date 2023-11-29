@@ -136,11 +136,11 @@ pub async fn fetch_and_add_all(
 
         if let Err(err) = item {
             match err {
-                BogrepError::HttpResponse(ref reqwest_error) => {
+                BogrepError::HttpResponse(ref error) => {
                     // Usually, a lot of fetching errors are expected because of
                     // invalid or outdated urls in the bookmarks, so we are
                     // using a warning message only if the issue is on our side.
-                    if let Some(error) = reqwest_error.source() {
+                    if let Some(error) = error.source() {
                         if error.to_string().contains("Too many open files") {
                             warn!("{err}");
                         } else {
