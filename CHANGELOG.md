@@ -3,6 +3,7 @@
 ### Unreleased
 
 - added
+  - Implement `bogrep -w <pattern>` (match only whole words)
 - changed
 - removed
 
