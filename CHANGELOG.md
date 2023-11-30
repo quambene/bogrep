@@ -3,10 +3,15 @@
 ### Unreleased
 
 - added
+- changed
+- removed
+
+### v0.6.0
+
+- added
   - Implement `bogrep -w <pattern>` (match only whole words)
 - changed
   - Set default for `max_idle_connections_per_host` from 100 to 10
-- removed
 
 ### v0.5.0
 
