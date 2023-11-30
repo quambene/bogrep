@@ -13,11 +13,10 @@ where
     fn read(&mut self, target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         let mut buf = Vec::new();
         self.read_to_end(&mut buf)
-            .map_err(|err| BogrepError::ReadFile(err.to_string()))?;
+            .map_err(|err| BogrepError::ReadFile(err))?;
 
         // Rewind after reading.
-        self.rewind()
-            .map_err(|err| BogrepError::RewindFile(err.to_string()))?;
+        self.rewind().map_err(|err| BogrepError::RewindFile(err))?;
 
         let bookmarks = json::deserialize::<BookmarksJson>(&buf)?;
 

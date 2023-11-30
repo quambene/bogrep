@@ -76,16 +76,19 @@ impl Fetch for Client {
                     if !html.is_empty() {
                         Ok(html)
                     } else {
-                        Err(BogrepError::EmptyResponse)
+                        Err(BogrepError::EmptyResponse(bookmark.url.to_owned()))
                     }
                 } else {
-                    Err(BogrepError::BinaryResponse)
+                    Err(BogrepError::BinaryResponse(bookmark.url.to_owned()))
                 }
             } else {
-                Err(BogrepError::BinaryResponse)
+                Err(BogrepError::BinaryResponse(bookmark.url.to_owned()))
             }
         } else {
-            Err(BogrepError::HttpStatus(response.status().to_string()))
+            Err(BogrepError::HttpStatus {
+                status: response.status().to_string(),
+                url: bookmark.url.to_owned(),
+            })
         }
     }
 }
