@@ -19,7 +19,7 @@ const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
 /// The  default for `Setting::max_idle_connections_per_host`.
-const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 100;
+const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 10;
 
 /// The  default for `Setting::idle_connections_timeout`.
 const IDLE_CONNECTIONS_TIMEOUT: u64 = 5_000;

@@ -102,7 +102,7 @@ mod tests {
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
     "request_throttling": 3000,
-    "max_idle_connections_per_host": 100,
+    "max_idle_connections_per_host": 10,
     "idle_connections_timeout": 5000
 }"#;
         assert_eq!(actual_settings, expected_settings);
@@ -124,7 +124,7 @@ mod tests {
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
     "request_throttling": 3000,
-    "max_idle_connections_per_host": 100,
+    "max_idle_connections_per_host": 10,
     "idle_connections_timeout": 5000
 }"#;
         assert_eq!(actual_settings, expected_settings);
@@ -152,7 +152,7 @@ mod tests {
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
     "request_throttling": 3000,
-    "max_idle_connections_per_host": 100,
+    "max_idle_connections_per_host": 10,
     "idle_connections_timeout": 5000
 }"#;
         assert_eq!(actual_settings, expected_settings);
