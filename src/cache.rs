@@ -174,7 +174,7 @@ impl Caching for Cache {
             let mut buf = String::new();
             cache_file
                 .read_to_string(&mut buf)
-                .map_err(|err| BogrepError::ReadFile(err.to_string()))?;
+                .map_err(BogrepError::ReadFile)?;
             Ok(Some(buf))
         } else {
             Ok(None)
