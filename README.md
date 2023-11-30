@@ -218,12 +218,20 @@ placed at `~/.config/bogrep` in your home directory:
     "cache_mode": "text",
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
-    "request_throttling": 3000
+    "request_throttling": 3000,
+    "max_idle_connections_per_host": 10,
+    "idle_connections_timeout": 5000
 }
 ```
 
 where `request_throttling` is the waiting time between requests for the same
 host in milliseconds.
+
+Too speed up fetching, set `max_concurrent_requests` to e.g. 1000. The maximum
+number of available sockets depends on your operating system. Run `ulimit -n` to
+show the maximum number of open sockets allowed on your system.
+
+For the available settings see <https://docs.rs/bogrep/latest/bogrep/struct.Settings.html>.
 
 ## Supported operating systems
 
