@@ -14,7 +14,7 @@ pub fn read_file(path: &Path) -> Result<Vec<u8>, BogrepError> {
     let mut buffer = Vec::new();
     let mut file = open_file(path)?;
     file.read_to_end(&mut buffer)
-        .map_err(|err| BogrepError::ReadFile(err))?;
+        .map_err(BogrepError::ReadFile)?;
     Ok(buffer)
 }
 
@@ -25,7 +25,7 @@ pub fn read_file_to_string(path: &Path) -> Result<String, BogrepError> {
     let mut buffer = String::new();
     let mut file = open_file(path)?;
     file.read_to_string(&mut buffer)
-        .map_err(|err| BogrepError::ReadFile(err))?;
+        .map_err(BogrepError::ReadFile)?;
     Ok(buffer)
 }
 
