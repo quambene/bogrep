@@ -9,7 +9,7 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::{collections::HashSet, io::Write};
+use std::{collections::HashSet, error::Error, io::Write};
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -136,12 +136,20 @@ pub async fn fetch_and_add_all(
 
         if let Err(err) = item {
             match err {
-                BogrepError::HttpResponse(_) => {
+                BogrepError::HttpResponse(ref error) => {
                     // Usually, a lot of fetching errors are expected because of
                     // invalid or outdated urls in the bookmarks, so we are
-                    // using a debug instead of a warn message to keep the
-                    // output minimal.
-                    debug!("{err}");
+                    // using a warning message only if the issue is on our side.
+                    if let Some(error) = error.source() {
+                        if error.to_string().contains("Too many open files") {
+                            warn!("{err}");
+                        } else {
+                            debug!("{err} ");
+                        }
+                    } else {
+                        debug!("{err} ");
+                    }
+
                     failed_response += 1;
                 }
                 BogrepError::HttpStatus(_) => {

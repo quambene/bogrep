@@ -5,25 +5,25 @@ use url::ParseError;
 
 #[derive(Debug, Error)]
 pub enum BogrepError {
-    #[error("Can't create client: {}", 0.to_string())]
+    #[error("Can't create client: {0}")]
     CreateClient(reqwest::Error),
-    #[error("Can't fetch website: {}", 0.to_string())]
+    #[error("Can't fetch website: {0}")]
     HttpResponse(reqwest::Error),
     #[error("Invalid status code: {0}")]
     HttpStatus(String),
-    #[error("Can't fetch website: {}", 0.to_string())]
+    #[error("Can't fetch website: {0}")]
     ParseHttpResponse(reqwest::Error),
     #[error("Can't fetch binary bookmark")]
     BinaryResponse,
     #[error("Can't fetch empty bookmark")]
     EmptyResponse,
-    #[error("Can't serialize json: {}", 0.to_string())]
+    #[error("Can't serialize json: {0}")]
     SerializeJson(serde_json::Error),
-    #[error("Can't deserialize json: {}", 0.to_string())]
+    #[error("Can't deserialize json: {0}")]
     DeserializeJson(serde_json::Error),
     #[error("Can't parse url")]
     ParseUrl(#[from] ParseError),
-    #[error("Can't parse url: {}", 0.to_string())]
+    #[error("Can't parse url: {0}")]
     ConvertHtml(readability::error::Error),
     #[error("Can't get host for url: {0}")]
     ConvertHost(String),
