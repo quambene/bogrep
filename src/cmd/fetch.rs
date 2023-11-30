@@ -152,7 +152,7 @@ pub async fn fetch_and_add_all(
 
                     failed_response += 1;
                 }
-                BogrepError::HttpStatus(_) => {
+                BogrepError::HttpStatus { .. } => {
                     debug!("{err}");
                     failed_response += 1;
                 }
@@ -160,13 +160,20 @@ pub async fn fetch_and_add_all(
                     debug!("{err}");
                     failed_response += 1;
                 }
-                BogrepError::BinaryResponse => {
+                BogrepError::BinaryResponse(_) => {
                     debug!("{err}");
                     binary_response += 1;
                 }
-                BogrepError::EmptyResponse => {
+                BogrepError::EmptyResponse(_) => {
                     debug!("{err}");
                     empty_response += 1;
+                }
+                BogrepError::CreateFile { .. } => {
+                    // Write errors are expected if there are "Too many open
+                    // files", so we are issuing a warning instead of returning
+                    // a hard failure.
+                    warn!("{err}");
+                    failed_response += 1;
                 }
                 // We are aborting if there is an unexpected error.
                 err => {
