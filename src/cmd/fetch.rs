@@ -168,6 +168,10 @@ pub async fn fetch_and_add_all(
                     debug!("{err}");
                     empty_response += 1;
                 }
+                BogrepError::ConvertHost(_) => {
+                    warn!("{err}");
+                    failed_response += 1;
+                }
                 BogrepError::CreateFile { .. } => {
                     // Write errors are expected if there are "Too many open
                     // files", so we are issuing a warning instead of returning

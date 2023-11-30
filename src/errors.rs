@@ -17,6 +17,8 @@ pub enum BogrepError {
     BinaryResponse(String),
     #[error("Can't fetch empty bookmark ({0})")]
     EmptyResponse(String),
+    #[error("Can't get host for url: {0}")]
+    ConvertHost(String),
     #[error("Can't serialize json: {0}")]
     SerializeJson(serde_json::Error),
     #[error("Can't deserialize json: {0}")]
@@ -25,8 +27,6 @@ pub enum BogrepError {
     ParseUrl(#[from] ParseError),
     #[error("Can't parse url: {0}")]
     ConvertHtml(readability::error::Error),
-    #[error("Can't get host for url: {0}")]
-    ConvertHost(String),
     #[error("Invalid utf8: {0}")]
     ConvertUtf8(#[from] FromUtf8Error),
     #[error("Can't read from HTML: {0}")]
