@@ -1,9 +1,8 @@
-use super::fetch_and_add_all;
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     cache::CacheMode,
-    utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
+    cmd, utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
 
@@ -64,7 +63,7 @@ async fn update_bookmarks(
 
     if !bookmarks_to_add.is_empty() {
         // Fetch and cache new bookmarks.
-        fetch_and_add_all(
+        cmd::fetch_and_cache_bookmarks(
             client,
             cache,
             bookmarks_to_add.iter_mut().collect(),

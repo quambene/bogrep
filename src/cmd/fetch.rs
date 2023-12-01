@@ -22,7 +22,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
     if args.urls.is_empty() {
-        fetch_and_cache(
+        fetch_bookmarks(
             &client,
             &cache,
             &mut target_reader,
@@ -63,7 +63,7 @@ pub async fn fetch_urls(
 
     for url in urls {
         let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new());
-        fetch_and_add(client, cache, &mut bookmark, true).await?;
+        fetch_and_cache_bookmark(client, cache, &mut bookmark, true).await?;
         println!("Fetched website for {url}");
         target_bookmarks.insert(bookmark);
     }
@@ -73,7 +73,7 @@ pub async fn fetch_urls(
     Ok(())
 }
 
-pub async fn fetch_and_cache(
+pub async fn fetch_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
     target_reader: &mut impl ReadTarget,
@@ -85,6 +85,7 @@ pub async fn fetch_and_cache(
     target_reader.read(&mut target_bookmarks)?;
 
     if cache.is_empty() {
+        debug!("Cache is empty");
         // If the cache was removed, reset the cache values in
         // the target bookmarks
         for bookmark in target_bookmarks.values_mut() {
@@ -93,7 +94,7 @@ pub async fn fetch_and_cache(
         }
     }
 
-    fetch_and_add_all(
+    fetch_and_cache_bookmarks(
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -111,7 +112,7 @@ pub async fn fetch_and_cache(
 }
 
 /// Fetch all bookmarks and add them to cache.
-pub async fn fetch_and_add_all(
+pub async fn fetch_and_cache_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: Vec<&mut TargetBookmark>,
@@ -126,7 +127,7 @@ pub async fn fetch_and_add_all(
     let total = bookmarks.len();
 
     let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_add(client, cache, bookmark, fetch_all))
+        .map(|bookmark| fetch_and_cache_bookmark(client, cache, bookmark, fetch_all))
         .buffer_unordered(max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
@@ -201,7 +202,7 @@ pub async fn fetch_and_add_all(
 }
 
 /// Fetch and add bookmark to cache.
-async fn fetch_and_add(
+async fn fetch_and_cache_bookmark(
     client: &impl Fetch,
     cache: &impl Caching,
     bookmark: &mut TargetBookmark,
@@ -316,7 +317,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_add_all(
+        let res = fetch_and_cache_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -379,7 +380,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_add_all(
+        let res = fetch_and_cache_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -450,7 +451,7 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_add_all(
+        let res = fetch_and_cache_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -523,7 +524,7 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_add_all(
+        let res = fetch_and_cache_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
