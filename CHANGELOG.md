@@ -2,9 +2,8 @@
 
 ### Unreleased
 
-- added
 - changed
-- removed
+  - Fix `Cache::is_empty`
 
 ### v0.6.0
 
