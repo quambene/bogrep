@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### Unreleased
+### v0.6.1
 
 - changed
   - Fix `Cache::is_empty`
