@@ -6,13 +6,14 @@ use log::debug;
 use reqwest::{Client as ReqwestClient, Url};
 use std::{
     collections::{hash_map::Entry, HashMap},
+    marker::{Send, Sync},
     sync::Mutex,
 };
 use tokio::time::{self, Duration};
 
 /// A trait to fetch websites from a real or mock client.
 #[async_trait]
-pub trait Fetch {
+pub trait Fetch: Send + Sync + 'static {
     /// Fetch content of a website as HTML.
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError>;
 }
@@ -216,6 +217,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            None,
         );
         let bookmark2 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
@@ -223,6 +225,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            None,
         );
 
         let start_instant = Instant::now();
@@ -248,6 +251,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            None,
         );
         let bookmark2 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
@@ -255,6 +259,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            None,
         );
 
         let last_fetched = throttler.last_fetched(&bookmark1, now).unwrap();

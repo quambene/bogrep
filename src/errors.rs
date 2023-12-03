@@ -59,6 +59,8 @@ pub enum BogrepError {
     ConvertToStr(#[from] ToStrError),
     #[error("Can't remove website ({url}) from cache: {err}")]
     RemoveCache { url: String, err: tokio::io::Error },
+    #[error("Can't get inner value")]
+    InnerValue,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }

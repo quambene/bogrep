@@ -9,8 +9,8 @@ use std::{
     path::Path,
 };
 
-/// The default `Settungs::max_concurrent_requests`.
-const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 100;
+/// The default `Settungs::max_parallel_requests`.
+const MAX_PARALLEL_REQUESTS_DEFAULT: usize = 100;
 
 /// The default for `Settings::request_timeout`.
 const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
@@ -36,7 +36,7 @@ pub struct Settings {
     /// The file extension used to cache websites.
     pub cache_mode: CacheMode,
     /// The maximal number of concurrent requests.
-    pub max_concurrent_requests: usize,
+    pub max_parallel_requests: usize,
     /// The request timeout in milliseconds.
     pub request_timeout: u64,
     /// The throttling between requests in milliseconds.
@@ -53,7 +53,7 @@ impl Default for Settings {
             sources: Vec::new(),
             ignored_urls: Vec::new(),
             cache_mode: CacheMode::default(),
-            max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
+            max_parallel_requests: MAX_PARALLEL_REQUESTS_DEFAULT,
             request_timeout: REQUEST_TIMEOUT_DEFAULT,
             request_throttling: REQUEST_THROTTLING_DEFAULT,
             max_idle_connections_per_host: MAX_IDLE_CONNECTIONS_PER_HOST,
@@ -68,7 +68,7 @@ impl Settings {
         sources: Vec<RawSource>,
         ignored_urls: Vec<String>,
         cache_mode: CacheMode,
-        max_concurrent_requests: usize,
+        max_parallel_requests: usize,
         request_timeout: u64,
         request_throttling: u64,
         max_idle_connections_per_host: usize,
@@ -78,7 +78,7 @@ impl Settings {
             sources,
             ignored_urls,
             cache_mode,
-            max_concurrent_requests,
+            max_parallel_requests,
             request_timeout,
             request_throttling,
             max_idle_connections_per_host,

@@ -42,7 +42,8 @@ fn add_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let bookmark = TargetBookmark::new(url, now, None, sources.clone(), cache_modes.clone());
+        let bookmark =
+            TargetBookmark::new(url, now, None, sources.clone(), cache_modes.clone(), None);
         target_bookmarks.insert(bookmark);
     }
 

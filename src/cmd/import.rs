@@ -1,6 +1,7 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmarks::Action,
     utils, Config, SourceBookmarks, TargetBookmarks,
 };
 use log::{debug, trace};
@@ -60,7 +61,11 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 
     println!(
         "Imported {} bookmarks from {} {source}: {}",
-        target_bookmarks.len(),
+        target_bookmarks
+            .values()
+            .filter(|bookmark| bookmark.action == Some(Action::Add))
+            .collect::<Vec<_>>()
+            .len(),
         source_reader.len(),
         source_reader
             .iter()

@@ -10,6 +10,13 @@ use std::{
 };
 pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
 
+/// The action to be performed on the bookmark.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub enum Action {
+    Add,
+    Remove,
+}
+
 /// The type used to identify a source.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SourceType {

@@ -1,5 +1,6 @@
 use crate::{
     bookmark_reader::{ReadTarget, WriteTarget},
+    bookmarks::Action,
     cache::CacheMode,
     errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
@@ -9,33 +10,39 @@ use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::{collections::HashSet, error::Error, io::Write};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+    io::Write,
+    sync::Arc,
+};
+use tokio::sync::Mutex;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
-    let cache = Cache::new(&config.cache_path, cache_mode);
-    let client = Client::new(config)?;
+    let cache = Arc::new(Cache::new(&config.cache_path, cache_mode));
+    let client = Arc::new(Client::new(config)?);
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
     if args.urls.is_empty() {
         fetch_bookmarks(
-            &client,
-            &cache,
+            client.clone(),
+            cache.clone(),
             &mut target_reader,
             &mut target_writer,
-            config.settings.max_concurrent_requests,
+            config.settings.max_parallel_requests,
             args.all,
         )
         .await?;
     } else {
         fetch_urls(
             &args.urls,
-            &client,
-            &cache,
+            client.clone(),
+            cache.clone(),
             &mut target_reader,
             &mut target_writer,
         )
@@ -52,8 +59,8 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 
 pub async fn fetch_urls(
     urls: &[String],
-    client: &impl Fetch,
-    cache: &impl Caching,
+    client: Arc<impl Fetch>,
+    cache: Arc<impl Caching>,
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
@@ -62,10 +69,18 @@ pub async fn fetch_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new());
-        fetch_and_cache_bookmark(client, cache, &mut bookmark, true).await?;
+        let bookmark = Arc::new(Mutex::new(TargetBookmark::new(
+            url,
+            now,
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            Some(Action::Add),
+        )));
+        fetch_and_cache_bookmark(client.clone(), cache.clone(), bookmark.clone(), true).await?;
         println!("Fetched website for {url}");
-        target_bookmarks.insert(bookmark);
+        let bookmark = bookmark.lock().await;
+        target_bookmarks.insert(bookmark.clone());
     }
 
     target_writer.write(&target_bookmarks)?;
@@ -74,11 +89,11 @@ pub async fn fetch_urls(
 }
 
 pub async fn fetch_bookmarks(
-    client: &impl Fetch,
-    cache: &impl Caching,
+    client: Arc<impl Fetch>,
+    cache: Arc<impl Caching>,
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
-    max_concurrent_requests: usize,
+    max_parallel_requests: usize,
     fetch_all: bool,
 ) -> Result<(), anyhow::Error> {
     let mut target_bookmarks = TargetBookmarks::default();
@@ -94,29 +109,40 @@ pub async fn fetch_bookmarks(
         }
     }
 
+    let target_bookmarks = target_bookmarks
+        .iter()
+        .map(|bookmark| Arc::new(Mutex::new(bookmark.1.clone())))
+        .collect::<Vec<_>>();
+
     fetch_and_cache_bookmarks(
         client,
         cache,
-        target_bookmarks.values_mut().collect(),
-        max_concurrent_requests,
+        &target_bookmarks,
+        max_parallel_requests,
         fetch_all,
     )
     .await?;
 
-    trace!("Fetched bookmarks: {target_bookmarks:#?}");
+    let mut bookmarks = TargetBookmarks::new(HashMap::new());
+    for bookmark in target_bookmarks {
+        let bookmark = bookmark.lock().await;
+        bookmarks.insert(bookmark.clone());
+    }
+
+    trace!("Fetched bookmarks: {bookmarks:#?}");
 
     // Write bookmarks with updated timestamps.
-    target_writer.write(&target_bookmarks)?;
+    target_writer.write(&bookmarks)?;
 
     Ok(())
 }
 
 /// Fetch all bookmarks and add them to cache.
 pub async fn fetch_and_cache_bookmarks(
-    client: &impl Fetch,
-    cache: &impl Caching,
-    bookmarks: Vec<&mut TargetBookmark>,
-    max_concurrent_requests: usize,
+    client: Arc<impl Fetch>,
+    cache: Arc<impl Caching>,
+    bookmarks: &[Arc<Mutex<TargetBookmark>>],
+    max_parallel_requests: usize,
     fetch_all: bool,
 ) -> Result<(), BogrepError> {
     let mut processed = 0;
@@ -127,15 +153,22 @@ pub async fn fetch_and_cache_bookmarks(
     let total = bookmarks.len();
 
     let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_cache_bookmark(client, cache, bookmark, fetch_all))
-        .buffer_unordered(max_concurrent_requests);
+        .map(|bookmark| {
+            tokio::spawn(fetch_and_cache_bookmark(
+                client.clone(),
+                cache.clone(),
+                bookmark.clone(),
+                fetch_all,
+            ))
+        })
+        .buffer_unordered(max_parallel_requests);
 
     while let Some(item) = stream.next().await {
         processed += 1;
 
         print!("Processing bookmarks ({processed}/{total})\r");
 
-        if let Err(err) = item {
+        if let Ok(Err(err)) = item {
             match err {
                 BogrepError::HttpResponse(ref error) => {
                     // Usually, a lot of fetching errors are expected because of
@@ -203,21 +236,23 @@ pub async fn fetch_and_cache_bookmarks(
 
 /// Fetch and add bookmark to cache.
 async fn fetch_and_cache_bookmark(
-    client: &impl Fetch,
-    cache: &impl Caching,
-    bookmark: &mut TargetBookmark,
+    client: Arc<impl Fetch>,
+    cache: Arc<impl Caching>,
+    bookmark: Arc<Mutex<TargetBookmark>>,
     fetch_all: bool,
 ) -> Result<(), BogrepError> {
+    let mut bookmark = bookmark.lock().await;
+
     if fetch_all {
-        let website = client.fetch(bookmark).await?;
+        let website = client.fetch(&bookmark).await?;
         trace!("Fetched website: {website}");
         let html = html::filter_html(&website)?;
-        cache.replace(html, bookmark).await?;
-    } else if !cache.exists(bookmark) {
-        let website = client.fetch(bookmark).await?;
+        cache.replace(html, &mut bookmark).await?;
+    } else if !cache.exists(&bookmark) {
+        let website = client.fetch(&bookmark).await?;
         trace!("Fetched website: {website}");
         let html = html::filter_html(&website)?;
-        cache.add(html, bookmark).await?;
+        cache.add(html, &mut bookmark).await?;
     }
 
     Ok(())
@@ -281,9 +316,9 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_and_add_all_mode_html() {
         let now = Utc::now();
-        let client = MockClient::new();
-        let cache = MockCache::new(CacheMode::Html);
-        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+        let client = Arc::new(MockClient::new());
+        let cache = Arc::new(MockCache::new(CacheMode::Html));
+        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 "https://test_url1.com".to_owned(),
                 TargetBookmark {
@@ -293,6 +328,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
             (
@@ -304,6 +340,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
         ]));
@@ -317,14 +354,12 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_cache_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-            true,
-        )
-        .await;
+        let target_bookmarks = target_bookmarks
+            .iter()
+            .map(|bookmark| Arc::new(Mutex::new(bookmark.1.clone())))
+            .collect::<Vec<_>>();
+        let res =
+            fetch_and_cache_bookmarks(client, cache.clone(), &target_bookmarks, 100, true).await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -344,9 +379,9 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_and_add_all_mode_text() {
         let now = Utc::now();
-        let client = MockClient::new();
-        let cache = MockCache::new(CacheMode::Text);
-        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+        let client = Arc::new(MockClient::new());
+        let cache = Arc::new(MockCache::new(CacheMode::Text));
+        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 "https://test_url1.com".to_owned(),
                 TargetBookmark {
@@ -356,6 +391,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
             (
@@ -367,6 +403,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
         ]));
@@ -380,14 +417,12 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_cache_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-            true,
-        )
-        .await;
+        let target_bookmarks = target_bookmarks
+            .iter()
+            .map(|bookmark| Arc::new(Mutex::new(bookmark.1.clone())))
+            .collect::<Vec<_>>();
+        let res =
+            fetch_and_cache_bookmarks(client, cache.clone(), &target_bookmarks, 100, true).await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -407,8 +442,8 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_and_add_all_if_not_exists_mode_html() {
         let now = Utc::now().timestamp_millis();
-        let client = MockClient::new();
-        let cache = MockCache::new(CacheMode::Html);
+        let client = Arc::new(MockClient::new());
+        let cache = Arc::new(MockCache::new(CacheMode::Html));
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 "https://test_url1.com".to_owned(),
@@ -419,6 +454,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
             (
@@ -430,6 +466,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
         ]));
@@ -451,14 +488,12 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_cache_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-            false,
-        )
-        .await;
+        let target_bookmarks = target_bookmarks
+            .iter()
+            .map(|bookmark| Arc::new(Mutex::new(bookmark.1.clone())))
+            .collect::<Vec<_>>();
+        let res =
+            fetch_and_cache_bookmarks(client, cache.clone(), &target_bookmarks, 100, false).await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -480,8 +515,8 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_and_add_all_if_not_exists_mode_text() {
         let now = Utc::now().timestamp_millis();
-        let client = MockClient::new();
-        let cache = MockCache::new(CacheMode::Text);
+        let client = Arc::new(MockClient::new());
+        let cache = Arc::new(MockCache::new(CacheMode::Text));
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 "https://test_url1.com".to_owned(),
@@ -492,6 +527,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
             (
@@ -503,6 +539,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: None,
                 },
             ),
         ]));
@@ -524,14 +561,12 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_cache_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-            false,
-        )
-        .await;
+        let target_bookmarks = target_bookmarks
+            .iter()
+            .map(|bookmark| Arc::new(Mutex::new(bookmark.1.clone())))
+            .collect::<Vec<_>>();
+        let res =
+            fetch_and_cache_bookmarks(client, cache.clone(), &target_bookmarks, 100, false).await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
