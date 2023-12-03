@@ -1,13 +1,13 @@
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmarks::Action,
     cache::CacheMode,
-    cmd,
-    errors::BogrepError,
-    utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
+    cmd, utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
-use std::{rc::Rc, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
@@ -61,31 +61,37 @@ async fn update_bookmarks(
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
-    let (bookmarks_to_add, mut bookmarks_to_remove) = target_bookmarks.update(&source_bookmarks)?;
+    target_bookmarks.update_actions(&source_bookmarks)?;
 
-    let bookmarks_to_add = Rc::new(TargetBookmarks::from_iter(bookmarks_to_add));
-    if !bookmarks_to_add.is_empty() {
-        // Fetch and cache new bookmarks.
-        cmd::fetch_and_cache_bookmarks(
-            client,
-            cache.clone(),
-            bookmarks_to_add.clone(),
-            max_parallel_requests,
-            false,
-        )
-        .await?;
-    }
+    let bookmarks = target_bookmarks
+        .values()
+        .map(|bookmark| Arc::new(Mutex::new(bookmark.clone())))
+        .collect::<Vec<_>>();
 
-    // Clean up cache for missing bookmarks.
-    for bookmark in bookmarks_to_remove.iter_mut() {
-        cache.remove(bookmark).await?;
-    }
+    cmd::fetch_and_cache_bookmarks(
+        client,
+        cache.clone(),
+        &bookmarks,
+        max_parallel_requests,
+        false,
+    )
+    .await?;
 
-    let bookmarks_to_add = Rc::try_unwrap(bookmarks_to_add).map_err(|_| BogrepError::InnerValue)?;
+    let mut target_bookmarks = TargetBookmarks::new(HashMap::new());
+    for bookmark in bookmarks {
+        let mut bookmark = bookmark.lock().await;
 
-    // Update the `last_cached` timestamp.
-    for bookmark in bookmarks_to_add {
-        target_bookmarks.insert(bookmark.1)
+        match bookmark.action {
+            Some(Action::Add) => {
+                bookmark.action = None;
+                target_bookmarks.insert(bookmark.clone());
+            }
+            Some(Action::Remove) => {
+                cache.remove(&mut bookmark).await?;
+                target_bookmarks.remove(&bookmark.url);
+            }
+            None => (),
+        }
     }
 
     Ok(())
@@ -125,7 +131,8 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
-                    cache_modes: HashSet::new()
+                    cache_modes: HashSet::new(),
+                    action: None,
                 }),("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
@@ -133,7 +140,8 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
-                    cache_modes: HashSet::new()
+                    cache_modes: HashSet::new(),
+                    action: None,
                 }),
             ]),
             );
@@ -247,14 +255,16 @@ mod tests {
             last_imported: now.timestamp_millis(),
             last_cached: Some(now.timestamp_millis()),
             sources: HashSet::new(),
-            cache_modes: HashSet::new()
+            cache_modes: HashSet::new(),
+            action: None,
         }), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark {
             id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
             url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
             last_imported: now.timestamp_millis(),
             last_cached: Some(now.timestamp_millis()),
             sources: HashSet::new(),
-            cache_modes: HashSet::new()
+            cache_modes: HashSet::new(),
+            action: None,
         })]));
         for url in &expected_bookmarks {
             client

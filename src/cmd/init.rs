@@ -2,11 +2,11 @@ use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     cache::CacheMode,
     cmd::fetch_and_cache_bookmarks,
-    errors::BogrepError,
     utils, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
-use std::{rc::Rc, sync::Arc};
+use std::{collections::HashMap, rc::Rc, sync::Arc};
+use tokio::sync::Mutex;
 
 /// Import bookmarks, fetch bookmarks from url, and save fetched websites in
 /// cache if bookmarks were not imported yet.
@@ -63,7 +63,11 @@ async fn init_bookmarks(
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
-    let target_bookmarks = Rc::new(TargetBookmarks::from(source_bookmarks));
+    let target_bookmarks = TargetBookmarks::from(source_bookmarks);
+    let target_bookmarks = target_bookmarks
+        .values()
+        .map(|bookmark| Arc::new(Mutex::new(bookmark.clone())))
+        .collect::<Vec<_>>();
 
     println!(
         "Imported {} bookmarks from {} sources: {}",
@@ -79,14 +83,19 @@ async fn init_bookmarks(
     fetch_and_cache_bookmarks(
         client,
         cache,
-        target_bookmarks.clone(),
+        &target_bookmarks,
         max_parallel_requests,
         false,
     )
     .await?;
 
-    let target_bookmarks = Rc::try_unwrap(target_bookmarks).map_err(|_| BogrepError::InnerValue)?;
-    Ok(target_bookmarks)
+    let mut bookmarks = TargetBookmarks::new(HashMap::new());
+    for bookmark in target_bookmarks {
+        let bookmark = bookmark.lock().await;
+        bookmarks.insert(bookmark.clone());
+    }
+
+    Ok(bookmarks)
 }
 
 #[cfg(test)]
@@ -129,9 +138,10 @@ mod tests {
             max_parallel_requests,
         )
         .await;
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let target_bookmarks = res.unwrap();
+        assert_eq!(target_bookmarks.len(), 4);
         assert_eq!(
             target_bookmarks
                 .values()
@@ -187,9 +197,10 @@ mod tests {
             max_parallel_requests,
         )
         .await;
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let target_bookmarks = res.unwrap();
+        assert_eq!(target_bookmarks.len(), 4);
         assert_eq!(
             target_bookmarks
                 .values()
