@@ -1,19 +1,31 @@
 use crate::cache::CacheMode;
 use clap::{ArgAction, Args as ClapArgs, Parser, Subcommand};
 
+/// Describes the available arguments in the CLI.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
+    /// The search term.
     pub pattern: Option<String>,
     #[arg(short, long, action = ArgAction::Count)]
     pub verbose: u8,
-    /// Cache the fetched bookmarks as HTML or markdown file.
+    /// Search the cached bookmarks in HTML or plaintext format.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
+    /// Ignore case distinctions in patterns.
+    #[arg(short = 'i', long)]
+    pub ignore_case: bool,
+    /// Print only URLs of bookmarks with selected lines.
+    #[arg(short = 'l', long)]
+    pub files_with_matches: bool,
+    /// Match only match whole words.
+    #[arg(short = 'w', long)]
+    pub word_regexp: bool,
     #[command(subcommand)]
     pub subcommands: Option<Subcommands>,
 }
 
+/// Describes the available subcommands in the CLI.
 #[derive(Subcommand, Debug)]
 pub enum Subcommands {
     /// Configure the source files to import the bookmarks.
@@ -23,22 +35,27 @@ pub enum Subcommands {
     /// Determine diff of source and target bookmarks. Fetch and cache websites
     /// for new bookmarks; delete cache for removed bookmarks.
     Update(UpdateArgs),
-    /// Ignore the given urls and don't fetch and add these urls to the cache.
-    Ignore(IgnoreArgs),
     /// Import bookmarks from the configured source files.
-    Import,
+    Import(ImportArgs),
     /// Fetch and cache bookmarks.
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
     Clean(CleanArgs),
+    /// Add a new bookmark.
+    Add(AddArgs),
+    /// Remove a bookmark.
+    Remove(RemoveArgs),
 }
 
+/// Describes the arguments for the `config` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct ConfigArgs {
     #[command(flatten)]
     pub set_source: SetSource,
     #[command(flatten)]
     pub set_cache_mode: SetCacheMode,
+    #[command(flatten)]
+    pub set_ignored_urls: SetIgnoredUrls,
 }
 
 #[derive(ClapArgs, Debug)]
@@ -50,59 +67,99 @@ pub struct SetSource {
     /// The bookmark folders to be imported.
     ///
     /// Multiple folders are separated by a comma.
-    #[arg(long, value_delimiter = ',')]
+    #[arg(long, num_args = 0.., value_delimiter = ',')]
     pub folders: Vec<String>,
 }
 
 #[derive(ClapArgs, Debug)]
 #[group(required = false)]
 pub struct SetCacheMode {
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(long)]
     pub cache_mode: Option<CacheMode>,
 }
 
 #[derive(ClapArgs, Debug)]
-pub struct IgnoreArgs {
-    pub urls: Vec<String>,
+#[group(required = false)]
+pub struct SetIgnoredUrls {
+    #[arg(long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
+    pub ignore: Vec<String>,
 }
 
+/// Describes the arguments for the `import` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct ImportArgs;
+
+/// Describes the arguments for the `fetch` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct FetchArgs {
     /// Fetch all bookmarks.
     ///
     /// If flag is not set, bookmarks are only fetched if a bookmark is not
-    /// cached yet.
+    /// cached yet. Otherwise, the cached content will be updated with
+    /// the fetched content.
     #[arg(short, long)]
     pub all: bool,
-    /// Cache the fetched bookmarks as HTML or markdown file.
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
     /// Get the difference between the fetched and cached
-    /// bookmark.
-    #[arg(short, long)]
-    pub diff: bool,
-    /// The urls for which the diff should be determined.
-    #[arg(short, long)]
+    /// bookmark for the given urls.
+    ///
+    /// Multiple urls are separated by a whitespace.
+    #[arg(short, long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
+    pub diff: Vec<String>,
+    /// Fetch and cache specified URLs.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    /// If an URL is missing in the bookmarks, it will be imported.
+    #[arg(long, num_args = 0.., value_delimiter = ' ')]
     pub urls: Vec<String>,
 }
 
+/// Describes the arguments for the `init` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct InitArgs {
-    /// Cache the fetched bookmarks as HTML or markdown file.
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
 }
 
+/// Describes the arguments for the `update` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct UpdateArgs {
-    /// Cache the fetched bookmarks as HTML or markdown file.
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
 }
 
+/// Describes the arguments for the `clean` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct CleanArgs {
-    /// Cache the fetched bookmarks as HTML or markdown file.
+    /// Clean cache for all file extensions (.txt, .md, .html).
+    #[arg(short, long)]
+    pub all: bool,
+    /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
+}
+
+/// Describes the arguments for the `add` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct AddArgs {
+    /// Add specified URLs as bookmark.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    #[arg(num_args = 0.., value_name = "URLs", value_delimiter = ' ')]
+    pub urls: Vec<String>,
+}
+
+/// Describes the arguments for the `remove` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct RemoveArgs {
+    /// Remove specified URLs from bookmark.
+    ///
+    /// Multiple URLs are separated by a whitespace.
+    #[arg(num_args = 0.., value_name = "URLs", value_delimiter = ' ')]
+    pub urls: Vec<String>,
 }

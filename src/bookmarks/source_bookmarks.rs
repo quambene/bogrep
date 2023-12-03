@@ -1,165 +1,84 @@
-use crate::{
-    bookmark_reader::{ChromeBookmarkReader, FirefoxBookmarkReader},
-    BookmarkReader, Config, SimpleBookmarkReader,
+use crate::SourceType;
+use log::debug;
+use std::collections::{
+    hash_map::{Entry, IntoIter, Iter, Keys},
+    HashMap, HashSet,
 };
-use anyhow::anyhow;
-use log::{debug, info};
-use std::collections::HashSet;
 
-pub struct SourceBookmarks {
-    pub bookmarks: HashSet<String>,
+/// A bookmark from a specific source, like Firefox or Chrome.
+#[derive(Debug, Clone)]
+pub struct SourceBookmark {
+    pub url: String,
+    pub source_type: SourceType,
 }
 
-impl Default for SourceBookmarks {
-    fn default() -> Self {
-        Self::new()
+impl SourceBookmark {
+    pub fn new(url: String, source_type: SourceType) -> Self {
+        Self { url, source_type }
     }
 }
+
+/// Describes the bookmark url which originates from one or more sources.
+#[derive(Debug, Clone, Default)]
+pub struct SourceBookmarks(HashMap<String, HashSet<SourceType>>);
 
 impl SourceBookmarks {
-    pub fn new() -> Self {
-        Self {
-            bookmarks: HashSet::new(),
-        }
+    pub fn new(bookmarks: HashMap<String, HashSet<SourceType>>) -> Self {
+        Self(bookmarks)
     }
 
-    pub fn insert(&mut self, url: &str) {
-        let is_new_bookmark = self.bookmarks.insert(url.to_owned());
-
-        if !is_new_bookmark {
-            debug!("Overwrite duplicate bookmark: {}", url);
-        }
+    pub fn inner(self) -> HashMap<String, HashSet<SourceType>> {
+        self.0
     }
 
-    pub fn read(&mut self, config: &Config) -> Result<(), anyhow::Error> {
-        for bookmark_file in &config.settings.source_bookmark_files {
-            debug!(
-                "Read bookmarks from file '{}'",
-                bookmark_file.source.display()
-            );
+    pub fn get(&self, url: &str) -> Option<&HashSet<SourceType>> {
+        self.0.get(url)
+    }
 
-            if config.verbosity >= 1 {
-                info!(
-                    "Read bookmarks from file '{}'",
-                    bookmark_file.source.display()
-                );
+    pub fn keys(&self) -> Keys<String, HashSet<SourceType>> {
+        self.0.keys()
+    }
+
+    pub fn contains_key(&self, url: &str) -> bool {
+        self.0.contains_key(url)
+    }
+
+    pub fn iter(&self) -> Iter<String, HashSet<SourceType>> {
+        self.0.iter()
+    }
+
+    pub fn insert(&mut self, bookmark: SourceBookmark) {
+        let url = bookmark.url;
+        let source_type = bookmark.source_type;
+        let entry = self.0.entry(url);
+
+        match entry {
+            Entry::Occupied(entry) => {
+                let url = entry.key().clone();
+                let source_types = entry.into_mut();
+                debug!("Overwrite duplicate source bookmark: {}", url);
+                source_types.insert(source_type);
             }
-
-            let path_str = bookmark_file.source.to_str().unwrap_or("");
-
-            if path_str.contains("firefox") {
-                let firefox_reader = FirefoxBookmarkReader;
-                firefox_reader.read_and_parse(bookmark_file, self)?;
-            } else if path_str.contains("google-chrome") {
-                let chrome_reader = ChromeBookmarkReader;
-                chrome_reader.read_and_parse(bookmark_file, self)?;
-            } else if bookmark_file.source.extension().map(|path| path.to_str())
-                == Some(Some("txt"))
-            {
-                let simple_reader = SimpleBookmarkReader;
-                simple_reader.read_and_parse(bookmark_file, self)?;
-            } else {
-                return Err(anyhow!(
-                    "Format not supported for bookmark file '{}'",
-                    bookmark_file.source.display()
-                ));
+            Entry::Vacant(entry) => {
+                let mut source_types = HashSet::new();
+                source_types.insert(source_type);
+                entry.insert(source_types);
             }
         }
-
-        Ok(())
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{Settings, SourceFile};
-    use std::path::PathBuf;
+impl IntoIterator for SourceBookmarks {
+    type Item = (String, HashSet<SourceType>);
+    type IntoIter = IntoIter<String, HashSet<SourceType>>;
 
-    #[test]
-    fn test_read_empty() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
-        assert!(res.is_ok());
-        assert_eq!(source_bookmarks.bookmarks, HashSet::new());
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
+}
 
-    #[test]
-    fn test_read_firefox() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_firefox.json"),
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
-            String::from("https://www.mozilla.org/en-US/firefox/central/"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html")
-        ]));
-    }
-
-    #[test]
-    fn test_read_chrome() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_google-chrome.json"),
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
-        ]));
-    }
-
-    #[test]
-    fn test_read_simple() {
-        let mut source_bookmarks = SourceBookmarks::new();
-        let settings = Settings {
-            source_bookmark_files: vec![SourceFile {
-                source: PathBuf::from("test_data/source/bookmarks_simple.txt"),
-                folders: vec![],
-            }],
-            ..Default::default()
-        };
-        let config = Config {
-            settings,
-            ..Default::default()
-        };
-        let res = source_bookmarks.read(&config);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
-        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://www.quantamagazine.org/how-galois-groups-used-polynomial-symmetries-to-reshape-math-20210803/"),
-            String::from("https://www.quantamagazine.org/computing-expert-says-programmers-need-more-math-20220517/"),
-        ]));
+impl AsRef<HashMap<String, HashSet<SourceType>>> for SourceBookmarks {
+    fn as_ref(&self) -> &HashMap<String, HashSet<SourceType>> {
+        &self.0
     }
 }

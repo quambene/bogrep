@@ -1,49 +1,55 @@
-use super::BookmarkReader;
-use crate::{utils, SourceBookmarks, SourceFile};
+use super::{ReadBookmark, ReaderName};
+use crate::{utils, Source, SourceBookmark, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
 use lz4::block;
 use serde_json::{Map, Value};
 use std::{
-    borrow::Cow,
     fs::{self, DirEntry},
+    io::Read,
     path::{Path, PathBuf},
     time::SystemTime,
 };
 
-pub struct FirefoxBookmarkReader;
+pub struct Firefox;
 
-impl FirefoxBookmarkReader {
-    fn select_bookmark(obj: &Map<String, Value>, bookmarks: &mut SourceBookmarks) {
+impl Firefox {
+    fn select_bookmark(
+        obj: &Map<String, Value>,
+        source_bookmarks: &mut SourceBookmarks,
+        source: &Source,
+    ) {
         trace!("json object: {obj:#?}");
 
         if let Some(Value::String(type_value)) = obj.get("type") {
             if type_value == "text/x-moz-place" {
                 if let Some(Value::String(uri_value)) = obj.get("uri") {
                     if uri_value.contains("http") {
-                        bookmarks.insert(uri_value);
+                        let source_bookmark =
+                            SourceBookmark::new(uri_value.to_owned(), source.name.clone());
+                        source_bookmarks.insert(source_bookmark);
                     }
                 }
             }
         }
     }
 
-    fn traverse_json(value: &Value, bookmarks: &mut SourceBookmarks, source_file: &SourceFile) {
+    pub fn traverse_json(value: &Value, source_bookmarks: &mut SourceBookmarks, source: &Source) {
         match value {
             Value::Object(obj) => {
-                if source_file.folders.is_empty() {
-                    Self::select_bookmark(obj, bookmarks);
+                if source.folders.is_empty() {
+                    Self::select_bookmark(obj, source_bookmarks, source);
 
                     for (_, val) in obj {
-                        Self::traverse_json(val, bookmarks, source_file);
+                        Self::traverse_json(val, source_bookmarks, source);
                     }
                 } else {
                     if let Some(Value::String(type_value)) = obj.get("type") {
                         if type_value == "text/x-moz-place-container" {
                             if let Some(Value::String(title_value)) = obj.get("title") {
-                                if source_file.folders.contains(title_value) {
+                                if source.folders.contains(title_value) {
                                     for (_, val) in obj {
-                                        Self::traverse_children(val, bookmarks, source_file);
+                                        Self::traverse_children(val, source_bookmarks, source);
                                     }
                                 }
                             }
@@ -51,13 +57,13 @@ impl FirefoxBookmarkReader {
                     }
 
                     for (_, val) in obj {
-                        Self::traverse_json(val, bookmarks, source_file);
+                        Self::traverse_json(val, source_bookmarks, source);
                     }
                 }
             }
             Value::Array(arr) => {
                 for (_index, val) in arr.iter().enumerate() {
-                    Self::traverse_json(val, bookmarks, source_file);
+                    Self::traverse_json(val, source_bookmarks, source);
                 }
             }
             Value::String(_) => (),
@@ -67,22 +73,18 @@ impl FirefoxBookmarkReader {
         }
     }
 
-    fn traverse_children(
-        value: &Value,
-        bookmarks: &mut SourceBookmarks,
-        _source_file: &SourceFile,
-    ) {
+    fn traverse_children(value: &Value, source_bookmarks: &mut SourceBookmarks, source: &Source) {
         match value {
             Value::Object(obj) => {
-                Self::select_bookmark(obj, bookmarks);
+                Self::select_bookmark(obj, source_bookmarks, source);
 
                 for (_, val) in obj {
-                    Self::traverse_children(val, bookmarks, _source_file);
+                    Self::traverse_children(val, source_bookmarks, source);
                 }
             }
             Value::Array(arr) => {
                 for (_index, val) in arr.iter().enumerate() {
-                    Self::traverse_children(val, bookmarks, _source_file);
+                    Self::traverse_children(val, source_bookmarks, source);
                 }
             }
             Value::String(_) => (),
@@ -93,7 +95,7 @@ impl FirefoxBookmarkReader {
     }
 
     /// Find the most recent bookmark file in the bookmark folder for Firefox.
-    fn find_most_recent_file(bookmark_path: &Path) -> Result<PathBuf, anyhow::Error> {
+    pub fn find_most_recent_file(bookmark_path: &Path) -> Result<PathBuf, anyhow::Error> {
         let entries = fs::read_dir(bookmark_path)?;
 
         let mut most_recent_entry: Option<DirEntry> = None;
@@ -130,55 +132,182 @@ impl FirefoxBookmarkReader {
     }
 }
 
-impl BookmarkReader for FirefoxBookmarkReader {
-    const NAME: &'static str = "Firefox";
+/// A bookmark reader to read bookmarks in JSON format from Firefox.
+#[derive(Debug)]
+pub struct FirefoxBookmarkReader;
 
-    fn read(&self, bookmark_path: &Path) -> Result<String, anyhow::Error> {
-        debug!("Read bookmarks from {}", Self::NAME);
+impl ReadBookmark for FirefoxBookmarkReader {
+    fn name(&self) -> ReaderName {
+        ReaderName::Firefox
+    }
 
-        // The Firefox bookmarks directory contains multiple bookmark file.
-        // Check if a specific file or a directory of files is given.
-        let bookmark_path = if bookmark_path.is_file() {
-            Cow::Borrowed(bookmark_path)
-        } else if bookmark_path.is_dir() {
-            let bookmark_path = Self::find_most_recent_file(bookmark_path)?;
-            Cow::Owned(bookmark_path)
-        } else {
-            return Err(anyhow!(
-                "Unexpected format for bookmark file: {}",
-                bookmark_path.display()
-            ));
-        };
+    fn extension(&self) -> Option<&str> {
+        Some("json")
+    }
 
-        // Import compressed bookmarks
-        if bookmark_path.extension().map(|path| path.to_str()) == Some(Some("jsonlz4")) {
-            let compressed_data = utils::read_file(&bookmark_path)?;
+    fn select_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+        let path_str = source_dir
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
 
-            // Skip the first 8 bytes: "mozLz40\0" (non-standard header)
-            let decompressed_data = block::decompress(&compressed_data[8..], None)?;
-
-            Ok(String::from_utf8(decompressed_data)?)
-        // Import uncompressed bookmarks
-        } else if bookmark_path.extension().map(|path| path.to_str()) == Some(Some("json")) {
-            let bookmark_data = utils::read_file(&bookmark_path)?;
-            Ok(String::from_utf8(bookmark_data)?)
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
+        if path_str.contains("firefox") || path_str.contains("Firefox") {
+            // The Firefox bookmarks directory contains multiple bookmark files.
+            let bookmark_path = Firefox::find_most_recent_file(source_dir)?;
+            Ok(Some(bookmark_path))
         } else {
             Err(anyhow!(
-                "Unexpected format for bookmark file: {}",
-                bookmark_path.display()
+                "Unexpected format for source directory: {}",
+                source_dir.display()
             ))
         }
+    }
+
+    fn select_source(&self, source_file: &Path) -> Result<Option<SourceType>, anyhow::Error> {
+        let raw_bookmarks = utils::read_file_to_string(source_file)?;
+        let value: Value = serde_json::from_str(&raw_bookmarks)?;
+
+        match value {
+            Value::Object(obj) => {
+                if let Some(Value::String(type_value)) = obj.get("type") {
+                    if type_value == "text/x-moz-place-container" {
+                        let path_str = source_file
+                            .to_str()
+                            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+                        // On Linux, the path contains the lowercase identifier; on macOS,
+                        // uppercase identifier is required.
+                        let source_type =
+                            if path_str.contains("firefox") || path_str.contains("Firefox") {
+                                SourceType::Firefox
+                            } else {
+                                SourceType::Others
+                            };
+                        Ok(Some(source_type))
+                    } else {
+                        Ok(None)
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn read(&self, reader: &mut dyn Read) -> Result<String, anyhow::Error> {
+        debug!("Read bookmarks from {}", self.name());
+
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf)?;
+
+        Ok(String::from_utf8(buf)?)
     }
 
     fn parse(
         &self,
         raw_bookmarks: &str,
-        source_file: &SourceFile,
+        source: &Source,
         bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        debug!("Parse bookmarks from {}", Self::NAME);
+        debug!("Parse bookmarks from {}", self.name());
         let value: Value = serde_json::from_str(raw_bookmarks)?;
-        Self::traverse_json(&value, bookmarks, source_file);
+        Firefox::traverse_json(&value, bookmarks, source);
+        Ok(())
+    }
+}
+
+/// A bookmark reader to read compressed bookmarks in JSON format from Firefox.
+#[derive(Debug)]
+pub struct FirefoxCompressedBookmarkReader;
+
+impl ReadBookmark for FirefoxCompressedBookmarkReader {
+    fn name(&self) -> ReaderName {
+        ReaderName::FirefoxCompressed
+    }
+
+    fn extension(&self) -> Option<&str> {
+        Some("jsonlz4")
+    }
+
+    fn select_file(&self, source_path: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+        let path_str = source_path
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
+        if path_str.contains("firefox") || path_str.contains("Firefox") {
+            // The Firefox bookmarks directory contains multiple bookmark files.
+            let bookmark_path = Firefox::find_most_recent_file(source_path)?;
+            Ok(Some(bookmark_path))
+        } else {
+            Err(anyhow!(
+                "Unexpected format for source file: {}",
+                source_path.display()
+            ))
+        }
+    }
+
+    fn select_source(&self, source_file: &Path) -> Result<Option<SourceType>, anyhow::Error> {
+        let mut bookmarks_file = utils::open_file(source_file)?;
+        let mut compressed_data = Vec::new();
+        bookmarks_file.read_to_end(&mut compressed_data)?;
+
+        // Skip the first 8 bytes: "mozLz40\0" (non-standard header)
+        let decompressed_data = block::decompress(&compressed_data[8..], None)?;
+        let value: Value = serde_json::from_slice(&decompressed_data)?;
+
+        match value {
+            Value::Object(obj) => {
+                if let Some(Value::String(type_value)) = obj.get("type") {
+                    if type_value == "text/x-moz-place-container" {
+                        let path_str = source_file
+                            .to_str()
+                            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+                        // On Linux, the path contains the lowercase identifier; on macOS,
+                        // uppercase identifier is required.
+                        let source_type =
+                            if path_str.contains("firefox") || path_str.contains("Firefox") {
+                                SourceType::Firefox
+                            } else {
+                                SourceType::Others
+                            };
+                        Ok(Some(source_type))
+                    } else {
+                        Ok(None)
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn read(&self, reader: &mut dyn Read) -> Result<String, anyhow::Error> {
+        debug!("Read bookmarks from {}", self.name());
+
+        let mut compressed_data = Vec::new();
+        reader.read_to_end(&mut compressed_data)?;
+
+        // Skip the first 8 bytes: "mozLz40\0" (non-standard header)
+        let decompressed_data = block::decompress(&compressed_data[8..], None)?;
+
+        Ok(String::from_utf8(decompressed_data)?)
+    }
+
+    fn parse(
+        &self,
+        raw_bookmarks: &str,
+        source: &Source,
+        bookmarks: &mut SourceBookmarks,
+    ) -> Result<(), anyhow::Error> {
+        debug!("Parse bookmarks from {}", self.name());
+        let value: Value = serde_json::from_str(raw_bookmarks)?;
+        Firefox::traverse_json(&value, bookmarks, source);
         Ok(())
     }
 }
@@ -186,36 +315,38 @@ impl BookmarkReader for FirefoxBookmarkReader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lz4::block;
-    use std::{collections::HashSet, io::Write};
-
-    fn compress_bookmarks(decompressed_bookmarks: &[u8], compressed_bookmark_path: &Path) {
-        let compressed_data = block::compress(decompressed_bookmarks, None, true).unwrap();
-
-        // Add non-standard header to data
-        let prefix: &[u8] = b"mozLz40\0";
-        let mut compressed_data_with_header =
-            Vec::with_capacity(prefix.len() + compressed_data.len());
-        compressed_data_with_header.extend_from_slice(prefix);
-        compressed_data_with_header.extend_from_slice(&compressed_data);
-
-        let mut file = utils::create_file(compressed_bookmark_path).unwrap();
-        file.write_all(&compressed_data_with_header).unwrap();
-        file.flush().unwrap();
-    }
+    use crate::{test_utils, utils};
+    use std::{
+        collections::{HashMap, HashSet},
+        io::Cursor,
+    };
 
     #[test]
     fn test_read() {
-        let decompressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.json");
-        assert!(decompressed_bookmark_path.exists());
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
-
-        let compressed_bookmark_path = Path::new("test_data/source/bookmarks_firefox.jsonlz4");
-        compress_bookmarks(&decompressed_bookmarks, compressed_bookmark_path);
-        assert!(compressed_bookmark_path.exists());
-
         let bookmark_reader = FirefoxBookmarkReader;
-        let bookmarks = bookmark_reader.read(compressed_bookmark_path);
+        let mut bookmark_file = Cursor::new(decompressed_bookmarks.clone());
+
+        let bookmarks = bookmark_reader.read(&mut bookmark_file);
+        assert!(bookmarks.is_ok(), "{}", bookmarks.unwrap_err());
+        let bookmarks = bookmarks.unwrap();
+
+        assert_eq!(
+            bookmarks,
+            String::from_utf8(decompressed_bookmarks).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_read_compressed() {
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
+        let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
+        let bookmark_reader = FirefoxCompressedBookmarkReader;
+        let mut bookmark_file = Cursor::new(compressed_bookmarks);
+
+        let bookmarks = bookmark_reader.read(&mut bookmark_file);
         assert!(bookmarks.is_ok(), "{}", bookmarks.unwrap_err());
         let bookmarks = bookmarks.unwrap();
 
@@ -227,43 +358,112 @@ mod tests {
 
     #[test]
     fn test_parse_all() {
-        let source_path = Path::new("test_data/source/bookmarks_firefox.json");
-        assert!(source_path.exists());
-
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let bookmark_reader = FirefoxBookmarkReader;
-        let raw_bookmarks = bookmark_reader.read(source_path).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![]);
+        let mut bookmark_file = Cursor::new(decompressed_bookmarks);
 
-        let res = bookmark_reader.parse(&raw_bookmarks, &source_file, &mut source_bookmarks);
+        let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
+        let mut source_bookmarks = SourceBookmarks::default();
+        let source = Source::new(SourceType::Firefox, &PathBuf::from("dummy_path"), vec![]);
+
+        let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        assert_eq!(source_bookmarks.bookmarks, HashSet::from_iter([
-            String::from("https://www.mozilla.org/en-US/firefox/central/"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html")
+        assert_eq!(source_bookmarks.inner(), HashMap::from_iter([
+            ("https://www.mozilla.org/en-US/firefox/central/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
+            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
+            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::from_iter([SourceType::Firefox])),
+            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::from_iter([SourceType::Firefox])),
+        ]));
+    }
+
+    #[test]
+    fn test_parse_all_compressed() {
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
+        let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
+        let bookmark_reader = FirefoxCompressedBookmarkReader;
+        let mut bookmark_file = Cursor::new(compressed_bookmarks);
+
+        let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
+        let mut source_bookmarks = SourceBookmarks::default();
+        let source = Source::new(SourceType::Firefox, &PathBuf::from("dummy_path"), vec![]);
+
+        let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        assert_eq!(source_bookmarks.inner(), HashMap::from_iter([
+            ("https://www.mozilla.org/en-US/firefox/central/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
+            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
+            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::from_iter([SourceType::Firefox])),
+            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::from_iter([SourceType::Firefox])),
         ]));
     }
 
     #[test]
     fn test_parse_folder() {
-        let source_path = Path::new("test_data/source/bookmarks_firefox.json");
-        assert!(source_path.exists());
-
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
         let bookmark_reader = FirefoxBookmarkReader;
-        let raw_bookmarks = bookmark_reader.read(source_path).unwrap();
-        let mut source_bookmarks = SourceBookmarks::new();
-        let source_file = SourceFile::new(source_path, vec![String::from("dev")]);
+        let mut bookmark_file = Cursor::new(decompressed_bookmarks);
 
-        let res = bookmark_reader.parse(&raw_bookmarks, &source_file, &mut source_bookmarks);
+        let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
+        let mut source_bookmarks = SourceBookmarks::default();
+        let source = Source::new(
+            SourceType::Firefox,
+            &PathBuf::from("dummy_path"),
+            vec![String::from("dev")],
+        );
+
+        let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         assert_eq!(
-            source_bookmarks.bookmarks,
-            HashSet::from_iter([
-                String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-                String::from("https://doc.rust-lang.org/book/title-page.html"),
+            source_bookmarks.inner(),
+            HashMap::from_iter([
+                (
+                    "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
+                    HashSet::from_iter([SourceType::Firefox])
+                ),
+                (
+                    "https://doc.rust-lang.org/book/title-page.html".to_owned(),
+                    HashSet::from_iter([SourceType::Firefox])
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_parse_folder_compressed() {
+        let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
+        let compressed_bookmarks = test_utils::compress_bookmarks(&decompressed_bookmarks);
+        let bookmark_reader = FirefoxCompressedBookmarkReader;
+        let mut bookmark_file = Cursor::new(compressed_bookmarks);
+
+        let raw_bookmarks = bookmark_reader.read(&mut bookmark_file).unwrap();
+        let mut source_bookmarks = SourceBookmarks::default();
+        let source = Source::new(
+            SourceType::Firefox,
+            &PathBuf::from("dummy_path"),
+            vec![String::from("dev")],
+        );
+
+        let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        assert_eq!(
+            source_bookmarks.inner(),
+            HashMap::from_iter([
+                (
+                    "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
+                    HashSet::from_iter([SourceType::Firefox])
+                ),
+                (
+                    "https://doc.rust-lang.org/book/title-page.html".to_owned(),
+                    HashSet::from_iter([SourceType::Firefox])
+                ),
             ])
         );
     }

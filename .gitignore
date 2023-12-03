@@ -12,11 +12,14 @@
 # Test data
 **/*.jsonlz4
 **/*.html
-test_data/target/**
-!test_data/target/.gitkeep
 
+# Testing
+/bogrep
 
 # Performance
 perf.data
 perf.data.old
 flamegraph.svg
+
+# Environment
+.env

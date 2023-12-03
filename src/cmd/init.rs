@@ -1,12 +1,213 @@
-use super::fetch_and_add_all;
-use crate::{Cache, Client, Config, InitArgs, TargetBookmarks};
+use crate::{
+    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    cache::CacheMode,
+    cmd::fetch_and_cache_bookmarks,
+    errors::BogrepError,
+    utils, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks, TargetBookmarks,
+};
+use log::debug;
 use std::{rc::Rc, sync::Arc};
 
-/// Import bookmarks, fetch bookmarks from url, and save fetched websites in cache.
+/// Import bookmarks, fetch bookmarks from url, and save fetched websites in
+/// cache if bookmarks were not imported yet.
 pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error> {
-    let bookmarks = Rc::new(TargetBookmarks::init(config)?);
-    let cache = Arc::new(Cache::init(config, &args.mode).await?);
-    let client = Arc::new(Client::new(config)?);
-    fetch_and_add_all(config, client, cache, bookmarks).await?;
+    debug!("{args:?}");
+
+    let mut source_reader = config
+        .settings
+        .sources
+        .iter()
+        .map(SourceReader::init)
+        .collect::<Result<Vec<_>, anyhow::Error>>()?;
+
+    let mut target_bookmarks = TargetBookmarks::default();
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    target_reader.read(&mut target_bookmarks)?;
+
+    let target_bookmarks = Rc::new(target_bookmarks);
+
+    if !target_bookmarks.is_empty() {
+        println!("Bookmarks already imported");
+    } else {
+        let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
+        let cache = Arc::new(Cache::new(&config.cache_path, cache_mode));
+        let client = Arc::new(Client::new(config)?);
+        let target_bookmarks = init_bookmarks(
+            client,
+            cache,
+            source_reader.as_mut(),
+            config.settings.max_parallel_requests,
+        )
+        .await?;
+        target_writer.write(&target_bookmarks)?;
+
+        utils::close_and_rename(
+            (target_writer, &config.target_bookmark_lock_file),
+            (target_reader, &config.target_bookmark_file),
+        )?;
+    }
+
     Ok(())
+}
+
+async fn init_bookmarks(
+    client: Arc<impl Fetch>,
+    cache: Arc<impl Caching>,
+    source_reader: &mut [SourceReader],
+    max_parallel_requests: usize,
+) -> Result<TargetBookmarks, anyhow::Error> {
+    let mut source_bookmarks = SourceBookmarks::default();
+
+    for reader in source_reader.iter_mut() {
+        reader.read_and_parse(&mut source_bookmarks)?;
+    }
+
+    let target_bookmarks = Rc::new(TargetBookmarks::from(source_bookmarks));
+
+    println!(
+        "Imported {} bookmarks from {} sources: {}",
+        target_bookmarks.len(),
+        source_reader.len(),
+        source_reader
+            .iter()
+            .map(|reader| reader.source().path.to_owned())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    fetch_and_cache_bookmarks(
+        client,
+        cache,
+        target_bookmarks.clone(),
+        max_parallel_requests,
+        false,
+    )
+    .await?;
+
+    let target_bookmarks = Rc::try_unwrap(target_bookmarks).map_err(|_| BogrepError::InnerValue)?;
+    Ok(target_bookmarks)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{bookmarks::RawSource, MockCache, MockClient};
+    use std::{
+        collections::{HashMap, HashSet},
+        path::Path,
+    };
+
+    #[tokio::test]
+    async fn test_init_bookmarks_mode_html() {
+        let client = Arc::new(MockClient::new());
+        let cache = Arc::new(MockCache::new(CacheMode::Html));
+        let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
+        let source = RawSource::new(bookmark_path, vec![]);
+        let source_reader = SourceReader::init(&source).unwrap();
+        let max_parallel_requests = 100;
+        let expected_bookmarks: HashSet<String> = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]);
+        for url in &expected_bookmarks {
+            client
+                .add(
+                    "<html><head></head><body><img></img><p>Test content</p></body></html>"
+                        .to_owned(),
+                    url,
+                )
+                .unwrap();
+        }
+
+        let res = init_bookmarks(
+            client,
+            cache.clone(),
+            &mut [source_reader],
+            max_parallel_requests,
+        )
+        .await;
+        assert!(res.is_ok());
+
+        let target_bookmarks = res.unwrap();
+        assert_eq!(
+            target_bookmarks
+                .values()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+            expected_bookmarks,
+        );
+        assert!(target_bookmarks
+            .values()
+            .all(|bookmark| bookmark.last_cached.is_some()));
+        assert_eq!(
+            cache.cache_map(),
+            target_bookmarks
+                .values()
+                .fold(HashMap::new(), |mut acc, bookmark| {
+                    acc.insert(
+                        bookmark.id.clone(),
+                        "<html><head></head><body><p>Test content</p></body></html>".to_owned(),
+                    );
+                    acc
+                })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_init_bookmarks_mode_text() {
+        let client = Arc::new(MockClient::new());
+        let cache = Arc::new(MockCache::new(CacheMode::Text));
+        let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
+        let source = RawSource::new(bookmark_path, vec![]);
+        let source_reader = SourceReader::init(&source).unwrap();
+        let max_parallel_requests = 100;
+        let expected_bookmarks: HashSet<String> = HashSet::from_iter([
+            String::from("https://www.deepl.com/translator"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        ]);
+        for url in &expected_bookmarks {
+            client
+                .add(
+                    "<html><head></head><body><img></img><p>Test content</p></body></html>"
+                        .to_owned(),
+                    url,
+                )
+                .unwrap();
+        }
+
+        let res = init_bookmarks(
+            client,
+            cache.clone(),
+            &mut [source_reader],
+            max_parallel_requests,
+        )
+        .await;
+        assert!(res.is_ok());
+
+        let target_bookmarks = res.unwrap();
+        assert_eq!(
+            target_bookmarks
+                .values()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+            expected_bookmarks,
+        );
+        assert!(target_bookmarks
+            .values()
+            .all(|bookmark| bookmark.last_cached.is_some()));
+        assert_eq!(
+            cache.cache_map(),
+            target_bookmarks
+                .values()
+                .fold(HashMap::new(), |mut acc, bookmark| {
+                    acc.insert(bookmark.id.clone(), "Test content".to_owned());
+                    acc
+                })
+        );
+    }
 }
