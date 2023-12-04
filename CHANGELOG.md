@@ -1,5 +1,10 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
+### Unreleased
+
+- added
+  - Add `action` to `TargetBookmark`
+
 ### v0.6.1
 
 - changed
