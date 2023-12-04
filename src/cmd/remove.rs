@@ -52,7 +52,7 @@ fn remove_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, BookmarksJson, SourceType, TargetBookmark};
+    use crate::{bookmarks::Action, json, BookmarksJson, SourceType, TargetBookmark};
     use chrono::{DateTime, Utc};
     use std::{
         collections::HashSet,
@@ -62,7 +62,7 @@ mod tests {
     fn create_target_bookmark(url: &str, now: DateTime<Utc>) -> TargetBookmark {
         let mut sources = HashSet::new();
         sources.insert(SourceType::Internal);
-        TargetBookmark::new(url, now, None, sources, HashSet::new())
+        TargetBookmark::new(url, now, None, sources, HashSet::new(), Action::None)
     }
 
     #[test]

@@ -1,5 +1,8 @@
 use super::{ReadBookmark, ReaderName};
-use crate::{bookmarks::Source, SourceBookmark, SourceBookmarks, SourceType};
+use crate::{
+    bookmarks::{Source, SourceBookmarkBuilder},
+    SourceBookmarks, SourceType,
+};
 use std::{
     io::{BufRead, BufReader, Read},
     path::Path,
@@ -35,7 +38,9 @@ impl ReadBookmark for SimpleBookmarkReader {
             let url = line?;
 
             if !url.is_empty() {
-                let source_bookmark = SourceBookmark::new(url, source.name.clone());
+                let source_bookmark = SourceBookmarkBuilder::new(&url)
+                    .add_source(&source.name)
+                    .build();
                 source_bookmarks.insert(source_bookmark);
             }
         }
@@ -47,11 +52,8 @@ impl ReadBookmark for SimpleBookmarkReader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils;
-    use std::{
-        collections::{HashMap, HashSet},
-        path::Path,
-    };
+    use crate::{bookmarks::SourceBookmarkBuilder, utils};
+    use std::{collections::HashMap, path::Path};
 
     #[test]
     fn test_read_txt() {
@@ -70,11 +72,40 @@ mod tests {
         );
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        assert_eq!(source_bookmarks.inner(), HashMap::from_iter([
-            ("https://www.deepl.com/translator".to_owned(), HashSet::from_iter([SourceType::Simple])),
-            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::from_iter([SourceType::Simple])),
-            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::from_iter([SourceType::Simple])),
-            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::from_iter([SourceType::Simple])),
-        ]))
+        let url1 = "https://www.deepl.com/translator";
+        let url2 =
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/";
+        let url3 = "https://en.wikipedia.org/wiki/Design_Patterns";
+        let url4 = "https://doc.rust-lang.org/book/title-page.html";
+
+        assert_eq!(
+            source_bookmarks.inner(),
+            HashMap::from_iter([
+                (
+                    url1.to_owned(),
+                    SourceBookmarkBuilder::new(url1)
+                        .add_source(&SourceType::Simple)
+                        .build()
+                ),
+                (
+                    url2.to_owned(),
+                    SourceBookmarkBuilder::new(url2)
+                        .add_source(&SourceType::Simple)
+                        .build()
+                ),
+                (
+                    url3.to_owned(),
+                    SourceBookmarkBuilder::new(url3)
+                        .add_source(&SourceType::Simple)
+                        .build()
+                ),
+                (
+                    url4.to_owned(),
+                    SourceBookmarkBuilder::new(url4)
+                        .add_source(&SourceType::Simple)
+                        .build()
+                )
+            ])
+        );
     }
 }

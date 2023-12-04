@@ -1,4 +1,5 @@
-use crate::{cache::CacheMode, SourceBookmarks, SourceType};
+use super::Action;
+use crate::{cache::CacheMode, SourceBookmark, SourceBookmarks, SourceType};
 use chrono::{DateTime, Utc};
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,7 @@ pub struct TargetBookmark {
     pub last_cached: Option<i64>,
     pub sources: HashSet<SourceType>,
     pub cache_modes: HashSet<CacheMode>,
+    pub action: Action,
 }
 
 impl TargetBookmark {
@@ -27,6 +29,7 @@ impl TargetBookmark {
         last_cached: Option<DateTime<Utc>>,
         sources: HashSet<SourceType>,
         cache_modes: HashSet<CacheMode>,
+        action: Action,
     ) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -35,6 +38,7 @@ impl TargetBookmark {
             last_cached: last_cached.map(|timestamp| timestamp.timestamp_millis()),
             sources,
             cache_modes,
+            action,
         }
     }
 }
@@ -97,6 +101,24 @@ impl TargetBookmarks {
         self.0.len()
     }
 
+    /// If the cache was removed, reset the cache values in the target
+    /// bookmarks.
+    pub fn reset_cache_status(&mut self) {
+        debug!("Reset cache status");
+        for bookmark in self.values_mut() {
+            bookmark.last_cached = None;
+            bookmark.cache_modes.clear();
+        }
+    }
+
+    pub fn set_action(&mut self, action: &Action) {
+        debug!("Set action to {action:#?}");
+
+        for bookmark in self.values_mut() {
+            bookmark.action = action.clone()
+        }
+    }
+
     pub fn insert(&mut self, bookmark: TargetBookmark) {
         let url = &bookmark.url;
         let entry = self.0.entry(url.clone());
@@ -118,72 +140,96 @@ impl TargetBookmarks {
         self.0.remove(url)
     }
 
-    pub fn filter_to_add<'a>(&self, source_bookmarks: &'a SourceBookmarks) -> Vec<&'a str> {
+    /// Clean up bookmarks which are marked by [`Action::Remove`].
+    pub fn clean_up(&mut self) {
+        let urls_to_remove = self
+            .values()
+            .filter_map(|bookmark| {
+                if bookmark.action == Action::Remove {
+                    Some(bookmark.url.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for url in urls_to_remove {
+            self.remove(&url);
+        }
+    }
+
+    pub fn filter_to_add<'a>(
+        &self,
+        source_bookmarks: &'a SourceBookmarks,
+    ) -> Vec<&'a SourceBookmark> {
         source_bookmarks
-            .keys()
-            .filter(|url| !self.0.contains_key(*url))
-            .map(|url| url.as_str())
+            .iter()
+            .filter(|(url, _)| !self.0.contains_key(*url))
+            .map(|(_, bookmark)| bookmark)
             .collect()
     }
 
-    pub fn filter_to_remove(&self, source_bookmarks: &SourceBookmarks) -> Vec<TargetBookmark> {
+    pub fn filter_to_remove<'a>(
+        &'a mut self,
+        source_bookmarks: &SourceBookmarks,
+    ) -> Vec<&'a mut TargetBookmark> {
         self.0
-            .iter()
+            .iter_mut()
             .filter(|(url, _)| !source_bookmarks.contains_key(url))
             .map(|(_, target_bookmark)| target_bookmark)
-            .cloned()
             .collect()
     }
 
     /// Update target bookmarks.
     ///
     /// Determine the difference between source and target bookmarks and update
-    /// the target bookmarks.
-    pub fn update(
-        &mut self,
-        source_bookmarks: &SourceBookmarks,
-    ) -> Result<(Vec<TargetBookmark>, Vec<TargetBookmark>), anyhow::Error> {
+    /// the `action` of the target bookmarks.
+    pub fn update(&mut self, source_bookmarks: &SourceBookmarks) -> Result<(), anyhow::Error> {
         let now = Utc::now();
-        let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
-        let urls_to_add = self.filter_to_add(source_bookmarks);
-        let mut bookmarks_to_add = vec![];
 
-        for bookmark in &bookmarks_to_remove {
-            self.remove(&bookmark.url);
-        }
+        let bookmarks_to_add = self.filter_to_add(source_bookmarks);
+        let urls_to_add = bookmarks_to_add
+            .iter()
+            .map(|bookmark| bookmark.url.to_owned())
+            .collect::<Vec<_>>();
 
-        for url in urls_to_add {
-            if let Some(sources) = source_bookmarks.get(url) {
-                let target_bookmark = TargetBookmark::new(
-                    url.to_owned(),
-                    now,
-                    None,
-                    sources.to_owned(),
-                    HashSet::new(),
-                );
-                bookmarks_to_add.push(target_bookmark.clone());
-                self.insert(target_bookmark);
-            }
-        }
-
-        if !bookmarks_to_add.is_empty() {
-            println!("Added {} new bookmarks", bookmarks_to_add.len());
-            trace!(
-                "Added new bookmarks: {:#?}",
-                bookmarks_to_add.iter().map(|bookmark| &bookmark.url)
+        for bookmark in bookmarks_to_add {
+            let target_bookmark = TargetBookmark::new(
+                bookmark.url.to_owned(),
+                now,
+                None,
+                bookmark.sources.to_owned(),
+                HashSet::new(),
+                Action::Add,
             );
+            self.insert(target_bookmark);
         }
 
-        if !bookmarks_to_remove.is_empty() {
-            println!("Removed {} bookmarks", bookmarks_to_remove.len());
-            trace!("Removed bookmarks: {bookmarks_to_remove:#?}");
+        let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
+        let urls_to_remove = bookmarks_to_remove
+            .iter()
+            .map(|bookmark| bookmark.url.to_owned())
+            .collect::<Vec<_>>();
+
+        for bookmark in bookmarks_to_remove {
+            bookmark.action = Action::Remove;
         }
 
-        if bookmarks_to_add.is_empty() && bookmarks_to_remove.is_empty() {
+        if !urls_to_add.is_empty() {
+            println!("Added {} new bookmarks", urls_to_add.len());
+            trace!("Added new bookmarks: {urls_to_add:#?}",);
+        }
+
+        if !urls_to_remove.is_empty() {
+            println!("Removed {} bookmarks", urls_to_remove.len());
+            trace!("Removed bookmarks: {urls_to_remove:#?}",);
+        }
+
+        if urls_to_add.is_empty() && urls_to_remove.is_empty() {
             println!("Bookmarks are already up to date");
         }
 
-        Ok((bookmarks_to_add, bookmarks_to_remove))
+        Ok(())
     }
 }
 
@@ -206,8 +252,9 @@ impl From<SourceBookmarks> for TargetBookmarks {
                 source_bookmark.0,
                 now,
                 None,
-                source_bookmark.1,
+                source_bookmark.1.sources,
                 HashSet::new(),
+                Action::None,
             );
             target_bookmarks.insert(target_bookmark)
         }
@@ -219,7 +266,10 @@ impl From<SourceBookmarks> for TargetBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmark_reader::{ReadTarget, WriteTarget};
+    use crate::{
+        bookmark_reader::{ReadTarget, WriteTarget},
+        bookmarks::SourceBookmarkBuilder,
+    };
     use std::{
         collections::{HashMap, HashSet},
         io::Cursor,
@@ -233,7 +283,8 @@ mod tests {
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
-            "cache_modes": []
+            "cache_modes": [],
+            "action": "None"
         },
         {
             "id": "511b1590-e6de-4989-bca4-96dc61730508",
@@ -241,7 +292,8 @@ mod tests {
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
-            "cache_modes": []
+            "cache_modes": [],
+            "action": "None"
         }
     ]
 }"#;
@@ -253,24 +305,43 @@ mod tests {
     #[test]
     fn test_update() {
         let now = Utc::now();
+
+        let url1 = "https://www.deepl.com/translator";
+        let url2 =
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/";
+        let url3 = "https://en.wikipedia.org/wiki/Design_Patterns";
+        let url4 = "https://doc.rust-lang.org/book/title-page.html";
+
         let expected_bookmarks = HashMap::from_iter([
-            ("https://www.deepl.com/translator".to_owned(), HashSet::new()),
-            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::new()),
-            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::new()),
-            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::new()),
+            (url1.to_owned(), SourceBookmarkBuilder::new(url1).build()),
+            (url2.to_owned(), SourceBookmarkBuilder::new(url2).build()),
+            (url3.to_owned(), SourceBookmarkBuilder::new(url3).build()),
+            (url4.to_owned(), SourceBookmarkBuilder::new(url4).build()),
         ]);
         let source_bookmarks = SourceBookmarks::new(expected_bookmarks.clone());
-        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([("https://www.deepl.com/translator".to_owned(), TargetBookmark::new(
-            "https://www.deepl.com/translator",
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new()
-        )), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark::new(
-            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
-            now,
-            None,
-            HashSet::new(),HashSet::new())),
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                url1.to_owned(),
+                TargetBookmark::new(
+                    url1,
+                    now,
+                    None,
+                    HashSet::new(),
+                    HashSet::new(),
+                    Action::None,
+                ),
+            ),
+            (
+                url2.to_owned(),
+                TargetBookmark::new(
+                    url2,
+                    now,
+                    None,
+                    HashSet::new(),
+                    HashSet::new(),
+                    Action::None,
+                ),
+            ),
         ]));
         let res = target_bookmarks.update(&source_bookmarks);
         assert!(res.is_ok());
@@ -299,7 +370,8 @@ mod tests {
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
-                        cache_modes: HashSet::new()
+                        cache_modes: HashSet::new(),
+                        action: Action::None,
                     }
                 ),
                 (
@@ -310,7 +382,8 @@ mod tests {
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
-                        cache_modes: HashSet::new()
+                        cache_modes: HashSet::new(),
+                        action: Action::None,
                     }
                 )
             ]))
@@ -340,6 +413,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::None,
                 },
             ),
             (
@@ -351,6 +425,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::None,
                 },
             ),
         ]));

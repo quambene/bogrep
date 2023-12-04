@@ -1,5 +1,5 @@
 use super::{ReadBookmark, ReaderName};
-use crate::{utils, Source, SourceBookmark, SourceBookmarks, SourceType};
+use crate::{bookmarks::SourceBookmarkBuilder, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
 use lz4::block;
@@ -25,8 +25,9 @@ impl Firefox {
             if type_value == "text/x-moz-place" {
                 if let Some(Value::String(uri_value)) = obj.get("uri") {
                     if uri_value.contains("http") {
-                        let source_bookmark =
-                            SourceBookmark::new(uri_value.to_owned(), source.name.clone());
+                        let source_bookmark = SourceBookmarkBuilder::new(uri_value)
+                            .add_source(&source.name)
+                            .build();
                         source_bookmarks.insert(source_bookmark);
                     }
                 }
@@ -316,10 +317,7 @@ impl ReadBookmark for FirefoxCompressedBookmarkReader {
 mod tests {
     use super::*;
     use crate::{test_utils, utils};
-    use std::{
-        collections::{HashMap, HashSet},
-        io::Cursor,
-    };
+    use std::{collections::HashMap, io::Cursor};
 
     #[test]
     fn test_read() {
@@ -370,12 +368,41 @@ mod tests {
         let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        assert_eq!(source_bookmarks.inner(), HashMap::from_iter([
-            ("https://www.mozilla.org/en-US/firefox/central/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-        ]));
+        let url1 = "https://www.mozilla.org/en-US/firefox/central/";
+        let url2 =
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/";
+        let url3 = "https://en.wikipedia.org/wiki/Design_Patterns";
+        let url4 = "https://doc.rust-lang.org/book/title-page.html";
+
+        assert_eq!(
+            source_bookmarks.inner(),
+            HashMap::from_iter([
+                (
+                    url1.to_owned(),
+                    SourceBookmarkBuilder::new(url1)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                ),
+                (
+                    url2.to_owned(),
+                    SourceBookmarkBuilder::new(url2)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                ),
+                (
+                    url3.to_owned(),
+                    SourceBookmarkBuilder::new(url3)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                ),
+                (
+                    url4.to_owned(),
+                    SourceBookmarkBuilder::new(url4)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                )
+            ])
+        );
     }
 
     #[test]
@@ -393,12 +420,41 @@ mod tests {
         let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        assert_eq!(source_bookmarks.inner(), HashMap::from_iter([
-            ("https://www.mozilla.org/en-US/firefox/central/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-            ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-            ("https://en.wikipedia.org/wiki/Design_Patterns".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-            ("https://doc.rust-lang.org/book/title-page.html".to_owned(), HashSet::from_iter([SourceType::Firefox])),
-        ]));
+        let url1 = "https://www.mozilla.org/en-US/firefox/central/";
+        let url2 =
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/";
+        let url3 = "https://en.wikipedia.org/wiki/Design_Patterns";
+        let url4 = "https://doc.rust-lang.org/book/title-page.html";
+
+        assert_eq!(
+            source_bookmarks.inner(),
+            HashMap::from_iter([
+                (
+                    url1.to_owned(),
+                    SourceBookmarkBuilder::new(url1)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                ),
+                (
+                    url2.to_owned(),
+                    SourceBookmarkBuilder::new(url2)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                ),
+                (
+                    url3.to_owned(),
+                    SourceBookmarkBuilder::new(url3)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                ),
+                (
+                    url4.to_owned(),
+                    SourceBookmarkBuilder::new(url4)
+                        .add_source(&SourceType::Firefox)
+                        .build()
+                )
+            ])
+        );
     }
 
     #[test]
@@ -419,16 +475,23 @@ mod tests {
         let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
+        let url1 = "https://en.wikipedia.org/wiki/Design_Patterns";
+        let url2 = "https://doc.rust-lang.org/book/title-page.html";
+
         assert_eq!(
             source_bookmarks.inner(),
             HashMap::from_iter([
                 (
-                    "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
-                    HashSet::from_iter([SourceType::Firefox])
+                    url1.to_owned(),
+                    SourceBookmarkBuilder::new(url1)
+                        .add_source(&SourceType::Firefox)
+                        .build()
                 ),
                 (
-                    "https://doc.rust-lang.org/book/title-page.html".to_owned(),
-                    HashSet::from_iter([SourceType::Firefox])
+                    url2.to_owned(),
+                    SourceBookmarkBuilder::new(url2)
+                        .add_source(&SourceType::Firefox)
+                        .build()
                 ),
             ])
         );
@@ -453,16 +516,23 @@ mod tests {
         let res = bookmark_reader.parse(&raw_bookmarks, &source, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
+        let url1 = "https://en.wikipedia.org/wiki/Design_Patterns";
+        let url2 = "https://doc.rust-lang.org/book/title-page.html";
+
         assert_eq!(
             source_bookmarks.inner(),
             HashMap::from_iter([
                 (
-                    "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
-                    HashSet::from_iter([SourceType::Firefox])
+                    url1.to_owned(),
+                    SourceBookmarkBuilder::new(url1)
+                        .add_source(&SourceType::Firefox)
+                        .build()
                 ),
                 (
-                    "https://doc.rust-lang.org/book/title-page.html".to_owned(),
-                    HashSet::from_iter([SourceType::Firefox])
+                    url2.to_owned(),
+                    SourceBookmarkBuilder::new(url2)
+                        .add_source(&SourceType::Firefox)
+                        .build()
                 ),
             ])
         );

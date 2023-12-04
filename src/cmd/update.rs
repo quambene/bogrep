@@ -58,30 +58,17 @@ async fn update_bookmarks(
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
-    let (mut bookmarks_to_add, mut bookmarks_to_remove) =
-        target_bookmarks.update(&source_bookmarks)?;
+    target_bookmarks.update(&source_bookmarks)?;
 
-    if !bookmarks_to_add.is_empty() {
-        // Fetch and cache new bookmarks.
-        cmd::fetch_and_cache_bookmarks(
-            client,
-            cache,
-            bookmarks_to_add.iter_mut().collect(),
-            max_concurrent_requests,
-            false,
-        )
-        .await?;
-    }
+    cmd::fetch_and_cache_bookmarks(
+        client,
+        cache,
+        target_bookmarks.values_mut().collect(),
+        max_concurrent_requests,
+    )
+    .await?;
 
-    // Clean up cache for missing bookmarks.
-    for bookmark in bookmarks_to_remove.iter_mut() {
-        cache.remove(bookmark).await?;
-    }
-
-    // Update the `last_cached` timestamp.
-    for bookmark in bookmarks_to_add {
-        target_bookmarks.insert(bookmark)
-    }
+    target_bookmarks.clean_up();
 
     Ok(())
 }
@@ -89,7 +76,7 @@ async fn update_bookmarks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::RawSource, MockCache, MockClient, TargetBookmark};
+    use crate::{bookmarks::RawSource, Action, MockCache, MockClient, TargetBookmark};
     use chrono::Utc;
     use std::{
         collections::{HashMap, HashSet},
@@ -120,7 +107,8 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
-                    cache_modes: HashSet::new()
+                    cache_modes: HashSet::from_iter([CacheMode::Html]),
+                    action: Action::Add,
                 }),("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
@@ -128,7 +116,8 @@ mod tests {
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
-                    cache_modes: HashSet::new()
+                    cache_modes: HashSet::from_iter([CacheMode::Html]),
+                    action: Action::Add,
                 }),
             ]),
             );
@@ -242,14 +231,16 @@ mod tests {
             last_imported: now.timestamp_millis(),
             last_cached: Some(now.timestamp_millis()),
             sources: HashSet::new(),
-            cache_modes: HashSet::new()
+            cache_modes: HashSet::from_iter([CacheMode::Text]),
+            action: Action::Add,
         }), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark {
             id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
             url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
             last_imported: now.timestamp_millis(),
             last_cached: Some(now.timestamp_millis()),
             sources: HashSet::new(),
-            cache_modes: HashSet::new()
+            cache_modes: HashSet::from_iter([CacheMode::Text]),
+            action: Action::Add,
         })]));
         for url in &expected_bookmarks {
             client

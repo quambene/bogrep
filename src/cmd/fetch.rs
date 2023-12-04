@@ -1,5 +1,6 @@
 use crate::{
     bookmark_reader::{ReadTarget, WriteTarget},
+    bookmarks::Action,
     cache::CacheMode,
     errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
@@ -62,8 +63,15 @@ pub async fn fetch_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let mut bookmark = TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new());
-        fetch_and_cache_bookmark(client, cache, &mut bookmark, true).await?;
+        let mut bookmark = TargetBookmark::new(
+            url,
+            now,
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            Action::Fetch,
+        );
+        fetch_and_cache_bookmark(client, cache, &mut bookmark).await?;
         println!("Fetched website for {url}");
         target_bookmarks.insert(bookmark);
     }
@@ -86,12 +94,13 @@ pub async fn fetch_bookmarks(
 
     if cache.is_empty() {
         debug!("Cache is empty");
-        // If the cache was removed, reset the cache values in
-        // the target bookmarks
-        for bookmark in target_bookmarks.values_mut() {
-            bookmark.last_cached = None;
-            bookmark.cache_modes.clear();
-        }
+        target_bookmarks.reset_cache_status();
+    }
+
+    if fetch_all {
+        target_bookmarks.set_action(&Action::Fetch);
+    } else {
+        target_bookmarks.set_action(&Action::Add);
     }
 
     fetch_and_cache_bookmarks(
@@ -99,7 +108,6 @@ pub async fn fetch_bookmarks(
         cache,
         target_bookmarks.values_mut().collect(),
         max_concurrent_requests,
-        fetch_all,
     )
     .await?;
 
@@ -117,7 +125,6 @@ pub async fn fetch_and_cache_bookmarks(
     cache: &impl Caching,
     bookmarks: Vec<&mut TargetBookmark>,
     max_concurrent_requests: usize,
-    fetch_all: bool,
 ) -> Result<(), BogrepError> {
     let mut processed = 0;
     let mut cached = 0;
@@ -127,7 +134,7 @@ pub async fn fetch_and_cache_bookmarks(
     let total = bookmarks.len();
 
     let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| fetch_and_cache_bookmark(client, cache, bookmark, fetch_all))
+        .map(|bookmark| fetch_and_cache_bookmark(client, cache, bookmark))
         .buffer_unordered(max_concurrent_requests);
 
     while let Some(item) = stream.next().await {
@@ -206,19 +213,29 @@ async fn fetch_and_cache_bookmark(
     client: &impl Fetch,
     cache: &impl Caching,
     bookmark: &mut TargetBookmark,
-    fetch_all: bool,
 ) -> Result<(), BogrepError> {
-    if fetch_all {
-        let website = client.fetch(bookmark).await?;
-        trace!("Fetched website: {website}");
-        let html = html::filter_html(&website)?;
-        cache.replace(html, bookmark).await?;
-    } else if !cache.exists(bookmark) {
-        let website = client.fetch(bookmark).await?;
-        trace!("Fetched website: {website}");
-        let html = html::filter_html(&website)?;
-        cache.add(html, bookmark).await?;
+    match bookmark.action {
+        Action::Fetch => {
+            let website = client.fetch(bookmark).await?;
+            trace!("Fetched website: {website}");
+            let html = html::filter_html(&website)?;
+            cache.replace(html, bookmark).await?;
+        }
+        Action::Add => {
+            if !cache.exists(bookmark) {
+                let website = client.fetch(bookmark).await?;
+                trace!("Fetched website: {website}");
+                let html = html::filter_html(&website)?;
+                cache.add(html, bookmark).await?;
+            }
+        }
+        Action::Remove => {
+            cache.remove(bookmark).await?;
+        }
+        Action::None => (),
     }
+
+    bookmark.action = Action::None;
 
     Ok(())
 }
@@ -293,6 +310,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Fetch,
                 },
             ),
             (
@@ -304,6 +322,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Fetch,
                 },
             ),
         ]));
@@ -322,7 +341,6 @@ mod tests {
             &cache,
             target_bookmarks.values_mut().collect(),
             100,
-            true,
         )
         .await;
         assert!(res.is_ok());
@@ -342,7 +360,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_and_add_all_mode_text() {
+    async fn test_fetch_and_cache_mode_text() {
         let now = Utc::now();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
@@ -356,6 +374,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Fetch,
                 },
             ),
             (
@@ -367,6 +386,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Fetch,
                 },
             ),
         ]));
@@ -385,7 +405,6 @@ mod tests {
             &cache,
             target_bookmarks.values_mut().collect(),
             100,
-            true,
         )
         .await;
         assert!(res.is_ok());
@@ -405,7 +424,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_and_add_all_if_not_exists_mode_html() {
+    async fn test_fetch_and_cache_if_not_exists_mode_html() {
         let now = Utc::now().timestamp_millis();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
@@ -419,6 +438,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Add,
                 },
             ),
             (
@@ -430,6 +450,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Add,
                 },
             ),
         ]));
@@ -456,7 +477,6 @@ mod tests {
             &cache,
             target_bookmarks.values_mut().collect(),
             100,
-            false,
         )
         .await;
         assert!(res.is_ok());
@@ -478,7 +498,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_and_add_all_if_not_exists_mode_text() {
+    async fn test_fetch_and_cache_if_not_exists_mode_text() {
         let now = Utc::now().timestamp_millis();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
@@ -492,6 +512,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Add,
                 },
             ),
             (
@@ -503,6 +524,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    action: Action::Add,
                 },
             ),
         ]));
@@ -529,7 +551,6 @@ mod tests {
             &cache,
             target_bookmarks.values_mut().collect(),
             100,
-            false,
         )
         .await;
         assert!(res.is_ok());
