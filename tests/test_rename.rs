@@ -1,6 +1,6 @@
 mod common;
 
-use bogrep::{json, utils, BookmarksJson, TargetBookmark};
+use bogrep::{json, utils, Action, BookmarksJson, TargetBookmark};
 use chrono::Utc;
 use std::{collections::HashSet, io::Write};
 use tempfile::tempdir;
@@ -27,6 +27,7 @@ fn test_rename() {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         ));
         let buf = json::serialize(&bookmarks_json).unwrap();
         let mut bookmarks_lock_file = utils::open_and_truncate_file(&bookmarks_lock_path).unwrap();

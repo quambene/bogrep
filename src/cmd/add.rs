@@ -1,6 +1,7 @@
 use crate::{
     args::AddArgs,
     bookmark_reader::{ReadTarget, WriteTarget},
+    bookmarks::Action,
     utils, Config, SourceType, TargetBookmark, TargetBookmarks,
 };
 use anyhow::anyhow;
@@ -42,7 +43,14 @@ fn add_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        let bookmark = TargetBookmark::new(url, now, None, sources.clone(), cache_modes.clone());
+        let bookmark = TargetBookmark::new(
+            url,
+            now,
+            None,
+            sources.clone(),
+            cache_modes.clone(),
+            Action::None,
+        );
         target_bookmarks.insert(bookmark);
     }
 

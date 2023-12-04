@@ -201,6 +201,7 @@ impl Fetch for MockClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bookmarks::Action;
     use std::collections::HashSet;
     use tokio::time::Instant;
 
@@ -216,6 +217,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
         let bookmark2 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
@@ -223,6 +225,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
 
         let start_instant = Instant::now();
@@ -248,6 +251,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
         let bookmark2 = TargetBookmark::new(
             "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
@@ -255,6 +259,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
 
         let last_fetched = throttler.last_fetched(&bookmark1, now).unwrap();

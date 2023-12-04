@@ -77,7 +77,6 @@ async fn init_bookmarks(
         cache,
         target_bookmarks.values_mut().collect(),
         max_concurrent_requests,
-        false,
     )
     .await?;
 

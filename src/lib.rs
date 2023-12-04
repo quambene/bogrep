@@ -53,7 +53,7 @@ pub use bookmark_reader::{
     ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark, SimpleBookmarkReader,
 };
 pub use bookmarks::{
-    BookmarksJson, Source, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
+    Action, BookmarksJson, Source, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
     TargetBookmarks,
 };
 pub use cache::{Cache, Caching, MockCache};

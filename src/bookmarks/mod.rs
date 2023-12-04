@@ -2,13 +2,27 @@ mod source_bookmarks;
 mod target_bookmarks;
 
 use serde::{Deserialize, Serialize};
-pub use source_bookmarks::{SourceBookmark, SourceBookmarks};
+pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
 use std::{
     cmp::Ordering,
     path::{Path, PathBuf},
     slice::Iter,
 };
 pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
+
+/// The action to be performed on the bookmark.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub enum Action {
+    /// Fetch and cache the bookmark, even if it is cached already. The cached
+    /// content will be updated with the most recent version of the website.
+    Fetch,
+    /// Fetch and cache bookmark if it is not cached yet.
+    Add,
+    /// Remove bookmark from cache.
+    Remove,
+    /// No actions to be performed.
+    None,
+}
 
 /// The type used to identify a source.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -409,6 +409,7 @@ impl Caching for MockCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bookmarks::Action;
     use chrono::Utc;
     use std::collections::HashSet;
 
@@ -422,6 +423,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         let cached_content = cache.add(content.to_owned(), &mut bookmark).await.unwrap();
@@ -445,6 +447,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         let cached_content = cache.add(content.to_owned(), &mut bookmark).await.unwrap();
@@ -465,6 +468,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
         cache.add(content1.to_owned(), &mut bookmark).await.unwrap();
@@ -491,6 +495,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
         cache.add(content1.to_owned(), &mut bookmark).await.unwrap();
@@ -514,6 +519,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Action::None,
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
 
@@ -541,6 +547,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Action::None,
                 ),
             ),
             (
@@ -551,6 +558,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Action::None,
                 ),
             ),
         ]));
@@ -582,6 +590,7 @@ mod tests {
                 None,
                 HashSet::new(),
                 HashSet::new(),
+                Action::None,
             ),
         )]));
 
