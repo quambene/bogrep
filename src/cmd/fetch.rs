@@ -99,6 +99,8 @@ pub async fn fetch_bookmarks(
 
     if fetch_all {
         target_bookmarks.set_action(&Action::Fetch);
+    } else {
+        target_bookmarks.set_action(&Action::Add);
     }
 
     fetch_and_cache_bookmarks(
@@ -358,7 +360,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_and_add_all_mode_text() {
+    async fn test_fetch_and_cache_mode_text() {
         let now = Utc::now();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
@@ -422,7 +424,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_and_add_all_if_not_exists_mode_html() {
+    async fn test_fetch_and_cache_if_not_exists_mode_html() {
         let now = Utc::now().timestamp_millis();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
@@ -436,7 +438,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::None,
+                    action: Action::Add,
                 },
             ),
             (
@@ -448,7 +450,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::None,
+                    action: Action::Add,
                 },
             ),
         ]));
@@ -496,7 +498,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_and_add_all_if_not_exists_mode_text() {
+    async fn test_fetch_and_cache_if_not_exists_mode_text() {
         let now = Utc::now().timestamp_millis();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
@@ -510,7 +512,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::None,
+                    action: Action::Add,
                 },
             ),
             (
@@ -522,7 +524,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::None,
+                    action: Action::Add,
                 },
             ),
         ]));

@@ -140,6 +140,24 @@ impl TargetBookmarks {
         self.0.remove(url)
     }
 
+    /// Clean up bookmarks which are marked by [`Action::Remove`].
+    pub fn clean_up(&mut self) {
+        let urls_to_remove = self
+            .values()
+            .filter_map(|bookmark| {
+                if bookmark.action == Action::Remove {
+                    Some(bookmark.url.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for url in urls_to_remove {
+            self.remove(&url);
+        }
+    }
+
     pub fn filter_to_add<'a>(
         &self,
         source_bookmarks: &'a SourceBookmarks,
@@ -165,7 +183,7 @@ impl TargetBookmarks {
     /// Update target bookmarks.
     ///
     /// Determine the difference between source and target bookmarks and update
-    /// the target bookmarks.
+    /// the `action` of the target bookmarks.
     pub fn update(&mut self, source_bookmarks: &SourceBookmarks) -> Result<(), anyhow::Error> {
         let now = Utc::now();
 
@@ -265,7 +283,8 @@ mod tests {
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
-            "cache_modes": []
+            "cache_modes": [],
+            "action": "None"
         },
         {
             "id": "511b1590-e6de-4989-bca4-96dc61730508",
@@ -273,7 +292,8 @@ mod tests {
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
-            "cache_modes": []
+            "cache_modes": [],
+            "action": "None"
         }
     ]
 }"#;

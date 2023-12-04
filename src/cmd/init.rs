@@ -2,7 +2,8 @@ use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     cache::CacheMode,
     cmd::fetch_and_cache_bookmarks,
-    utils, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks, TargetBookmarks,
+    utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks,
+    TargetBookmarks,
 };
 use log::debug;
 
@@ -60,6 +61,8 @@ async fn init_bookmarks(
     }
 
     let mut target_bookmarks = TargetBookmarks::from(source_bookmarks);
+
+    target_bookmarks.set_action(&Action::Add);
 
     println!(
         "Imported {} bookmarks from {} sources: {}",
