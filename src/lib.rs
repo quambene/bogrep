@@ -56,7 +56,7 @@ pub use bookmarks::{
     Action, BookmarksJson, Source, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
     TargetBookmarks,
 };
-pub use cache::{Cache, Caching, MockCache};
+pub use cache::{Cache, CacheMode, Caching, MockCache};
 pub use client::{Client, Fetch, MockClient};
 pub use config::Config;
 pub use logger::Logger;
