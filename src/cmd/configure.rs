@@ -135,8 +135,8 @@ mod tests {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
         let urls = vec![
-            "https://test_url1.com".to_string(),
-            "https://test_url2.com".to_string(),
+            "https://url1.com".to_string(),
+            "https://url2.com".to_string(),
         ];
         let res = configure_settings(&mut settings, None, None, &urls, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -145,8 +145,8 @@ mod tests {
         let expected_settings = r#"{
     "sources": [],
     "ignored_urls": [
-        "https://test_url1.com/",
-        "https://test_url2.com/"
+        "https://url1.com/",
+        "https://url2.com/"
     ],
     "cache_mode": "text",
     "max_concurrent_requests": 100,

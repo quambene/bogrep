@@ -70,8 +70,8 @@ mod tests {
     #[test]
     fn test_add_urls() {
         let mut expected_urls = HashSet::new();
-        expected_urls.insert("https://test_url1.com".to_owned());
-        expected_urls.insert("https://test_url2.com".to_owned());
+        expected_urls.insert("https://url1.com".to_owned());
+        expected_urls.insert("https://url2.com".to_owned());
 
         let target_bookmarks = TargetBookmarks::default();
         let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
@@ -83,10 +83,7 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
 
-        let urls = vec![
-            "https://test_url1.com".to_owned(),
-            "https://test_url2.com".to_owned(),
-        ];
+        let urls = vec!["https://url1.com".to_owned(), "https://url2.com".to_owned()];
 
         let res = add_urls(&urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());

@@ -10,9 +10,9 @@ fn test_remove() {
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    let url1 = "https://test_url1.com";
-    let url2 = "https://test_url2.com";
-    let url3 = "https://test_url3.com";
+    let url1 = "https://url1.com";
+    let url2 = "https://url2.com";
+    let url3 = "https://url3.com";
 
     println!("Execute 'bogrep add {url1} {url2} {url3}'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();

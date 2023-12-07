@@ -418,7 +418,7 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let mut bookmark = TargetBookmark::new(
-            "https://test_url.com",
+            "https://url.com",
             now,
             None,
             HashSet::new(),
@@ -442,7 +442,7 @@ mod tests {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
         let mut bookmark = TargetBookmark::new(
-            "https://test_url.com",
+            "https://url.com",
             now,
             None,
             HashSet::new(),
@@ -463,7 +463,7 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let mut bookmark = TargetBookmark::new(
-            "https://test_url.com",
+            "https://url.com",
             now,
             None,
             HashSet::new(),
@@ -490,7 +490,7 @@ mod tests {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
         let mut bookmark = TargetBookmark::new(
-            "https://test_url.com",
+            "https://url.com",
             now,
             None,
             HashSet::new(),
@@ -514,7 +514,7 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let mut bookmark = TargetBookmark::new(
-            "https://test_url.com",
+            "https://url.com",
             now,
             None,
             HashSet::new(),
@@ -540,9 +540,9 @@ mod tests {
         let now = Utc::now();
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
-                "https://test_url1.com".to_owned(),
+                "https://url1.com".to_owned(),
                 TargetBookmark::new(
-                    "https://test_url1.com",
+                    "https://url1.com",
                     now,
                     None,
                     HashSet::new(),
@@ -551,9 +551,9 @@ mod tests {
                 ),
             ),
             (
-                "https://test_url2.com".to_owned(),
+                "https://url2.com".to_owned(),
                 TargetBookmark::new(
-                    "https://test_url2.com",
+                    "https://url2.com",
                     now,
                     None,
                     HashSet::new(),
@@ -583,9 +583,9 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([(
-            "https://test_url.com".to_owned(),
+            "https://url.com".to_owned(),
             TargetBookmark::new(
-                "https://test_url.com",
+                "https://url.com",
                 now,
                 None,
                 HashSet::new(),

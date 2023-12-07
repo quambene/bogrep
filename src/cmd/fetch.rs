@@ -302,10 +302,10 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
-                "https://test_url1.com".to_owned(),
+                "https://url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "https://test_url1.com".to_owned(),
+                    url: "https://url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -314,10 +314,10 @@ mod tests {
                 },
             ),
             (
-                "https://test_url2.com".to_owned(),
+                "https://url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "https://test_url2.com".to_owned(),
+                    url: "https://url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -366,10 +366,10 @@ mod tests {
         let cache = MockCache::new(CacheMode::Text);
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
-                "https://test_url1.com".to_owned(),
+                "https://url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "https://test_url1.com".to_owned(),
+                    url: "https://url1.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -378,10 +378,10 @@ mod tests {
                 },
             ),
             (
-                "https://test_url2.com".to_owned(),
+                "https://url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "https://test_url2.com".to_owned(),
+                    url: "https://url2.com".to_owned(),
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -430,10 +430,10 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
-                "https://test_url1.com".to_owned(),
+                "https://url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "https://test_url1.com".to_owned(),
+                    url: "https://url1.com".to_owned(),
                     last_imported: now,
                     last_cached: Some(now),
                     sources: HashSet::new(),
@@ -442,10 +442,10 @@ mod tests {
                 },
             ),
             (
-                "https://test_url2.com".to_owned(),
+                "https://url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "https://test_url2.com".to_owned(),
+                    url: "https://url2.com".to_owned(),
                     last_imported: now,
                     last_cached: None,
                     sources: HashSet::new(),
@@ -467,7 +467,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get_mut("https://test_url1.com").unwrap(),
+                target_bookmarks.get_mut("https://url1.com").unwrap(),
             )
             .await
             .unwrap();
@@ -504,10 +504,10 @@ mod tests {
         let cache = MockCache::new(CacheMode::Text);
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
-                "https://test_url1.com".to_owned(),
+                "https://url1.com".to_owned(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "https://test_url1.com".to_owned(),
+                    url: "https://url1.com".to_owned(),
                     last_imported: now,
                     last_cached: Some(now),
                     sources: HashSet::new(),
@@ -516,10 +516,10 @@ mod tests {
                 },
             ),
             (
-                "https://test_url2.com".to_owned(),
+                "https://url2.com".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "https://test_url2.com".to_owned(),
+                    url: "https://url2.com".to_owned(),
                     last_imported: now,
                     last_cached: None,
                     sources: HashSet::new(),
@@ -541,7 +541,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get_mut("https://test_url1.com").unwrap(),
+                target_bookmarks.get_mut("https://url1.com").unwrap(),
             )
             .await
             .unwrap();

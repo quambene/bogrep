@@ -85,8 +85,8 @@ fn test_configure_ignored_urls() {
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    let url1 = "https://test_url1";
-    let url2 = "https://test_url2";
+    let url1 = "https://url1";
+    let url2 = "https://url2";
 
     println!("Execute 'bogrep config --ignore {url1} {url2}'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();

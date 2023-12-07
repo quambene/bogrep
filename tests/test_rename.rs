@@ -22,7 +22,7 @@ fn test_rename() {
 
         let mut bookmarks_json = JsonBookmarks::default();
         bookmarks_json.bookmarks.push(JsonBookmark::new(
-            "https://test_url.com".to_owned(),
+            "https://url.com".to_owned(),
             Utc::now().timestamp_millis(),
             None,
             HashSet::new(),
