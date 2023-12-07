@@ -1,8 +1,7 @@
-use super::Action;
+use super::{Action, JsonBookmark};
 use crate::{cache::CacheMode, SourceBookmark, SourceBookmarks, SourceType};
 use chrono::{DateTime, Utc};
 use log::{debug, trace};
-use serde::{Deserialize, Serialize};
 use std::collections::{
     hash_map::{Entry, IntoIter, IntoValues, Iter, IterMut, Keys, Values, ValuesMut},
     HashMap, HashSet,
@@ -11,7 +10,7 @@ use uuid::Uuid;
 
 /// A standardized bookmark for internal bookkeeping that is created from the
 /// [`SourceBookmarks`].
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TargetBookmark {
     pub id: String,
     pub url: String,
@@ -39,6 +38,20 @@ impl TargetBookmark {
             sources,
             cache_modes,
             action,
+        }
+    }
+}
+
+impl From<JsonBookmark> for TargetBookmark {
+    fn from(value: JsonBookmark) -> Self {
+        Self {
+            id: value.id,
+            url: value.url,
+            last_imported: value.last_imported,
+            last_cached: value.last_cached,
+            sources: value.sources,
+            cache_modes: value.cache_modes,
+            action: Action::None,
         }
     }
 }
@@ -283,8 +296,7 @@ mod tests {
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
-            "cache_modes": [],
-            "action": "None"
+            "cache_modes": []
         },
         {
             "id": "511b1590-e6de-4989-bca4-96dc61730508",
@@ -292,8 +304,7 @@ mod tests {
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
-            "cache_modes": [],
-            "action": "None"
+            "cache_modes": []
         }
     ]
 }"#;

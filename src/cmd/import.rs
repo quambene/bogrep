@@ -81,7 +81,7 @@ mod tests {
     use super::*;
     use crate::{
         bookmarks::{RawSource, Source},
-        json, test_utils, BookmarksJson, ReadBookmark, SimpleBookmarkReader, SourceType,
+        json, test_utils, JsonBookmarks, ReadBookmark, SimpleBookmarkReader, SourceType,
     };
     use std::{
         collections::HashSet,
@@ -90,7 +90,7 @@ mod tests {
     };
 
     fn test_import_source(source: &RawSource, expected_bookmarks: HashSet<String>) {
-        let bookmarks_json = BookmarksJson::default();
+        let bookmarks_json = JsonBookmarks::default();
         let buf = json::serialize(&bookmarks_json).unwrap();
 
         let mut target_reader = Cursor::new(Vec::new());
@@ -104,7 +104,7 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.into_inner();
-        let actual_bookmarks = json::deserialize::<BookmarksJson>(&actual).unwrap();
+        let actual_bookmarks = json::deserialize::<JsonBookmarks>(&actual).unwrap();
         assert!(actual_bookmarks
             .iter()
             .all(|bookmark| bookmark.last_cached.is_none()));
@@ -139,7 +139,7 @@ mod tests {
         let res = import_source(vec![source_reader], target_reader, target_writer);
 
         let actual = target_writer.get_ref();
-        let actual_bookmarks = json::deserialize::<BookmarksJson>(actual);
+        let actual_bookmarks = json::deserialize::<JsonBookmarks>(actual);
         assert!(
             actual_bookmarks.is_ok(),
             "{}\n{}",
@@ -247,7 +247,7 @@ mod tests {
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
 
-        let bookmarks_json = BookmarksJson::default();
+        let bookmarks_json = JsonBookmarks::default();
         let buf = json::serialize(&bookmarks_json).unwrap();
 
         let mut target_reader = Cursor::new(Vec::new());
@@ -299,7 +299,7 @@ mod tests {
             "https://doc.rust-lang.org/book/title-page.html".to_owned(),
         ]);
 
-        let bookmarks_json = BookmarksJson::default();
+        let bookmarks_json = JsonBookmarks::default();
         let buf = json::serialize(&bookmarks_json).unwrap();
 
         let mut target_reader = Cursor::new(Vec::new());

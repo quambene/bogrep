@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use bogrep::{json, utils, BookmarksJson, SourceType};
+use bogrep::{json, utils, JsonBookmarks, SourceType};
 use predicates::str;
 use tempfile::tempdir;
 
@@ -33,7 +33,7 @@ fn test_add() {
     );
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let res = json::deserialize::<BookmarksJson>(&bookmarks);
+    let res = json::deserialize::<JsonBookmarks>(&bookmarks);
     assert!(res.is_ok());
 
     let bookmarks = res.unwrap();

@@ -64,7 +64,7 @@ fn add_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, BookmarksJson};
+    use crate::{json, JsonBookmarks};
     use std::io::{Cursor, Write};
 
     #[test]
@@ -74,7 +74,7 @@ mod tests {
         expected_urls.insert("https://test_url2.com".to_owned());
 
         let target_bookmarks = TargetBookmarks::default();
-        let bookmarks_json = BookmarksJson::from(&target_bookmarks);
+        let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
 
         let mut target_reader: Cursor<Vec<u8>> = Cursor::new(Vec::new());
@@ -92,7 +92,7 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();
-        let actual_bookmarks = json::deserialize::<BookmarksJson>(actual);
+        let actual_bookmarks = json::deserialize::<JsonBookmarks>(actual);
         assert!(
             actual_bookmarks.is_ok(),
             "{}\n{}",

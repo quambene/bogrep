@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use bogrep::{json, utils, BookmarksJson, Settings};
+use bogrep::{json, utils, JsonBookmarks, Settings};
 use tempfile::tempdir;
 
 fn test_configure_source(source: &str) {
@@ -43,7 +43,7 @@ fn test_configure_source(source: &str) {
     assert!(!settings.sources.is_empty());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let res = json::deserialize::<BookmarksJson>(&bookmarks);
+    let res = json::deserialize::<JsonBookmarks>(&bookmarks);
     assert!(res.is_ok());
 
     let bookmarks = res.unwrap();
