@@ -1,4 +1,4 @@
-use crate::{errors::BogrepError, json, BookmarksJson, TargetBookmarks};
+use crate::{errors::BogrepError, json, JsonBookmarks, TargetBookmarks};
 use std::io::{Read, Seek};
 
 /// Extension trait for [`Read`] and [`Seek`] to read target bookmarks.
@@ -17,10 +17,10 @@ where
         // Rewind after reading.
         self.rewind().map_err(BogrepError::RewindFile)?;
 
-        let bookmarks = json::deserialize::<BookmarksJson>(&buf)?;
+        let bookmarks = json::deserialize::<JsonBookmarks>(&buf)?;
 
         for bookmark in bookmarks {
-            target_bookmarks.insert(bookmark);
+            target_bookmarks.insert(bookmark.into());
         }
 
         Ok(())

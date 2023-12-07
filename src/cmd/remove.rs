@@ -52,7 +52,7 @@ fn remove_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Action, json, BookmarksJson, SourceType, TargetBookmark};
+    use crate::{bookmarks::Action, json, JsonBookmarks, SourceType, TargetBookmark};
     use chrono::{DateTime, Utc};
     use std::{
         collections::HashSet,
@@ -70,13 +70,13 @@ mod tests {
         let now = Utc::now();
 
         let mut expected_urls = HashSet::new();
-        expected_urls.insert("https://test_url1.com".to_owned());
+        expected_urls.insert("https://url1.com".to_owned());
 
         let mut target_bookmarks = TargetBookmarks::default();
-        target_bookmarks.insert(create_target_bookmark("https://test_url1.com", now));
-        target_bookmarks.insert(create_target_bookmark("https://test_url2.com", now));
-        target_bookmarks.insert(create_target_bookmark("https://test_url3.com", now));
-        let bookmarks_json = BookmarksJson::from(&target_bookmarks);
+        target_bookmarks.insert(create_target_bookmark("https://url1.com", now));
+        target_bookmarks.insert(create_target_bookmark("https://url2.com", now));
+        target_bookmarks.insert(create_target_bookmark("https://url3.com", now));
+        let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
 
         let mut target_reader: Cursor<Vec<u8>> = Cursor::new(Vec::new());
@@ -85,16 +85,13 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
 
-        let urls = vec![
-            "https://test_url2.com".to_owned(),
-            "https://test_url3.com".to_owned(),
-        ];
+        let urls = vec!["https://url2.com".to_owned(), "https://url3.com".to_owned()];
 
         let res = remove_urls(&urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();
-        let actual_bookmarks = json::deserialize::<BookmarksJson>(actual);
+        let actual_bookmarks = json::deserialize::<JsonBookmarks>(actual);
         assert!(
             actual_bookmarks.is_ok(),
             "{}\n{}",

@@ -15,6 +15,10 @@ license = "Apache-2.0"
 [features]
 integration-test = []
 
+[[bench]]
+name = "fetch"
+harness = false
+
 [dependencies]
 anyhow = "1.0.72"
 thiserror = "1.0.50"
@@ -44,3 +48,5 @@ assert_cmd = "2.0.12"
 predicates = "3.0.4"
 tempfile = "3.8.0"
 wiremock = "0.5.19"
+criterion = { version = "0.5.1", features = ["async_tokio"] }
+tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "time", "test-util"] }

@@ -1,14 +1,17 @@
 mod source_bookmarks;
 mod target_bookmarks;
 
+use crate::CacheMode;
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
 use std::{
     cmp::Ordering,
+    collections::HashSet,
     path::{Path, PathBuf},
     slice::Iter,
 };
 pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
+use uuid::Uuid;
 
 /// The action to be performed on the bookmark.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -83,23 +86,82 @@ impl Source {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct BookmarksJson {
-    pub bookmarks: Vec<TargetBookmark>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JsonBookmark {
+    pub id: String,
+    pub url: String,
+    pub last_imported: i64,
+    pub last_cached: Option<i64>,
+    pub sources: HashSet<SourceType>,
+    pub cache_modes: HashSet<CacheMode>,
 }
 
-impl BookmarksJson {
-    pub fn new(mut bookmarks: Vec<TargetBookmark>) -> Self {
+impl JsonBookmark {
+    pub fn new(
+        url: String,
+        last_imported: i64,
+        last_cached: Option<i64>,
+        sources: HashSet<SourceType>,
+        cache_modes: HashSet<CacheMode>,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            url,
+            last_imported,
+            last_cached,
+            sources,
+            cache_modes,
+        }
+    }
+}
+
+impl From<TargetBookmark> for JsonBookmark {
+    fn from(value: TargetBookmark) -> Self {
+        Self {
+            id: value.id,
+            url: value.url,
+            last_imported: value.last_imported,
+            last_cached: value.last_cached,
+            sources: value.sources,
+            cache_modes: value.cache_modes,
+        }
+    }
+}
+
+impl From<&TargetBookmark> for JsonBookmark {
+    fn from(value: &TargetBookmark) -> Self {
+        Self {
+            id: value.id.clone(),
+            url: value.url.clone(),
+            last_imported: value.last_imported,
+            last_cached: value.last_cached,
+            sources: value.sources.clone(),
+            cache_modes: value.cache_modes.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct JsonBookmarks {
+    pub bookmarks: Vec<JsonBookmark>,
+}
+
+impl JsonBookmarks {
+    pub fn new(bookmarks: Vec<TargetBookmark>) -> Self {
+        let mut bookmarks = bookmarks
+            .into_iter()
+            .map(JsonBookmark::from)
+            .collect::<Vec<_>>();
         bookmarks.sort_by(Self::compare);
 
         Self { bookmarks }
     }
 
-    pub fn iter(&self) -> Iter<TargetBookmark> {
+    pub fn iter(&self) -> Iter<JsonBookmark> {
         self.bookmarks.iter()
     }
 
-    pub fn get(&self, index: usize) -> Option<&TargetBookmark> {
+    pub fn get(&self, index: usize) -> Option<&JsonBookmark> {
         self.bookmarks.get(index)
     }
 
@@ -112,7 +174,7 @@ impl BookmarksJson {
     }
 
     // Sort by `last_cached` and then by `url`.
-    fn compare(a: &TargetBookmark, b: &TargetBookmark) -> Ordering {
+    fn compare(a: &JsonBookmark, b: &JsonBookmark) -> Ordering {
         match (a.last_cached, b.last_cached) {
             (Some(a_cached), Some(b_cached)) => {
                 a_cached.cmp(&b_cached).then_with(|| a.url.cmp(&b.url))
@@ -124,16 +186,19 @@ impl BookmarksJson {
     }
 }
 
-impl From<&TargetBookmarks> for BookmarksJson {
+impl From<&TargetBookmarks> for JsonBookmarks {
     fn from(target_bookmarks: &TargetBookmarks) -> Self {
-        let mut bookmarks = target_bookmarks.values().cloned().collect::<Vec<_>>();
+        let mut bookmarks = target_bookmarks
+            .values()
+            .map(JsonBookmark::from)
+            .collect::<Vec<_>>();
         bookmarks.sort_by(Self::compare);
-        BookmarksJson { bookmarks }
+        JsonBookmarks { bookmarks }
     }
 }
 
-impl IntoIterator for BookmarksJson {
-    type Item = TargetBookmark;
+impl IntoIterator for JsonBookmarks {
+    type Item = JsonBookmark;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -141,23 +206,23 @@ impl IntoIterator for BookmarksJson {
     }
 }
 
-pub struct BookmarksJsonIterator<'a> {
-    bookmarks_iter: Iter<'a, TargetBookmark>,
+pub struct JsonBookmarksIterator<'a> {
+    bookmarks_iter: Iter<'a, JsonBookmark>,
 }
 
-impl<'a> IntoIterator for &'a BookmarksJson {
-    type Item = &'a TargetBookmark;
-    type IntoIter = BookmarksJsonIterator<'a>;
+impl<'a> IntoIterator for &'a JsonBookmarks {
+    type Item = &'a JsonBookmark;
+    type IntoIter = JsonBookmarksIterator<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        BookmarksJsonIterator {
+        JsonBookmarksIterator {
             bookmarks_iter: self.bookmarks.iter(),
         }
     }
 }
 
-impl<'a> Iterator for BookmarksJsonIterator<'a> {
-    type Item = &'a TargetBookmark;
+impl<'a> Iterator for JsonBookmarksIterator<'a> {
+    type Item = &'a JsonBookmark;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.bookmarks_iter.next()

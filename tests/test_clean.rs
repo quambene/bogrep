@@ -1,7 +1,7 @@
 mod common;
 
 use assert_cmd::Command;
-use bogrep::{json, utils, BookmarksJson};
+use bogrep::{json, utils, JsonBookmarks};
 use std::{
     fs::{self, File},
     io::Write,
@@ -51,7 +51,7 @@ async fn test_clean() {
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let bookmarks = json::deserialize::<BookmarksJson>(&bookmarks).unwrap();
+    let bookmarks = json::deserialize::<JsonBookmarks>(&bookmarks).unwrap();
 
     for bookmark in &bookmarks {
         let cache_path = temp_path.join(format!("cache/{}.txt", bookmark.id));
@@ -122,7 +122,7 @@ async fn test_clean_all() {
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let bookmarks = json::deserialize::<BookmarksJson>(&bookmarks).unwrap();
+    let bookmarks = json::deserialize::<JsonBookmarks>(&bookmarks).unwrap();
 
     for bookmark in &bookmarks {
         let cache_file = temp_path.join(format!("cache/{}.txt", bookmark.id));

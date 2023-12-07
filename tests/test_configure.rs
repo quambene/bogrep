@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use bogrep::{json, utils, BookmarksJson, Settings};
+use bogrep::{json, utils, JsonBookmarks, Settings};
 use tempfile::tempdir;
 
 fn test_configure_source(source: &str) {
@@ -43,7 +43,7 @@ fn test_configure_source(source: &str) {
     assert!(!settings.sources.is_empty());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let res = json::deserialize::<BookmarksJson>(&bookmarks);
+    let res = json::deserialize::<JsonBookmarks>(&bookmarks);
     assert!(res.is_ok());
 
     let bookmarks = res.unwrap();
@@ -85,8 +85,8 @@ fn test_configure_ignored_urls() {
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    let url1 = "https://test_url1";
-    let url2 = "https://test_url2";
+    let url1 = "https://url1";
+    let url2 = "https://url2";
 
     println!("Execute 'bogrep config --ignore {url1} {url2}'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
