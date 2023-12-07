@@ -25,6 +25,7 @@ pub enum CacheMode {
     Html,
     #[default]
     Text,
+    Markdown,
 }
 
 impl fmt::Display for CacheMode {
@@ -32,6 +33,7 @@ impl fmt::Display for CacheMode {
         let cache_mode = match &self {
             CacheMode::Html => "html",
             CacheMode::Text => "text",
+            CacheMode::Markdown => "markdown",
         };
         write!(f, "{}", cache_mode)
     }
@@ -48,6 +50,7 @@ impl CacheMode {
         match self {
             Self::Html => "html",
             Self::Text => "txt",
+            Self::Markdown => "md",
         }
     }
 
@@ -55,6 +58,7 @@ impl CacheMode {
         match self {
             Self::Html => ".html",
             Self::Text => ".txt",
+            Self::Markdown => ".md",
         }
     }
 }
@@ -191,6 +195,7 @@ impl Caching for Cache {
         let content = match self.mode {
             CacheMode::Html => html,
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
+            CacheMode::Markdown => html::convert_to_markdown(&html),
         };
 
         if !cache_path.exists() {
@@ -215,6 +220,7 @@ impl Caching for Cache {
         let content = match self.mode {
             CacheMode::Html => html,
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
+            CacheMode::Markdown => html::convert_to_markdown(&html),
         };
 
         utils::write_file_async(&cache_path, content.as_bytes()).await?;
@@ -343,6 +349,7 @@ impl Caching for MockCache {
         let content = match self.mode {
             CacheMode::Html => html,
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
+            CacheMode::Markdown => html::convert_to_markdown(&html),
         };
         cache_map.insert(bookmark.id.clone(), content.clone());
 
@@ -361,6 +368,7 @@ impl Caching for MockCache {
         let content = match self.mode {
             CacheMode::Html => html,
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
+            CacheMode::Markdown => html::convert_to_markdown(&html),
         };
         cache_map.insert(bookmark.id.clone(), content.clone());
 
