@@ -292,7 +292,7 @@ mod tests {
     "bookmarks": [
         {
             "id": "a87f7024-a7f5-4f9c-8a71-f64880b2f275",
-            "url": "https://doc.rust-lang.org/book/title-page.html",
+            "url": "https://url1.com",
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
@@ -300,7 +300,7 @@ mod tests {
         },
         {
             "id": "511b1590-e6de-4989-bca4-96dc61730508",
-            "url": "https://www.deepl.com/translator",
+            "url": "https://url2.com",
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
@@ -317,19 +317,18 @@ mod tests {
     fn test_update() {
         let now = Utc::now();
 
-        let url1 = "https://www.deepl.com/translator";
-        let url2 =
-            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/";
-        let url3 = "https://en.wikipedia.org/wiki/Design_Patterns";
-        let url4 = "https://doc.rust-lang.org/book/title-page.html";
+        let url1 = "https://url1.com";
+        let url2 = "https://url2.com";
+        let url3 = "https://url3.com";
+        let url4 = "https://url4.com";
+        let url5 = "https://url5.com";
 
-        let expected_bookmarks = HashMap::from_iter([
+        let source_bookmarks = SourceBookmarks::new(HashMap::from_iter([
             (url1.to_owned(), SourceBookmarkBuilder::new(url1).build()),
             (url2.to_owned(), SourceBookmarkBuilder::new(url2).build()),
             (url3.to_owned(), SourceBookmarkBuilder::new(url3).build()),
             (url4.to_owned(), SourceBookmarkBuilder::new(url4).build()),
-        ]);
-        let source_bookmarks = SourceBookmarks::new(expected_bookmarks.clone());
+        ]));
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.to_owned(),
@@ -343,9 +342,20 @@ mod tests {
                 ),
             ),
             (
-                url2.to_owned(),
+                url3.to_owned(),
                 TargetBookmark::new(
-                    url2,
+                    url3,
+                    now,
+                    None,
+                    HashSet::new(),
+                    HashSet::new(),
+                    Action::None,
+                ),
+            ),
+            (
+                url5.to_owned(),
+                TargetBookmark::new(
+                    url5,
                     now,
                     None,
                     HashSet::new(),
@@ -356,10 +366,11 @@ mod tests {
         ]));
         let res = target_bookmarks.update(&source_bookmarks);
         assert!(res.is_ok());
-        assert_eq!(
-            target_bookmarks.keys().collect::<HashSet<_>>(),
-            expected_bookmarks.keys().collect(),
-        );
+        assert_eq!(target_bookmarks.get(url1).unwrap().action, Action::None);
+        assert_eq!(target_bookmarks.get(url2).unwrap().action, Action::Add);
+        assert_eq!(target_bookmarks.get(url3).unwrap().action, Action::None);
+        assert_eq!(target_bookmarks.get(url4).unwrap().action, Action::Add);
+        assert_eq!(target_bookmarks.get(url5).unwrap().action, Action::Remove);
     }
 
     #[test]
@@ -374,10 +385,10 @@ mod tests {
             target_bookmarks,
             TargetBookmarks::new(HashMap::from_iter([
                 (
-                    String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    String::from("https://url1.com"),
                     TargetBookmark {
                         id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
-                        url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                        url: String::from("https://url1.com"),
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
@@ -386,10 +397,10 @@ mod tests {
                     }
                 ),
                 (
-                    String::from("https://www.deepl.com/translator"),
+                    String::from("https://url2.com"),
                     TargetBookmark {
                         id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
-                        url: String::from("https://www.deepl.com/translator"),
+                        url: String::from("https://url2.com"),
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
@@ -416,10 +427,10 @@ mod tests {
     fn test_write_target_bookmarks() {
         let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
-                String::from("https://doc.rust-lang.org/book/title-page.html"),
+                String::from("https://url1.com"),
                 TargetBookmark {
                     id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
-                    url: String::from("https://doc.rust-lang.org/book/title-page.html"),
+                    url: String::from("https://url1.com"),
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
@@ -428,10 +439,10 @@ mod tests {
                 },
             ),
             (
-                String::from("https://www.deepl.com/translator"),
+                String::from("https://url2.com"),
                 TargetBookmark {
                     id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
-                    url: String::from("https://www.deepl.com/translator"),
+                    url: String::from("https://url2.com"),
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
