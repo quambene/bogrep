@@ -4,6 +4,7 @@
 
 - added
   - Add `action` to `TargetBookmark`
+  - Add benchmarks for fetching
 
 ### v0.6.1
 
