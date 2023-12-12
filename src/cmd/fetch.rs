@@ -3,7 +3,8 @@ use crate::{
     bookmarks::Action,
     cache::CacheMode,
     errors::BogrepError,
-    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, SourceType, TargetBookmark,
+    TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
@@ -22,61 +23,20 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
-    if args.urls.is_empty() {
-        fetch_bookmarks(
-            &client,
-            &cache,
-            &mut target_reader,
-            &mut target_writer,
-            config.settings.max_concurrent_requests,
-            args.all,
-        )
-        .await?;
-    } else {
-        fetch_urls(
-            &args.urls,
-            &client,
-            &cache,
-            &mut target_reader,
-            &mut target_writer,
-        )
-        .await?;
-    }
+    fetch_bookmarks(
+        &client,
+        &cache,
+        &mut target_reader,
+        &mut target_writer,
+        config.settings.max_concurrent_requests,
+        args,
+    )
+    .await?;
 
     utils::close_and_rename(
         (target_writer, &config.target_bookmark_lock_file),
         (target_reader, &config.target_bookmark_file),
     )?;
-
-    Ok(())
-}
-
-pub async fn fetch_urls(
-    urls: &[String],
-    client: &impl Fetch,
-    cache: &impl Caching,
-    target_reader: &mut impl ReadTarget,
-    target_writer: &mut impl WriteTarget,
-) -> Result<(), anyhow::Error> {
-    let now = Utc::now();
-    let mut target_bookmarks = TargetBookmarks::default();
-    target_reader.read(&mut target_bookmarks)?;
-
-    for url in urls {
-        let mut bookmark = TargetBookmark::new(
-            url,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Action::Fetch,
-        );
-        fetch_and_cache_bookmark(client, cache, &mut bookmark).await?;
-        println!("Fetched website for {url}");
-        target_bookmarks.insert(bookmark);
-    }
-
-    target_writer.write(&target_bookmarks)?;
 
     Ok(())
 }
@@ -87,7 +47,7 @@ pub async fn fetch_bookmarks(
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
     max_concurrent_requests: usize,
-    fetch_all: bool,
+    args: &FetchArgs,
 ) -> Result<(), anyhow::Error> {
     let mut target_bookmarks = TargetBookmarks::default();
     target_reader.read(&mut target_bookmarks)?;
@@ -97,7 +57,25 @@ pub async fn fetch_bookmarks(
         target_bookmarks.reset_cache_status();
     }
 
-    if fetch_all {
+    if !args.urls.is_empty() {
+        target_bookmarks.set_action(&Action::None);
+
+        let now = Utc::now();
+        let mut sources = HashSet::new();
+        sources.insert(SourceType::Internal);
+
+        for url in &args.urls {
+            let bookmark = TargetBookmark::new(
+                url,
+                now,
+                None,
+                sources.clone(),
+                HashSet::new(),
+                Action::Fetch,
+            );
+            target_bookmarks.insert(bookmark);
+        }
+    } else if args.all {
         target_bookmarks.set_action(&Action::Fetch);
     } else {
         target_bookmarks.set_action(&Action::Add);
@@ -567,5 +545,12 @@ mod tests {
                 )
             ])
         );
+    }
+
+    #[tokio::test]
+    async fn test_fetch_bookmarks_urls() {
+        // TODO: test fetch_bookmarks with args.urls and check
+        // SourceType::Internal for Action::Add
+        todo!()
     }
 }
