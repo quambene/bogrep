@@ -193,7 +193,7 @@ async fn test_fetch_empty_cache() {
     }
 
     let cache_dir = temp_path.join("cache");
-    let entries = fs::read_dir(&cache_dir);
+    let entries = fs::read_dir(cache_dir);
     assert!(entries.is_ok_and(|mut file| file.next().is_none()));
 
     println!("Execute 'bogrep fetch'");

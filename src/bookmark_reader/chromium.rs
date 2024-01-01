@@ -60,7 +60,7 @@ impl Chromium {
                 }
             }
             Value::Array(arr) => {
-                for (_index, val) in arr.iter().enumerate() {
+                for val in arr {
                     Self::traverse_json(val, source_bookmarks, source);
                 }
             }
@@ -81,7 +81,7 @@ impl Chromium {
                 }
             }
             Value::Array(arr) => {
-                for (_index, val) in arr.iter().enumerate() {
+                for val in arr {
                     Self::traverse_children(val, source_bookmarks, source);
                 }
             }
