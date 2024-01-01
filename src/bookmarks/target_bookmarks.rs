@@ -141,6 +141,7 @@ impl TargetBookmarks {
                 let url = entry.key().clone();
                 let target_bookmark = entry.into_mut();
                 debug!("Overwrite duplicate target bookmark: {}", url);
+                // TODO: use existing bookmark id and bookmark urls
                 *target_bookmark = bookmark;
             }
             Entry::Vacant(entry) => {
