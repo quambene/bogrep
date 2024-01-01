@@ -5,6 +5,8 @@
 - added
   - Add `action` to `TargetBookmark`
   - Add benchmarks for fetching
+- changed
+  - Update to rust 1.75
 
 ### v0.6.1
 
