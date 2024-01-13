@@ -44,6 +44,10 @@ impl TargetBookmark {
     pub fn set_action(&mut self, action: Action) {
         self.action = action;
     }
+
+    pub fn set_source(&mut self, source: SourceType) {
+        self.sources.insert(source);
+    }
 }
 
 impl From<JsonBookmark> for TargetBookmark {

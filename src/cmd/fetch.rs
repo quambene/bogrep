@@ -3,7 +3,8 @@ use crate::{
     bookmarks::Action,
     cache::CacheMode,
     errors::BogrepError,
-    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, SourceType, TargetBookmark,
+    TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
@@ -61,24 +62,27 @@ pub async fn fetch_bookmarks(
 
     if fetch_all {
         target_bookmarks.set_action(&Action::FetchAndReplace);
+    } else if !urls.is_empty() {
+        for url in urls {
+            if let Some(target_bookmark) = target_bookmarks.get_mut(url) {
+                target_bookmark.set_action(Action::FetchAndReplace);
+                target_bookmark.set_source(SourceType::Internal);
+            } else {
+                let mut sources = HashSet::new();
+                sources.insert(SourceType::Internal);
+                let target_bookmark = TargetBookmark::new(
+                    url,
+                    now,
+                    None,
+                    sources,
+                    HashSet::new(),
+                    Action::FetchAndReplace,
+                );
+                target_bookmarks.insert(target_bookmark);
+            }
+        }
     } else {
         target_bookmarks.set_action(&Action::FetchAndAdd);
-    }
-
-    for url in urls {
-        if let Some(target_bookmark) = target_bookmarks.get_mut(url) {
-            target_bookmark.set_action(Action::FetchAndReplace);
-        } else {
-            let target_bookmark = TargetBookmark::new(
-                url,
-                now,
-                None,
-                HashSet::new(),
-                HashSet::new(),
-                Action::FetchAndReplace,
-            );
-            target_bookmarks.insert(target_bookmark);
-        }
     }
 
     fetch_and_cache_bookmarks(
