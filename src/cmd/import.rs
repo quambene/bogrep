@@ -19,7 +19,12 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
-    import_source(source_reader, &mut target_reader, &mut target_writer)?;
+    import_source(
+        source_reader,
+        &mut target_reader,
+        &mut target_writer,
+        &config.settings.ignored_urls,
+    )?;
 
     utils::close_and_rename(
         (target_writer, &config.target_bookmark_lock_file),
@@ -33,6 +38,7 @@ fn import_source(
     mut source_reader: Vec<SourceReader>,
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
+    ignored_urls: &[String],
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
@@ -41,10 +47,12 @@ fn import_source(
     }
 
     let mut target_bookmarks = TargetBookmarks::default();
-
     target_reader.read(&mut target_bookmarks)?;
+
     target_bookmarks.update(&source_bookmarks)?;
+    target_bookmarks.ignore_urls(ignored_urls);
     target_bookmarks.clean_up();
+
     target_writer.write(&target_bookmarks)?;
 
     log_import(&source_reader, &target_bookmarks);
@@ -99,9 +107,15 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
+        let ignored_urls = vec![];
 
         let source_reader = SourceReader::init(source).unwrap();
-        let res = import_source(vec![source_reader], &mut target_reader, &mut target_writer);
+        let res = import_source(
+            vec![source_reader],
+            &mut target_reader,
+            &mut target_writer,
+            &ignored_urls,
+        );
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.into_inner();
@@ -136,8 +150,14 @@ mod tests {
             Box::new(source_reader_writer.clone()),
             Box::new(bookmark_reader),
         );
+        let ignored_urls = vec![];
 
-        let res = import_source(vec![source_reader], target_reader, target_writer);
+        let res = import_source(
+            vec![source_reader],
+            target_reader,
+            target_writer,
+            &ignored_urls,
+        );
 
         let actual = target_writer.get_ref();
         let actual_bookmarks = json::deserialize::<JsonBookmarks>(actual);
