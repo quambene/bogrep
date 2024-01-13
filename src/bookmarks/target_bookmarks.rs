@@ -40,6 +40,10 @@ impl TargetBookmark {
             action,
         }
     }
+
+    pub fn set_action(&mut self, action: Action) {
+        self.action = action;
+    }
 }
 
 impl From<JsonBookmark> for TargetBookmark {
@@ -141,8 +145,13 @@ impl TargetBookmarks {
                 let url = entry.key().clone();
                 let target_bookmark = entry.into_mut();
                 debug!("Overwrite duplicate target bookmark: {}", url);
-                // TODO: use existing bookmark id and bookmark urls
-                *target_bookmark = bookmark;
+
+                // We are keeping the existing id and url, but overwriting all other fields.
+                target_bookmark.last_imported = bookmark.last_imported;
+                target_bookmark.last_cached = bookmark.last_cached;
+                target_bookmark.sources = bookmark.sources;
+                target_bookmark.cache_modes = bookmark.cache_modes;
+                target_bookmark.action = bookmark.action;
             }
             Entry::Vacant(entry) => {
                 entry.insert(bookmark);
@@ -214,7 +223,7 @@ impl TargetBookmarks {
                 None,
                 bookmark.sources.to_owned(),
                 HashSet::new(),
-                Action::Add,
+                Action::FetchAndAdd,
             );
             self.insert(target_bookmark);
         }
@@ -368,9 +377,15 @@ mod tests {
         let res = target_bookmarks.update(&source_bookmarks);
         assert!(res.is_ok());
         assert_eq!(target_bookmarks.get(url1).unwrap().action, Action::None);
-        assert_eq!(target_bookmarks.get(url2).unwrap().action, Action::Add);
+        assert_eq!(
+            target_bookmarks.get(url2).unwrap().action,
+            Action::FetchAndAdd
+        );
         assert_eq!(target_bookmarks.get(url3).unwrap().action, Action::None);
-        assert_eq!(target_bookmarks.get(url4).unwrap().action, Action::Add);
+        assert_eq!(
+            target_bookmarks.get(url4).unwrap().action,
+            Action::FetchAndAdd
+        );
         assert_eq!(target_bookmarks.get(url5).unwrap().action, Action::Remove);
     }
 

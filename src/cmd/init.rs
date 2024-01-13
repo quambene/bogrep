@@ -62,7 +62,7 @@ async fn init_bookmarks(
 
     let mut target_bookmarks = TargetBookmarks::from(source_bookmarks);
 
-    target_bookmarks.set_action(&Action::Add);
+    target_bookmarks.set_action(&Action::FetchAndAdd);
 
     println!(
         "Imported {} bookmarks from {} sources: {}",

@@ -63,7 +63,8 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
         "Imported {} bookmarks from {} {source}: {}",
         target_bookmarks
             .values()
-            .filter(|bookmark| bookmark.action == Action::Fetch || bookmark.action == Action::Add)
+            .filter(|bookmark| bookmark.action == Action::FetchAndReplace
+                || bookmark.action == Action::FetchAndAdd)
             .collect::<Vec<_>>()
             .len(),
         source_reader.len(),

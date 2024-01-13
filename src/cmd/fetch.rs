@@ -22,61 +22,21 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
-    if args.urls.is_empty() {
-        fetch_bookmarks(
-            &client,
-            &cache,
-            &mut target_reader,
-            &mut target_writer,
-            config.settings.max_concurrent_requests,
-            args.all,
-        )
-        .await?;
-    } else {
-        fetch_urls(
-            &args.urls,
-            &client,
-            &cache,
-            &mut target_reader,
-            &mut target_writer,
-        )
-        .await?;
-    }
+    fetch_bookmarks(
+        &client,
+        &cache,
+        &mut target_reader,
+        &mut target_writer,
+        config.settings.max_concurrent_requests,
+        args.all,
+        &args.urls,
+    )
+    .await?;
 
     utils::close_and_rename(
         (target_writer, &config.target_bookmark_lock_file),
         (target_reader, &config.target_bookmark_file),
     )?;
-
-    Ok(())
-}
-
-pub async fn fetch_urls(
-    urls: &[String],
-    client: &impl Fetch,
-    cache: &impl Caching,
-    target_reader: &mut impl ReadTarget,
-    target_writer: &mut impl WriteTarget,
-) -> Result<(), anyhow::Error> {
-    let now = Utc::now();
-    let mut target_bookmarks = TargetBookmarks::default();
-    target_reader.read(&mut target_bookmarks)?;
-
-    for url in urls {
-        let mut bookmark = TargetBookmark::new(
-            url,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Action::Fetch,
-        );
-        fetch_and_cache_bookmark(client, cache, &mut bookmark).await?;
-        println!("Fetched website for {url}");
-        target_bookmarks.insert(bookmark);
-    }
-
-    target_writer.write(&target_bookmarks)?;
 
     Ok(())
 }
@@ -88,7 +48,9 @@ pub async fn fetch_bookmarks(
     target_writer: &mut impl WriteTarget,
     max_concurrent_requests: usize,
     fetch_all: bool,
+    urls: &[String],
 ) -> Result<(), anyhow::Error> {
+    let now = Utc::now();
     let mut target_bookmarks = TargetBookmarks::default();
     target_reader.read(&mut target_bookmarks)?;
 
@@ -98,9 +60,25 @@ pub async fn fetch_bookmarks(
     }
 
     if fetch_all {
-        target_bookmarks.set_action(&Action::Fetch);
+        target_bookmarks.set_action(&Action::FetchAndReplace);
     } else {
-        target_bookmarks.set_action(&Action::Add);
+        target_bookmarks.set_action(&Action::FetchAndAdd);
+    }
+
+    for url in urls {
+        if let Some(target_bookmark) = target_bookmarks.get_mut(url) {
+            target_bookmark.set_action(Action::FetchAndReplace);
+        } else {
+            let target_bookmark = TargetBookmark::new(
+                url,
+                now,
+                None,
+                HashSet::new(),
+                HashSet::new(),
+                Action::FetchAndReplace,
+            );
+            target_bookmarks.insert(target_bookmark);
+        }
     }
 
     fetch_and_cache_bookmarks(
@@ -215,13 +193,13 @@ async fn fetch_and_cache_bookmark(
     bookmark: &mut TargetBookmark,
 ) -> Result<(), BogrepError> {
     match bookmark.action {
-        Action::Fetch => {
+        Action::FetchAndReplace => {
             let website = client.fetch(bookmark).await?;
             trace!("Fetched website: {website}");
             let html = html::filter_html(&website)?;
             cache.replace(html, bookmark).await?;
         }
-        Action::Add => {
+        Action::FetchAndAdd => {
             if !cache.exists(bookmark) {
                 let website = client.fetch(bookmark).await?;
                 trace!("Fetched website: {website}");
@@ -310,7 +288,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
             (
@@ -322,7 +300,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
         ]));
@@ -374,7 +352,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
             (
@@ -386,7 +364,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
         ]));
@@ -438,7 +416,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
             (
@@ -450,7 +428,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
         ]));
@@ -512,7 +490,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
             (
@@ -524,7 +502,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
         ]));
