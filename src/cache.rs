@@ -76,7 +76,6 @@ pub trait Caching {
     fn exists(&self, bookmark: &TargetBookmark) -> bool;
 
     /// Open the cached file for a bookmark.
-    // TODO: return `Result<Option<impl Read>, anyhow::Error>` (see <https://github.com/rust-lang/rust/issues/91611>).
     fn open(&self, bookmark: &TargetBookmark) -> Result<Option<impl Read>, BogrepError>;
 
     /// Get the content of a bookmark from cache.
