@@ -7,6 +7,7 @@
   - Add benchmarks for fetching
 - changed
   - Update to rust 1.75
+  - Fix duplicate cache files for `bogrep fetch --urls`
 
 ### v0.6.1
 
