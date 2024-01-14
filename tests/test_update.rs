@@ -8,7 +8,6 @@ use std::{
 use tempfile::tempdir;
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_update() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;

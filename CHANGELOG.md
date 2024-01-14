@@ -9,6 +9,8 @@
 - changed
   - Update to rust 1.75
   - Fix duplicate cache files for `bogrep fetch --urls`
+- removed
+  - Remove `integration-test` feature
 
 ### v0.6.1
 

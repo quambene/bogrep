@@ -39,7 +39,6 @@ fn test_import(source: &str, temp_path: &Path) {
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_simple() {
     let source = "./test_data/bookmarks_simple.txt";
     let temp_dir = tempdir().unwrap();
@@ -50,7 +49,6 @@ fn test_import_simple() {
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox() {
     let source = "./test_data/bookmarks_firefox.json";
     let temp_dir = tempdir().unwrap();
@@ -61,7 +59,6 @@ fn test_import_firefox() {
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_compressed() {
     let source = "./test_data/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source));
@@ -73,7 +70,6 @@ fn test_import_firefox_compressed() {
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_bookmark_folder_ubuntu() {
     let source_path = "./test_data/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source_path));
@@ -91,7 +87,6 @@ fn test_import_firefox_bookmark_folder_ubuntu() {
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_firefox_bookmark_folder_macos() {
     let source_path = "./test_data/bookmarks_firefox.jsonlz4";
     test_utils::create_compressed_bookmarks(Path::new(source_path));
@@ -109,7 +104,6 @@ fn test_import_firefox_bookmark_folder_macos() {
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_chrome() {
     let source = "./test_data/bookmarks_chromium.json";
     let temp_dir = tempdir().unwrap();
@@ -121,7 +115,6 @@ fn test_import_chrome() {
 
 // Test renaming of `bookmarks-lock.json` to `bookmarks.json`.
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_import_consecutive() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();

@@ -9,7 +9,6 @@ use std::{
 use tempfile::tempdir;
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_search_case_sensitive() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
@@ -67,7 +66,6 @@ async fn test_search_case_sensitive() {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_search_case_insensitive() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
@@ -125,7 +123,6 @@ async fn test_search_case_insensitive() {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_search_no_content() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
