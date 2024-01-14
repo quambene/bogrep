@@ -108,6 +108,7 @@ pub fn convert_to_markdown(html: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use scraper::{Html, Selector};
 
     fn filter_whitespaces(html: impl Into<String>) -> String {
         html.into()
@@ -233,5 +234,39 @@ mod tests {
         let markdown = convert_to_markdown(html);
         // TODO: fix superfluous backslashes
         assert_eq!(markdown.replace('\\', ""), expected_markdown);
+    }
+
+    #[test]
+    fn test_select_underlying_link_hacker_news() {
+        let html = r#"
+            <html>
+
+            <head>
+                <title>title_content</title>
+                <meta>
+                <script>script_content_1</script>
+            </head>
+
+            <body>
+                <td class="title">
+                    <span class="titleline">
+                        <a href="https://github.com/quambene/bogrep">Bogrep – Grep Your Bookmarks</a>
+                        <span class="sitebit comhead"> (<a href="from?site=github.com/quambene">
+                                <span class="sitestr">github.com/quambene</span></a>)
+                        </span>
+                    </span>
+                </td>
+            </body>
+
+            </html>
+        "#;
+        let document = Html::parse_document(html);
+        let span_selector = Selector::parse("span.titleline").unwrap();
+        let a_selector = Selector::parse("a").unwrap();
+        let span = document.select(&span_selector).collect::<Vec<_>>()[0];
+        let a = span.select(&a_selector).collect::<Vec<_>>()[0];
+
+        let underlying_link = a.attr("href").unwrap();
+        assert_eq!(underlying_link, "https://github.com/quambene/bogrep");
     }
 }
