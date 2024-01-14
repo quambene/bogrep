@@ -6,7 +6,7 @@ use crate::{
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, SourceType, TargetBookmark,
     TargetBookmarks,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
@@ -60,6 +60,31 @@ pub async fn fetch_bookmarks(
         target_bookmarks.reset_cache_status();
     }
 
+    set_actions(&mut target_bookmarks, now, fetch_all, urls);
+
+    process_bookmarks(
+        client,
+        cache,
+        target_bookmarks.values_mut().collect(),
+        max_concurrent_requests,
+    )
+    .await?;
+
+    trace!("Fetched bookmarks: {target_bookmarks:#?}");
+
+    // Write bookmarks with updated timestamps.
+    target_writer.write(&target_bookmarks)?;
+
+    Ok(())
+}
+
+/// Set actions for bookmarks.
+pub fn set_actions(
+    target_bookmarks: &mut TargetBookmarks,
+    now: DateTime<Utc>,
+    fetch_all: bool,
+    urls: &[String],
+) {
     if fetch_all {
         target_bookmarks.set_action(&Action::FetchAndReplace);
     } else if !urls.is_empty() {
@@ -84,21 +109,6 @@ pub async fn fetch_bookmarks(
     } else {
         target_bookmarks.set_action(&Action::FetchAndAdd);
     }
-
-    process_bookmarks(
-        client,
-        cache,
-        target_bookmarks.values_mut().collect(),
-        max_concurrent_requests,
-    )
-    .await?;
-
-    trace!("Fetched bookmarks: {target_bookmarks:#?}");
-
-    // Write bookmarks with updated timestamps.
-    target_writer.write(&target_bookmarks)?;
-
-    Ok(())
 }
 
 /// Process bookmarks for all actions except [`Action::None`].
