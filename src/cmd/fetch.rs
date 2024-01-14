@@ -564,11 +564,4 @@ mod tests {
             ])
         );
     }
-
-    #[tokio::test]
-    async fn test_fetch_bookmarks_urls() {
-        // TODO: test fetch_bookmarks with args.urls and check
-        // SourceType::Internal for Action::Add
-        todo!()
-    }
 }
