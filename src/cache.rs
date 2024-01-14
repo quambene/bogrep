@@ -76,8 +76,7 @@ pub trait Caching {
     fn exists(&self, bookmark: &TargetBookmark) -> bool;
 
     /// Open the cached file for a bookmark.
-    // TODO: return `Result<Option<impl Read>, anyhow::Error>` (see <https://github.com/rust-lang/rust/issues/91611>).
-    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, BogrepError>;
+    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<impl Read>, BogrepError>;
 
     /// Get the content of a bookmark from cache.
     // TODO: make get async
@@ -153,7 +152,7 @@ impl Caching for Cache {
         bookmark.cache_modes.contains(self.mode())
     }
 
-    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<File>, BogrepError> {
+    fn open(&self, bookmark: &TargetBookmark) -> Result<Option<impl Read>, BogrepError> {
         let cache_path = self.bookmark_path(&bookmark.id);
         debug!("Open website: {}", cache_path.display());
 
@@ -322,8 +321,8 @@ impl Caching for MockCache {
         self.get(bookmark).unwrap().is_some()
     }
 
-    fn open(&self, _bookmark: &TargetBookmark) -> Result<Option<File>, BogrepError> {
-        Ok(None)
+    fn open(&self, _bookmark: &TargetBookmark) -> Result<Option<impl Read>, BogrepError> {
+        Ok(None::<File>)
     }
 
     fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError> {

@@ -9,7 +9,6 @@ use std::{
 use tempfile::tempdir;
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_fetch() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
@@ -69,7 +68,6 @@ async fn test_fetch() {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_fetch_diff() {
     let mock_server = common::start_mock_server().await;
     let mock_website_1 = common::mount_mock_scoped(&mock_server, 1, 10).await;
@@ -131,7 +129,6 @@ async fn test_fetch_diff() {
 // Test fetching if the cache directory was removed manually, leading to
 // inconsistent state as the target bookmarks are still marked as last cached.
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_fetch_empty_cache() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
@@ -193,7 +190,7 @@ async fn test_fetch_empty_cache() {
     }
 
     let cache_dir = temp_path.join("cache");
-    let entries = fs::read_dir(&cache_dir);
+    let entries = fs::read_dir(cache_dir);
     assert!(entries.is_ok_and(|mut file| file.next().is_none()));
 
     println!("Execute 'bogrep fetch'");

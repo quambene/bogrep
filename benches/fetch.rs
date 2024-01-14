@@ -1,6 +1,6 @@
 use bogrep::{
-    cmd, errors::BogrepError, html, Cache, CacheMode, Caching, Fetch, MockClient, TargetBookmark,
-    TargetBookmarks,
+    cmd, errors::BogrepError, html, Action, Cache, CacheMode, Caching, Fetch, MockClient,
+    TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -68,7 +68,7 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
                 None,
                 HashSet::new(),
                 HashSet::new(),
-                bogrep::Action::Fetch,
+                bogrep::Action::FetchAndReplace,
             ),
         );
     }
@@ -76,7 +76,7 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
     let mut bookmarks = TargetBookmarks::new(bookmarks);
     assert_eq!(bookmarks.len(), 10000);
 
-    cmd::fetch_and_cache_bookmarks(
+    cmd::process_bookmarks(
         &client,
         &cache,
         bookmarks.values_mut().collect(),
@@ -110,7 +110,7 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
                 None,
                 HashSet::new(),
                 HashSet::new(),
-                bogrep::Action::Fetch,
+                Action::FetchAndReplace,
             ),
         );
     }
@@ -124,12 +124,12 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
     let client = Arc::new(client);
     let cache = Arc::new(cache);
 
-    fetch_and_cache_bookmarks_in_parallel(client, cache, &bookmarks, max_parallel_requests, true)
+    process_bookmarks_in_parallel(client, cache, &bookmarks, max_parallel_requests, true)
         .await
         .unwrap();
 }
 
-pub async fn fetch_and_cache_bookmarks_in_parallel(
+pub async fn process_bookmarks_in_parallel(
     client: Arc<impl Fetch + Send + Sync + 'static>,
     cache: Arc<impl Caching + Send + Sync + 'static>,
     bookmarks: &[Arc<Mutex<TargetBookmark>>],

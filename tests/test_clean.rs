@@ -9,7 +9,6 @@ use std::{
 use tempfile::tempdir;
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_clean() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
@@ -79,7 +78,6 @@ async fn test_clean() {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 async fn test_clean_all() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;

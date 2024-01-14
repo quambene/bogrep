@@ -60,7 +60,7 @@ async fn update_bookmarks(
 
     target_bookmarks.update(&source_bookmarks)?;
 
-    cmd::fetch_and_cache_bookmarks(
+    cmd::process_bookmarks(
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -108,7 +108,7 @@ mod tests {
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Html]),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 }),("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
@@ -117,7 +117,7 @@ mod tests {
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Html]),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 }),
             ]),
             );
@@ -232,7 +232,7 @@ mod tests {
             last_cached: Some(now.timestamp_millis()),
             sources: HashSet::new(),
             cache_modes: HashSet::from_iter([CacheMode::Text]),
-            action: Action::Add,
+            action: Action::FetchAndAdd,
         }), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark {
             id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
             url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
@@ -240,7 +240,7 @@ mod tests {
             last_cached: Some(now.timestamp_millis()),
             sources: HashSet::new(),
             cache_modes: HashSet::from_iter([CacheMode::Text]),
-            action: Action::Add,
+            action: Action::FetchAndAdd,
         })]));
         for url in &expected_bookmarks {
             client

@@ -48,15 +48,15 @@ jobs:
     steps:
         - uses: actions/checkout@v4
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo test
-          run: cargo test --locked
+        - name: cargo test --lib
+          run: cargo test --lib --locked
   integration-test:
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v4
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo test --test '*' --features integration-test
-          run: cargo test --locked --test '*' --features integration-test
+        - name: cargo test --test '*'
+          run: cargo test --test '*' --locked
   os-test:
     runs-on: ${{ matrix.os }}
     name: os-test / ${{ matrix.os }}
@@ -67,10 +67,10 @@ jobs:
     steps:
         - uses: actions/checkout@v4
         - uses: dtolnay/rust-toolchain@stable
-        - name: cargo test
-          run: cargo test --locked
-        - name: cargo test --test '*' --features integration-test
-          run: cargo test --locked --test '*' --features integration-test
+        - name: cargo test --lib
+          run: cargo test --lib --locked
+        - name: cargo test --test '*'
+          run: cargo test --test '*' --locked
   doc-test:
     runs-on: ubuntu-latest
     steps:
