@@ -9,6 +9,7 @@
 - changed
   - Update to rust 1.75
   - Fix duplicate cache files for `bogrep fetch --urls`
+  - Fix report of processed bookmarks
 - removed
   - Remove `integration-test` feature
 

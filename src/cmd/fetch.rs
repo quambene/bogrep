@@ -85,7 +85,7 @@ pub async fn fetch_bookmarks(
         target_bookmarks.set_action(&Action::FetchAndAdd);
     }
 
-    fetch_and_cache_bookmarks(
+    process_bookmarks(
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -101,13 +101,17 @@ pub async fn fetch_bookmarks(
     Ok(())
 }
 
-/// Fetch all bookmarks and add them to cache.
-pub async fn fetch_and_cache_bookmarks(
+/// Process bookmarks for all actions except [`Action::None`].
+pub async fn process_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: Vec<&mut TargetBookmark>,
     max_concurrent_requests: usize,
 ) -> Result<(), BogrepError> {
+    let bookmarks = bookmarks
+        .into_iter()
+        .filter(|bookmark| bookmark.action != Action::None)
+        .collect::<Vec<_>>();
     let mut processed = 0;
     let mut cached = 0;
     let mut failed_response = 0;
@@ -318,7 +322,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -382,7 +386,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -454,7 +458,7 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -528,7 +532,7 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),

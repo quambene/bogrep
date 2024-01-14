@@ -1,7 +1,7 @@
 use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     cache::CacheMode,
-    cmd::fetch_and_cache_bookmarks,
+    cmd::process_bookmarks,
     utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks,
     TargetBookmarks,
 };
@@ -75,7 +75,7 @@ async fn init_bookmarks(
             .join(", ")
     );
 
-    fetch_and_cache_bookmarks(
+    process_bookmarks(
         client,
         cache,
         target_bookmarks.values_mut().collect(),

@@ -60,7 +60,7 @@ async fn update_bookmarks(
 
     target_bookmarks.update(&source_bookmarks)?;
 
-    cmd::fetch_and_cache_bookmarks(
+    cmd::process_bookmarks(
         client,
         cache,
         target_bookmarks.values_mut().collect(),
