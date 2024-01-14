@@ -51,35 +51,30 @@ fn test_configure_source(source: &str) {
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_source_simple() {
     let source = "./test_data/bookmarks_simple.txt";
     test_configure_source(source);
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_source_firefox() {
     let source = "./test_data/bookmarks_firefox.json";
     test_configure_source(source);
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_source_chrome() {
     let source = "./test_data/bookmarks_chromium.json";
     test_configure_source(source);
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_source_chrome_no_extension() {
     let source = "./test_data/bookmarks_chromium_no_extension";
     test_configure_source(source);
 }
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_configure_ignored_urls() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();

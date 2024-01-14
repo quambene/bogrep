@@ -250,12 +250,12 @@ You can configure the configuration path via the environment variable
 ## Testing
 
 ``` bash
-# Run unit tests
+# Run unit tests and integration tests
 cargo test
 
-# Run integration tests
-cargo test --test '*' --features integration-test
+# Run unit tests
+cargo test --lib
 
-# Run unit and integration tests
-cargo test --features integration-test
+# Run integration tests
+cargo test --test '*'
 ```

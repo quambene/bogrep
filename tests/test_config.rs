@@ -3,7 +3,6 @@ use std::env;
 use tempfile::tempdir;
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_config() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();

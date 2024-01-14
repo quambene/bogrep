@@ -12,9 +12,6 @@ categories = ["command-line-utilities", "text-processing"]
 readme = "README.md"
 license = "Apache-2.0"
 
-[features]
-integration-test = []
-
 [[bench]]
 name = "fetch"
 harness = false

@@ -4,7 +4,6 @@ use predicates::str;
 use tempfile::tempdir;
 
 #[test]
-#[cfg_attr(not(feature = "integration-test"), ignore)]
 fn test_remove() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();

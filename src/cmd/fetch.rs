@@ -3,7 +3,8 @@ use crate::{
     bookmarks::Action,
     cache::CacheMode,
     errors::BogrepError,
-    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmark, TargetBookmarks,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, SourceType, TargetBookmark,
+    TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
@@ -22,61 +23,21 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
 
-    if args.urls.is_empty() {
-        fetch_bookmarks(
-            &client,
-            &cache,
-            &mut target_reader,
-            &mut target_writer,
-            config.settings.max_concurrent_requests,
-            args.all,
-        )
-        .await?;
-    } else {
-        fetch_urls(
-            &args.urls,
-            &client,
-            &cache,
-            &mut target_reader,
-            &mut target_writer,
-        )
-        .await?;
-    }
+    fetch_bookmarks(
+        &client,
+        &cache,
+        &mut target_reader,
+        &mut target_writer,
+        config.settings.max_concurrent_requests,
+        args.all,
+        &args.urls,
+    )
+    .await?;
 
     utils::close_and_rename(
         (target_writer, &config.target_bookmark_lock_file),
         (target_reader, &config.target_bookmark_file),
     )?;
-
-    Ok(())
-}
-
-pub async fn fetch_urls(
-    urls: &[String],
-    client: &impl Fetch,
-    cache: &impl Caching,
-    target_reader: &mut impl ReadTarget,
-    target_writer: &mut impl WriteTarget,
-) -> Result<(), anyhow::Error> {
-    let now = Utc::now();
-    let mut target_bookmarks = TargetBookmarks::default();
-    target_reader.read(&mut target_bookmarks)?;
-
-    for url in urls {
-        let mut bookmark = TargetBookmark::new(
-            url,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Action::Fetch,
-        );
-        fetch_and_cache_bookmark(client, cache, &mut bookmark).await?;
-        println!("Fetched website for {url}");
-        target_bookmarks.insert(bookmark);
-    }
-
-    target_writer.write(&target_bookmarks)?;
 
     Ok(())
 }
@@ -88,7 +49,9 @@ pub async fn fetch_bookmarks(
     target_writer: &mut impl WriteTarget,
     max_concurrent_requests: usize,
     fetch_all: bool,
+    urls: &[String],
 ) -> Result<(), anyhow::Error> {
+    let now = Utc::now();
     let mut target_bookmarks = TargetBookmarks::default();
     target_reader.read(&mut target_bookmarks)?;
 
@@ -98,12 +61,31 @@ pub async fn fetch_bookmarks(
     }
 
     if fetch_all {
-        target_bookmarks.set_action(&Action::Fetch);
+        target_bookmarks.set_action(&Action::FetchAndReplace);
+    } else if !urls.is_empty() {
+        for url in urls {
+            if let Some(target_bookmark) = target_bookmarks.get_mut(url) {
+                target_bookmark.set_action(Action::FetchAndReplace);
+                target_bookmark.set_source(SourceType::Internal);
+            } else {
+                let mut sources = HashSet::new();
+                sources.insert(SourceType::Internal);
+                let target_bookmark = TargetBookmark::new(
+                    url,
+                    now,
+                    None,
+                    sources,
+                    HashSet::new(),
+                    Action::FetchAndReplace,
+                );
+                target_bookmarks.insert(target_bookmark);
+            }
+        }
     } else {
-        target_bookmarks.set_action(&Action::Add);
+        target_bookmarks.set_action(&Action::FetchAndAdd);
     }
 
-    fetch_and_cache_bookmarks(
+    process_bookmarks(
         client,
         cache,
         target_bookmarks.values_mut().collect(),
@@ -119,13 +101,17 @@ pub async fn fetch_bookmarks(
     Ok(())
 }
 
-/// Fetch all bookmarks and add them to cache.
-pub async fn fetch_and_cache_bookmarks(
+/// Process bookmarks for all actions except [`Action::None`].
+pub async fn process_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
     bookmarks: Vec<&mut TargetBookmark>,
     max_concurrent_requests: usize,
 ) -> Result<(), BogrepError> {
+    let bookmarks = bookmarks
+        .into_iter()
+        .filter(|bookmark| bookmark.action != Action::None)
+        .collect::<Vec<_>>();
     let mut processed = 0;
     let mut cached = 0;
     let mut failed_response = 0;
@@ -215,13 +201,13 @@ async fn fetch_and_cache_bookmark(
     bookmark: &mut TargetBookmark,
 ) -> Result<(), BogrepError> {
     match bookmark.action {
-        Action::Fetch => {
+        Action::FetchAndReplace => {
             let website = client.fetch(bookmark).await?;
             trace!("Fetched website: {website}");
             let html = html::filter_html(&website)?;
             cache.replace(html, bookmark).await?;
         }
-        Action::Add => {
+        Action::FetchAndAdd => {
             if !cache.exists(bookmark) {
                 let website = client.fetch(bookmark).await?;
                 trace!("Fetched website: {website}");
@@ -310,7 +296,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
             (
@@ -322,7 +308,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
         ]));
@@ -336,7 +322,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -374,7 +360,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
             (
@@ -386,7 +372,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Fetch,
+                    action: Action::FetchAndReplace,
                 },
             ),
         ]));
@@ -400,7 +386,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -438,7 +424,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
             (
@@ -450,7 +436,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
         ]));
@@ -472,7 +458,7 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),
@@ -512,7 +498,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
             (
@@ -524,7 +510,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
-                    action: Action::Add,
+                    action: Action::FetchAndAdd,
                 },
             ),
         ]));
@@ -546,7 +532,7 @@ mod tests {
             .await
             .unwrap();
 
-        let res = fetch_and_cache_bookmarks(
+        let res = process_bookmarks(
             &client,
             &cache,
             target_bookmarks.values_mut().collect(),

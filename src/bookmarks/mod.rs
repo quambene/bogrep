@@ -18,9 +18,9 @@ use uuid::Uuid;
 pub enum Action {
     /// Fetch and cache the bookmark, even if it is cached already. The cached
     /// content will be updated with the most recent version of the website.
-    Fetch,
+    FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
-    Add,
+    FetchAndAdd,
     /// Remove bookmark from cache.
     Remove,
     /// No actions to be performed.
