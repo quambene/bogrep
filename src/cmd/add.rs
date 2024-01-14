@@ -132,7 +132,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
-            Action::Add,
+            Action::FetchAndAdd,
         ));
         target_bookmarks.insert(TargetBookmark::new(
             url2,
@@ -140,7 +140,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
-            Action::Add,
+            Action::FetchAndAdd,
         ));
         let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
