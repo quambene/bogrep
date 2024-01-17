@@ -1,5 +1,5 @@
 use crate::{bookmarks::RawSource, cache::CacheMode, json};
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use log::debug;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,9 @@ const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 10;
 /// The  default for `Setting::idle_connections_timeout`.
 const IDLE_CONNECTIONS_TIMEOUT: u64 = 5_000;
 
+/// The supported domains to fetch the underlying.
+const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &["news.ycombinator.com"];
+
 /// Describes the settings used in Bogrep.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Settings {
@@ -33,6 +36,8 @@ pub struct Settings {
     pub sources: Vec<RawSource>,
     /// The urls which are ignored and not imported.
     pub ignored_urls: Vec<String>,
+    /// Fetch the underlying for the given urls.
+    pub underlying_urls: Vec<String>,
     /// The file extension used to cache websites.
     pub cache_mode: CacheMode,
     /// The maximal number of concurrent requests.
@@ -52,6 +57,7 @@ impl Default for Settings {
         Self {
             sources: Vec::new(),
             ignored_urls: Vec::new(),
+            underlying_urls: Vec::new(),
             cache_mode: CacheMode::default(),
             max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
             request_timeout: REQUEST_TIMEOUT_DEFAULT,
@@ -67,6 +73,7 @@ impl Settings {
     pub fn new(
         sources: Vec<RawSource>,
         ignored_urls: Vec<String>,
+        underlying_urls: Vec<String>,
         cache_mode: CacheMode,
         max_concurrent_requests: usize,
         request_timeout: u64,
@@ -77,6 +84,7 @@ impl Settings {
         Self {
             sources,
             ignored_urls,
+            underlying_urls,
             cache_mode,
             max_concurrent_requests,
             request_timeout,
@@ -109,11 +117,37 @@ impl Settings {
         }
     }
 
-    pub fn add_url(&mut self, url: String) -> Result<(), anyhow::Error> {
-        if !self.ignored_urls.contains(&url) {
-            let url = Url::parse(&url).context(format!("Invalid url {url}"))?;
-            self.ignored_urls.push(url.to_string());
+    pub fn add_ignored_url(&mut self, url: &str) -> Result<(), anyhow::Error> {
+        let url = Url::parse(&url).context(format!("Invalid url {url}"))?;
+        let normalized_url = url.to_string();
+
+        if self.ignored_urls.iter().any(|url| *url == normalized_url) {
+            return Err(anyhow!("Duplicate url: {url}"));
         }
+
+        self.ignored_urls.push(url.to_string());
+
+        Ok(())
+    }
+
+    pub fn add_underlying_url(&mut self, url: &str) -> Result<(), anyhow::Error> {
+        let url = Url::parse(&url).context(format!("Invalid url {url}"))?;
+        let normalized_url = url.to_string();
+        let domain = url.domain().ok_or(anyhow!(format!("Invalid url {url}")))?;
+
+        if !SUPPORTED_UNDERLYING_DOMAINS.contains(&domain) {
+            return Err(anyhow!("Underlying not supported for {url}"));
+        }
+
+        if self
+            .underlying_urls
+            .iter()
+            .any(|url| *url == normalized_url)
+        {
+            return Err(anyhow!("Duplicate url: {url}"));
+        }
+
+        self.underlying_urls.push(normalized_url);
 
         Ok(())
     }
@@ -144,18 +178,14 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn test_add_urls() {
+    fn test_add_ignored_urls() {
         let mut settings = Settings::default();
         assert!(settings.ignored_urls.is_empty());
-        let urls = vec![
-            String::from("https://youtube.com/"),
-            String::from("https://youtube.com/"),
-            String::from("https://soundcloud.com/"),
-        ];
+        let urls = vec!["https://youtube.com/", "https://soundcloud.com/"];
 
         for url in urls {
-            let res = settings.add_url(url);
-            assert!(res.is_ok());
+            let res = settings.add_ignored_url(url);
+            assert!(res.is_ok(), "{}", res.unwrap_err());
         }
 
         assert_eq!(
@@ -168,10 +198,53 @@ mod tests {
     }
 
     #[test]
-    fn test_add_url_invalid() {
+    fn test_add_ignored_urls_duplicate() {
         let mut settings = Settings::default();
-        let url = String::from("youtube.com/");
-        let res = settings.add_url(url);
+        let url = "https://youtube.com/";
+        let res = settings.add_ignored_url(url);
+        assert!(res.is_ok());
+        let res = settings.add_ignored_url(url);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_add_ignored_urls_invalid() {
+        let mut settings = Settings::default();
+        let url = "youtube.com/";
+        let res = settings.add_ignored_url(url);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_add_underlying_urls() {
+        let mut settings = Settings::default();
+        assert!(settings.underlying_urls.is_empty());
+        let url = "https://news.ycombinator.com/id=000000";
+
+        let res = settings.add_underlying_url(url);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        assert_eq!(settings.underlying_urls.len(), 1);
+        assert_eq!(
+            Url::parse(&settings.underlying_urls[0]).unwrap(),
+            Url::parse(url).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_add_underlying_urls_duplicate() {
+        let mut settings = Settings::default();
+        let url = "https://news.ycombinator.com/";
+        let res = settings.add_underlying_url(url);
+        assert!(res.is_ok());
+        let res = settings.add_underlying_url(url);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_add_underlying_urls_unsupported() {
+        let mut settings = Settings::default();
+        let url = "https://url.com";
+        let res = settings.add_underlying_url(url);
         assert!(res.is_err());
     }
 

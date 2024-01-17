@@ -56,6 +56,8 @@ pub struct ConfigArgs {
     pub set_cache_mode: SetCacheMode,
     #[command(flatten)]
     pub set_ignored_urls: SetIgnoredUrls,
+    #[command(flatten)]
+    pub set_underlying_urls: SetUnderlyingUrls,
 }
 
 #[derive(ClapArgs, Debug)]
@@ -84,6 +86,13 @@ pub struct SetCacheMode {
 pub struct SetIgnoredUrls {
     #[arg(long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
     pub ignore: Vec<String>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetUnderlyingUrls {
+    #[arg(long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
+    pub underlying: Vec<String>,
 }
 
 /// Describes the arguments for the `import` subcommand.

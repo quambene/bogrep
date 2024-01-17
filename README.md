@@ -184,6 +184,17 @@ usually don't include relevant text to grep.
 bogrep config --ignore <url1> <url2> ...
 ```
 
+## Fetch underlying urls
+
+Fetch the underlying urls of supported websites:
+
+``` bash
+bogrep config --underlying <url1> <url2> ...
+```
+
+For example, a specific url for <https://news.ycombinator.com> is
+bookmarked, the article of discussion will be fetched and cached.
+
 ## Diff websites
 
 Fetch difference between cached and fetched website for multiple urls, and display changes:
