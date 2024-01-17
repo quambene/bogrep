@@ -219,7 +219,7 @@ mod tests {
     fn test_add_underlying_urls() {
         let mut settings = Settings::default();
         assert!(settings.underlying_urls.is_empty());
-        let url = "https://news.ycombinator.com/id=000000";
+        let url = "https://news.ycombinator.com/item?id=00000000";
 
         let res = settings.add_underlying_url(url);
         assert!(res.is_ok(), "{}", res.unwrap_err());
