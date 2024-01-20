@@ -70,6 +70,7 @@ mod tests {
         sources.insert(SourceType::Internal);
         TargetBookmark::new(
             url.to_owned(),
+            None,
             now,
             None,
             sources,

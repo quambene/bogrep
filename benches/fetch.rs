@@ -65,6 +65,7 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
             url.clone(),
             TargetBookmark::new(
                 url.clone(),
+                None,
                 now,
                 None,
                 HashSet::new(),
@@ -107,6 +108,7 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
             url.clone(),
             TargetBookmark::new(
                 url,
+                None,
                 now,
                 None,
                 HashSet::new(),

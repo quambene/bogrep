@@ -215,6 +215,7 @@ mod tests {
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
             url1,
+            None,
             now,
             None,
             HashSet::new(),
@@ -223,6 +224,7 @@ mod tests {
         );
         let bookmark2 = TargetBookmark::new(
             url2,
+            None,
             now,
             None,
             HashSet::new(),
@@ -251,6 +253,7 @@ mod tests {
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
             url1,
+            None,
             now,
             None,
             HashSet::new(),
@@ -259,6 +262,7 @@ mod tests {
         );
         let bookmark2 = TargetBookmark::new(
             url2,
+            None,
             now,
             None,
             HashSet::new(),

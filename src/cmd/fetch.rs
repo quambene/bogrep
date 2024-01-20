@@ -108,6 +108,7 @@ pub fn set_actions(
                 sources.insert(SourceType::Internal);
                 let target_bookmark = TargetBookmark::new(
                     url.to_owned(),
+                    None,
                     now,
                     None,
                     sources,
@@ -324,6 +325,7 @@ mod tests {
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: url1.clone(),
+                    underlying_url: None,
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -336,6 +338,7 @@ mod tests {
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: url2.clone(),
+                    underlying_url: None,
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -390,6 +393,7 @@ mod tests {
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: url1.clone(),
+                    underlying_url: None,
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -402,6 +406,7 @@ mod tests {
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: url2.clone(),
+                    underlying_url: None,
                     last_imported: now.timestamp_millis(),
                     last_cached: None,
                     sources: HashSet::new(),
@@ -456,6 +461,7 @@ mod tests {
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: url1.clone(),
+                    underlying_url: None,
                     last_imported: now,
                     last_cached: Some(now),
                     sources: HashSet::new(),
@@ -468,6 +474,7 @@ mod tests {
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: url2.clone(),
+                    underlying_url: None,
                     last_imported: now,
                     last_cached: None,
                     sources: HashSet::new(),
@@ -532,6 +539,7 @@ mod tests {
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: url1.clone(),
+                    underlying_url: None,
                     last_imported: now,
                     last_cached: Some(now),
                     sources: HashSet::new(),
@@ -544,6 +552,7 @@ mod tests {
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: url2.clone(),
+                    underlying_url: None,
                     last_imported: now,
                     last_cached: None,
                     sources: HashSet::new(),

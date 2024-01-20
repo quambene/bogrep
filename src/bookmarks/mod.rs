@@ -11,6 +11,7 @@ use std::{
     slice::Iter,
 };
 pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
+use url::Url;
 use uuid::Uuid;
 
 /// The action to be performed on the bookmark.
@@ -35,6 +36,7 @@ pub enum SourceType {
     Chrome,
     Edge,
     Simple,
+    Underlying(Url),
     Internal,
     External,
     #[default]

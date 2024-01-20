@@ -51,6 +51,7 @@ fn add_urls(
     for url in urls {
         let bookmark = TargetBookmark::new(
             url.clone(),
+            None,
             now,
             None,
             sources.clone(),
@@ -139,6 +140,7 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::default();
         target_bookmarks.insert(TargetBookmark::new(
             url1.clone(),
+            None,
             Utc::now(),
             None,
             HashSet::new(),
@@ -147,6 +149,7 @@ mod tests {
         ));
         target_bookmarks.insert(TargetBookmark::new(
             url2.clone(),
+            None,
             Utc::now(),
             None,
             HashSet::new(),

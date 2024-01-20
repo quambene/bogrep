@@ -418,8 +418,15 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let url = Url::parse("https://url.com").unwrap();
-        let mut bookmark =
-            TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new(), Action::None);
+        let mut bookmark = TargetBookmark::new(
+            url,
+            None,
+            now,
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            Action::None,
+        );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         let cached_content = cache.add(content.to_owned(), &mut bookmark).await.unwrap();
         assert_eq!(
@@ -437,8 +444,15 @@ mod tests {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
         let url = Url::parse("https://url.com").unwrap();
-        let mut bookmark =
-            TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new(), Action::None);
+        let mut bookmark = TargetBookmark::new(
+            url,
+            None,
+            now,
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            Action::None,
+        );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         let cached_content = cache.add(content.to_owned(), &mut bookmark).await.unwrap();
         assert_eq!(cached_content, "Test content");
@@ -453,8 +467,15 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let url = Url::parse("https://url.com").unwrap();
-        let mut bookmark =
-            TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new(), Action::None);
+        let mut bookmark = TargetBookmark::new(
+            url,
+            None,
+            now,
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            Action::None,
+        );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
         cache.add(content1.to_owned(), &mut bookmark).await.unwrap();
         let content2 = "<html><head></head><body><p>Test content 2</p></body></html>";
@@ -475,8 +496,15 @@ mod tests {
         let cache = MockCache::new(CacheMode::Text);
         let now = Utc::now();
         let url = Url::parse("https://url.com").unwrap();
-        let mut bookmark =
-            TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new(), Action::None);
+        let mut bookmark = TargetBookmark::new(
+            url,
+            None,
+            now,
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            Action::None,
+        );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
         cache.add(content1.to_owned(), &mut bookmark).await.unwrap();
         let content2 = "<html><head></head><body><p>Test content 2</p></body></html>";
@@ -494,8 +522,15 @@ mod tests {
         let cache = MockCache::new(CacheMode::Html);
         let now = Utc::now();
         let url = Url::parse("https://url.com").unwrap();
-        let mut bookmark =
-            TargetBookmark::new(url, now, None, HashSet::new(), HashSet::new(), Action::None);
+        let mut bookmark = TargetBookmark::new(
+            url,
+            None,
+            now,
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            Action::None,
+        );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
 
         cache.add(content.to_owned(), &mut bookmark).await.unwrap();
@@ -520,6 +555,7 @@ mod tests {
                 url1.clone(),
                 TargetBookmark::new(
                     url1.clone(),
+                    None,
                     now,
                     None,
                     HashSet::new(),
@@ -531,6 +567,7 @@ mod tests {
                 url2.clone(),
                 TargetBookmark::new(
                     url2.clone(),
+                    None,
                     now,
                     None,
                     HashSet::new(),
@@ -564,6 +601,7 @@ mod tests {
             url.clone(),
             TargetBookmark::new(
                 url.clone(),
+                None,
                 now,
                 None,
                 HashSet::new(),
