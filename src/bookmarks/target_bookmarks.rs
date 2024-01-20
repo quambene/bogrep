@@ -338,7 +338,7 @@ mod tests {
     "bookmarks": [
         {
             "id": "a87f7024-a7f5-4f9c-8a71-f64880b2f275",
-            "url": "https://url1.com",
+            "url": "https://url1.com/",
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],
@@ -346,7 +346,7 @@ mod tests {
         },
         {
             "id": "511b1590-e6de-4989-bca4-96dc61730508",
-            "url": "https://url2.com",
+            "url": "https://url2.com/",
             "last_imported": 1694989714351,
             "last_cached": null,
             "sources": [],

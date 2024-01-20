@@ -2,6 +2,7 @@ use assert_cmd::Command;
 use bogrep::{json, utils, JsonBookmarks};
 use predicates::str;
 use tempfile::tempdir;
+use url::Url;
 
 #[test]
 fn test_remove() {
@@ -45,5 +46,8 @@ fn test_remove() {
 
     let bookmarks = res.unwrap();
     assert_eq!(bookmarks.len(), 1);
-    assert_eq!(bookmarks.get(0).unwrap().url, url3);
+    assert_eq!(
+        Url::parse(&bookmarks.get(0).unwrap().url).unwrap(),
+        Url::parse(url3).unwrap()
+    );
 }
