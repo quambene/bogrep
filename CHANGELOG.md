@@ -6,6 +6,7 @@
   - Add `action` to `TargetBookmark`
   - Add benchmarks for fetching
   - Take ignored urls into account in `bogrep import`
+  - Fetch underlying urls
 - changed
   - Update to rust 1.75
   - Fix duplicate cache files for `bogrep fetch --urls`
