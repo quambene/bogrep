@@ -82,6 +82,7 @@ mod tests {
         collections::{HashMap, HashSet},
         path::Path,
     };
+    use url::Url;
 
     #[tokio::test]
     async fn test_update_bookmarks_mode_html() {
@@ -92,35 +93,41 @@ mod tests {
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
-        let expected_bookmarks: HashSet<String> = HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
-        ]);
-        let mut target_bookmarks = TargetBookmarks::new(
-            HashMap::from_iter([
-                ("https://www.deepl.com/translator".to_owned(),
+        let url1 = Url::parse("https://www.deepl.com/translator").unwrap();
+        let url2 = Url::parse(
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
+        )
+        .unwrap();
+        let url3 = Url::parse("https://en.wikipedia.org/wiki/Design_Patterns").unwrap();
+        let url4 = Url::parse("https://doc.rust-lang.org/book/title-page.html").unwrap();
+        let expected_bookmarks: HashSet<Url> =
+            HashSet::from_iter([url1.clone(), url2.clone(), url3.clone(), url4.clone()]);
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                url1.clone(),
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: "https://www.deepl.com/translator".to_owned(),
+                    url: url1.clone(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Html]),
                     action: Action::FetchAndAdd,
-                }),("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
+                },
+            ),
+            (
+                url2.clone(),
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
+                    url: url2.clone(),
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Html]),
                     action: Action::FetchAndAdd,
-                }),
-            ]),
-            );
+                },
+            ),
+        ]));
         for url in &expected_bookmarks {
             client
                 .add(
@@ -134,9 +141,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks
-                    .get_mut("https://www.deepl.com/translator")
-                    .unwrap(),
+                target_bookmarks.get_mut(&url1).unwrap(),
             )
             .await
             .unwrap();
@@ -144,7 +149,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get_mut("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+                target_bookmarks.get_mut(&url2).unwrap(),
             )
             .await
             .unwrap();
@@ -163,12 +168,7 @@ mod tests {
                 .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
-                HashSet::from_iter([
-                    String::from("https://www.deepl.com/translator"),
-                    String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-                    String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-                    String::from("https://doc.rust-lang.org/book/title-page.html"),
-                ]),
+            HashSet::from_iter([url1.clone(), url2.clone(), url3.clone(), url4.clone()]),
         );
         assert_eq!(
             cache
@@ -187,24 +187,14 @@ mod tests {
         assert_eq!(
             cache
                 .cache_map()
-                .get(
-                    &target_bookmarks
-                        .get("https://en.wikipedia.org/wiki/Design_Patterns")
-                        .unwrap()
-                        .id
-                )
+                .get(&target_bookmarks.get(&url3).unwrap().id)
                 .unwrap(),
             "<html><head></head><body><p>Test content (fetched)</p></body></html>"
         );
         assert_eq!(
             cache
                 .cache_map()
-                .get(
-                    &target_bookmarks
-                        .get("https://doc.rust-lang.org/book/title-page.html")
-                        .unwrap()
-                        .id
-                )
+                .get(&target_bookmarks.get(&url4).unwrap().id)
                 .unwrap(),
             "<html><head></head><body><p>Test content (fetched)</p></body></html>"
         );
@@ -219,29 +209,41 @@ mod tests {
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
-        let expected_bookmarks: HashSet<String> = HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
-        ]);
-        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([("https://www.deepl.com/translator".to_owned(), TargetBookmark {
-            id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-            url: "https://www.deepl.com/translator".to_owned(),
-            last_imported: now.timestamp_millis(),
-            last_cached: Some(now.timestamp_millis()),
-            sources: HashSet::new(),
-            cache_modes: HashSet::from_iter([CacheMode::Text]),
-            action: Action::FetchAndAdd,
-        }), ("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(), TargetBookmark {
-            id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-            url: "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/".to_owned(),
-            last_imported: now.timestamp_millis(),
-            last_cached: Some(now.timestamp_millis()),
-            sources: HashSet::new(),
-            cache_modes: HashSet::from_iter([CacheMode::Text]),
-            action: Action::FetchAndAdd,
-        })]));
+        let url1 = Url::parse("https://www.deepl.com/translator").unwrap();
+        let url2 = Url::parse(
+            "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
+        )
+        .unwrap();
+        let url3 = Url::parse("https://en.wikipedia.org/wiki/Design_Patterns").unwrap();
+        let url4 = Url::parse("https://doc.rust-lang.org/book/title-page.html").unwrap();
+        let expected_bookmarks: HashSet<_> =
+            HashSet::from_iter([url1.clone(), url2.clone(), url3.clone(), url4.clone()]);
+        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                url1.clone(),
+                TargetBookmark {
+                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url: url1.clone(),
+                    last_imported: now.timestamp_millis(),
+                    last_cached: Some(now.timestamp_millis()),
+                    sources: HashSet::new(),
+                    cache_modes: HashSet::from_iter([CacheMode::Text]),
+                    action: Action::FetchAndAdd,
+                },
+            ),
+            (
+                url2.clone(),
+                TargetBookmark {
+                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url: url2.clone(),
+                    last_imported: now.timestamp_millis(),
+                    last_cached: Some(now.timestamp_millis()),
+                    sources: HashSet::new(),
+                    cache_modes: HashSet::from_iter([CacheMode::Text]),
+                    action: Action::FetchAndAdd,
+                },
+            ),
+        ]));
         for url in &expected_bookmarks {
             client
                 .add(
@@ -255,9 +257,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks
-                    .get_mut("https://www.deepl.com/translator")
-                    .unwrap(),
+                target_bookmarks.get_mut(&url1).unwrap(),
             )
             .await
             .unwrap();
@@ -265,7 +265,7 @@ mod tests {
             .add(
                 "<html><head></head><body><p>Test content (already cached)</p></body></html>"
                     .to_owned(),
-                target_bookmarks.get_mut("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+                target_bookmarks.get_mut(&url2).unwrap(),
             )
             .await
             .unwrap();
@@ -284,12 +284,7 @@ mod tests {
                 .values()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
-                HashSet::from_iter([
-                    String::from("https://www.deepl.com/translator"),
-                    String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-                    String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-                    String::from("https://doc.rust-lang.org/book/title-page.html"),
-                ]),
+            HashSet::from_iter([url1.clone(), url2.clone(), url3.clone(), url4.clone()]),
         );
         assert_eq!(
             cache
@@ -308,24 +303,14 @@ mod tests {
         assert_eq!(
             cache
                 .cache_map()
-                .get(
-                    &target_bookmarks
-                        .get("https://en.wikipedia.org/wiki/Design_Patterns")
-                        .unwrap()
-                        .id
-                )
+                .get(&target_bookmarks.get(&url3).unwrap().id)
                 .unwrap(),
             "Test content (fetched)"
         );
         assert_eq!(
             cache
                 .cache_map()
-                .get(
-                    &target_bookmarks
-                        .get("https://doc.rust-lang.org/book/title-page.html")
-                        .unwrap()
-                        .id
-                )
+                .get(&target_bookmarks.get(&url4).unwrap().id)
                 .unwrap(),
             "Test content (fetched)"
         );

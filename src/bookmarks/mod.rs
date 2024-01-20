@@ -119,7 +119,7 @@ impl From<TargetBookmark> for JsonBookmark {
     fn from(value: TargetBookmark) -> Self {
         Self {
             id: value.id,
-            url: value.url,
+            url: value.url.to_string(),
             last_imported: value.last_imported,
             last_cached: value.last_cached,
             sources: value.sources,
@@ -132,7 +132,7 @@ impl From<&TargetBookmark> for JsonBookmark {
     fn from(value: &TargetBookmark) -> Self {
         Self {
             id: value.id.clone(),
-            url: value.url.clone(),
+            url: value.url.to_string(),
             last_imported: value.last_imported,
             last_cached: value.last_cached,
             sources: value.sources.clone(),

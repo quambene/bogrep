@@ -93,9 +93,8 @@ fn is_filtered_tag(tag_name: &QualName) -> bool {
         || tag_name.local.contains("script")
 }
 
-pub fn convert_to_text(html: &str, bookmark_url: &str) -> Result<String, BogrepError> {
+pub fn convert_to_text(html: &str, bookmark_url: &Url) -> Result<String, BogrepError> {
     let mut cursor = Cursor::new(html);
-    let bookmark_url = Url::parse(bookmark_url).map_err(BogrepError::ParseUrl)?;
     let product =
         extractor::extract(&mut cursor, &bookmark_url).map_err(BogrepError::ConvertHtml)?;
     Ok(product.text)
@@ -198,8 +197,8 @@ mod tests {
 
         </html>
         "#;
-        let url = "https://example.net";
-        let res = convert_to_text(html, url);
+        let url = Url::parse("https://example.net").unwrap();
+        let res = convert_to_text(html, &url);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let text = res.unwrap();

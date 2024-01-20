@@ -20,7 +20,7 @@ where
         let bookmarks = json::deserialize::<JsonBookmarks>(&buf)?;
 
         for bookmark in bookmarks {
-            target_bookmarks.insert(bookmark.into());
+            target_bookmarks.insert(bookmark.try_into()?);
         }
 
         Ok(())

@@ -15,6 +15,7 @@ use std::{
 };
 use tempfile::tempdir;
 use tokio::sync::Mutex;
+use url::Url;
 
 fn bench_fetch(c: &mut Criterion) {
     c.bench_function("concurrent 100", |b| {
@@ -58,12 +59,12 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
     let mut bookmarks = HashMap::new();
 
     for i in 0..10000 {
-        let url = format!("https://url{i}.com");
+        let url = Url::parse(&format!("https://url{i}.com")).unwrap();
         client.add(CONTENT.to_owned(), &url).unwrap();
         bookmarks.insert(
-            url.to_owned(),
+            url.clone(),
             TargetBookmark::new(
-                url,
+                url.clone(),
                 now,
                 None,
                 HashSet::new(),
@@ -100,10 +101,10 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
     let mut bookmarks = HashMap::new();
 
     for i in 0..10000 {
-        let url = format!("https://url{i}.com");
+        let url = Url::parse(&format!("https://url{i}.com")).unwrap();
         client.add(CONTENT.to_owned(), &url).unwrap();
         bookmarks.insert(
-            url.to_owned(),
+            url.clone(),
             TargetBookmark::new(
                 url,
                 now,

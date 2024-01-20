@@ -54,7 +54,7 @@ impl Fetch for Client {
 
         let response = self
             .client
-            .get(&bookmark.url)
+            .get(bookmark.url.clone())
             .send()
             .await
             .map_err(BogrepError::HttpResponse)?;
@@ -76,18 +76,18 @@ impl Fetch for Client {
                     if !html.is_empty() {
                         Ok(html)
                     } else {
-                        Err(BogrepError::EmptyResponse(bookmark.url.to_owned()))
+                        Err(BogrepError::EmptyResponse(bookmark.url.to_string()))
                     }
                 } else {
-                    Err(BogrepError::BinaryResponse(bookmark.url.to_owned()))
+                    Err(BogrepError::BinaryResponse(bookmark.url.to_string()))
                 }
             } else {
-                Err(BogrepError::BinaryResponse(bookmark.url.to_owned()))
+                Err(BogrepError::BinaryResponse(bookmark.url.to_string()))
             }
         } else {
             Err(BogrepError::HttpStatus {
                 status: response.status().to_string(),
-                url: bookmark.url.to_owned(),
+                url: bookmark.url.to_string(),
             })
         }
     }
@@ -140,10 +140,10 @@ impl Throttler {
         bookmark: &TargetBookmark,
         now: DateTime<Utc>,
     ) -> Result<Option<DateTime<Utc>>, BogrepError> {
-        let bookmark_url = Url::parse(&bookmark.url)?;
-        let bookmark_host = bookmark_url
+        let bookmark_host = bookmark
+            .url
             .host_str()
-            .ok_or(BogrepError::ConvertHost(bookmark.url.clone()))?;
+            .ok_or(BogrepError::ConvertHost(bookmark.url.to_string()))?;
 
         let mut map = self.last_fetched.lock().unwrap();
         let entry = map.entry(bookmark_host.to_string());
@@ -165,7 +165,7 @@ impl Throttler {
 #[derive(Debug, Default)]
 pub struct MockClient {
     /// Mock the the HTML content.
-    client_map: Mutex<HashMap<String, String>>,
+    client_map: Mutex<HashMap<Url, String>>,
 }
 
 impl MockClient {
@@ -174,13 +174,13 @@ impl MockClient {
         Self { client_map }
     }
 
-    pub fn add(&self, html: String, bookmark_url: &str) -> Result<(), anyhow::Error> {
+    pub fn add(&self, html: String, bookmark_url: &Url) -> Result<(), anyhow::Error> {
         let mut client_map = self.client_map.lock().unwrap();
-        client_map.insert(bookmark_url.to_owned(), html);
+        client_map.insert(bookmark_url.clone(), html);
         Ok(())
     }
 
-    pub fn get(&self, bookmark_url: &str) -> Option<String> {
+    pub fn get(&self, bookmark_url: &Url) -> Option<String> {
         let client_map = self.client_map.lock().unwrap();
         client_map
             .get(bookmark_url)
@@ -210,9 +210,11 @@ mod tests {
         tokio::time::pause();
         let now = Utc::now();
         let request_throttling = 1000;
+        let url1 = Url::parse("https://url/path1.com").unwrap();
+        let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Applicative_functor",
+            url1,
             now,
             None,
             HashSet::new(),
@@ -220,7 +222,7 @@ mod tests {
             Action::None,
         );
         let bookmark2 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
+            url2,
             now,
             None,
             HashSet::new(),
@@ -244,9 +246,11 @@ mod tests {
     fn test_last_fetched() {
         let now = Utc::now();
         let request_throttling = 1000;
+        let url1 = Url::parse("https://url/path1.com").unwrap();
+        let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Applicative_functor",
+            url1,
             now,
             None,
             HashSet::new(),
@@ -254,7 +258,7 @@ mod tests {
             Action::None,
         );
         let bookmark2 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
+            url2,
             now,
             None,
             HashSet::new(),

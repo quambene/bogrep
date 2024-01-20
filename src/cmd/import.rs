@@ -4,6 +4,7 @@ use crate::{
     utils, Action, Config, SourceBookmarks, TargetBookmarks,
 };
 use log::{debug, trace};
+use url::Url;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
@@ -18,12 +19,18 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    let ignored_urls = config
+        .settings
+        .ignored_urls
+        .iter()
+        .map(|url| Url::parse(url))
+        .collect::<Result<Vec<_>, _>>()?;
 
     import_source(
         source_reader,
         &mut target_reader,
         &mut target_writer,
-        &config.settings.ignored_urls,
+        &ignored_urls,
     )?;
 
     utils::close_and_rename(
@@ -38,7 +45,7 @@ fn import_source(
     mut source_reader: Vec<SourceReader>,
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
-    ignored_urls: &[String],
+    ignored_urls: &[Url],
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
