@@ -1,4 +1,4 @@
-use crate::errors::BogrepError;
+use crate::{errors::BogrepError, UnderlyingType};
 use html5ever::{
     parse_document,
     rcdom::{Node, NodeData, RcDom},
@@ -8,6 +8,7 @@ use html5ever::{
 };
 use readability::extractor;
 use reqwest::Url;
+use scraper::{Html, Selector};
 use std::{borrow::BorrowMut, io::Cursor, rc::Rc};
 
 pub fn filter_html(html: &str) -> Result<String, BogrepError> {
@@ -104,10 +105,25 @@ pub fn convert_to_markdown(html: &str) -> String {
     html2md::parse_html(html)
 }
 
+pub fn select_underlying(html: &str, underlying_type: &UnderlyingType) -> Result<Url, BogrepError> {
+    let document = Html::parse_document(html);
+
+    match underlying_type {
+        UnderlyingType::HackerNews => {
+            let span_selector = Selector::parse("span.titleline").unwrap();
+            let a_selector = Selector::parse("a").unwrap();
+            let span = document.select(&span_selector).collect::<Vec<_>>()[0];
+            let a = span.select(&a_selector).collect::<Vec<_>>()[0];
+            let underlying_link = a.attr("href").unwrap();
+            let underlying_url = Url::parse(underlying_link)?;
+            Ok(underlying_url)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use scraper::{Html, Selector};
 
     fn filter_whitespaces(html: impl Into<String>) -> String {
         html.into()
@@ -259,13 +275,13 @@ mod tests {
 
             </html>
         "#;
-        let document = Html::parse_document(html);
-        let span_selector = Selector::parse("span.titleline").unwrap();
-        let a_selector = Selector::parse("a").unwrap();
-        let span = document.select(&span_selector).collect::<Vec<_>>()[0];
-        let a = span.select(&a_selector).collect::<Vec<_>>()[0];
+        let res = select_underlying(html, &UnderlyingType::HackerNews);
+        assert!(res.is_ok());
 
-        let underlying_link = a.attr("href").unwrap();
-        assert_eq!(underlying_link, "https://github.com/quambene/bogrep");
+        let underlying_url = res.unwrap();
+        assert_eq!(
+            underlying_url,
+            Url::parse("https://github.com/quambene/bogrep").unwrap()
+        );
     }
 }
