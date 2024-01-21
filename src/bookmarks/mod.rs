@@ -42,7 +42,7 @@ pub enum UnderlyingType {
 
 impl From<&Url> for UnderlyingType {
     fn from(url: &Url) -> Self {
-        if url.domain() == Some("https://news.ycombinator.com/") {
+        if url.domain() == Some(HACKER_NEWS_DOMAIN) {
             UnderlyingType::HackerNews
         } else {
             UnderlyingType::None

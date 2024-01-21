@@ -176,6 +176,7 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bookmarks::HACKER_NEWS_DOMAIN;
     use std::path::PathBuf;
 
     #[test]
@@ -225,10 +226,9 @@ mod tests {
         let res = settings.add_underlying_url(url);
         assert!(res.is_ok(), "{}", res.unwrap_err());
         assert_eq!(settings.underlying_urls.len(), 1);
-        assert_eq!(
-            Url::parse(&settings.underlying_urls[0]).unwrap(),
-            Url::parse(url).unwrap()
-        );
+        let actual_url = Url::parse(&settings.underlying_urls[0]).unwrap();
+        assert_eq!(actual_url, Url::parse(url).unwrap());
+        assert_eq!(actual_url.domain().unwrap(), HACKER_NEWS_DOMAIN);
     }
 
     #[test]
