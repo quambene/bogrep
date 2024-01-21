@@ -22,10 +22,34 @@ pub enum Action {
     FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
     FetchAndAdd,
+    /// Fetch and replace bookmark and underlying.
+    FetchUnderlyingAndReplace,
+    /// Fetch and add bookmark and underlying.
+    FetchUnderlyingAndAdd,
     /// Remove bookmark from cache.
     Remove,
     /// No actions to be performed.
     None,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum UnderlyingType {
+    HackerNews,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Underlying {
+    url: Url,
+    r#type: UnderlyingType,
+}
+
+impl Underlying {
+    pub fn new(url: &Url, r#type: UnderlyingType) -> Self {
+        Self {
+            url: url.to_owned(),
+            r#type,
+        }
+    }
 }
 
 /// The type used to identify a source.

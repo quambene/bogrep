@@ -1,5 +1,5 @@
-use super::{Action, JsonBookmark};
-use crate::{cache::CacheMode, SourceBookmark, SourceBookmarks, SourceType};
+use super::{Action, JsonBookmark, Underlying};
+use crate::{cache::CacheMode, SourceBookmark, SourceBookmarks, SourceType, UnderlyingType};
 use chrono::{DateTime, Utc};
 use log::{debug, trace};
 use std::collections::{
@@ -15,7 +15,7 @@ use uuid::Uuid;
 pub struct TargetBookmark {
     pub id: String,
     pub url: Url,
-    pub underlying_url: Option<Url>,
+    pub underlying: Option<Underlying>,
     pub last_imported: i64,
     pub last_cached: Option<i64>,
     pub sources: HashSet<SourceType>,
@@ -26,7 +26,7 @@ pub struct TargetBookmark {
 impl TargetBookmark {
     pub fn new(
         url: Url,
-        underlying_url: Option<Url>,
+        underlying: Option<Underlying>,
         last_imported: DateTime<Utc>,
         last_cached: Option<DateTime<Utc>>,
         sources: HashSet<SourceType>,
@@ -36,7 +36,7 @@ impl TargetBookmark {
         Self {
             id: Uuid::new_v4().to_string(),
             url,
-            underlying_url,
+            underlying,
             last_imported: last_imported.timestamp_millis(),
             last_cached: last_cached.map(|timestamp| timestamp.timestamp_millis()),
             sources,
@@ -63,15 +63,21 @@ impl TryFrom<JsonBookmark> for TargetBookmark {
             .iter()
             .find(|source| matches!(source, SourceType::Underlying(_)));
 
-        let underlying_url = match underlying_source {
-            Some(SourceType::Underlying(url)) => Some(url.to_owned()),
+        let underlying = match underlying_source {
+            Some(SourceType::Underlying(url)) => {
+                if url.domain() == Some("https://news.ycombinator.com/") {
+                    Some(Underlying::new(url, UnderlyingType::HackerNews))
+                } else {
+                    None
+                }
+            }
             _ => None,
         };
 
         Ok(Self {
             id: value.id,
             url: Url::parse(&value.url)?,
-            underlying_url,
+            underlying,
             last_imported: value.last_imported,
             last_cached: value.last_cached,
             sources: value.sources,
@@ -508,7 +514,7 @@ mod tests {
                     TargetBookmark {
                         id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
                         url: Url::parse("https://url1.com").unwrap(),
-                        underlying_url: None,
+                        underlying: None,
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
@@ -521,7 +527,7 @@ mod tests {
                     TargetBookmark {
                         id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
                         url: Url::parse("https://url2.com").unwrap(),
-                        underlying_url: None,
+                        underlying: None,
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
@@ -552,7 +558,7 @@ mod tests {
                 TargetBookmark {
                     id: String::from("a87f7024-a7f5-4f9c-8a71-f64880b2f275"),
                     url: Url::parse("https://url1.com").unwrap(),
-                    underlying_url: None,
+                    underlying: None,
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
@@ -565,7 +571,7 @@ mod tests {
                 TargetBookmark {
                     id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
                     url: Url::parse("https://url2.com").unwrap(),
-                    underlying_url: None,
+                    underlying: None,
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
