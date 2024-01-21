@@ -67,6 +67,8 @@ async fn update_bookmarks(
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
 
+    // TODO: process underlyings
+
     target_bookmarks.clean_up();
 
     Ok(())

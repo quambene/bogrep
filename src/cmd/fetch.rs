@@ -73,6 +73,7 @@ pub async fn fetch_bookmarks(
     for underlying_bookmark in underlying_bookmarks.iter() {
         target_bookmarks.insert(underlying_bookmark.clone());
     }
+    // TODO: process underlyings
 
     trace!("Fetched bookmarks: {target_bookmarks:#?}");
 

@@ -82,6 +82,8 @@ async fn init_bookmarks(
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
 
+    // TODO: process underlyings
+
     Ok(target_bookmarks)
 }
 
