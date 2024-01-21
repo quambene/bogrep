@@ -1,7 +1,7 @@
 use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    cmd::process_bookmarks,
     utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks,
     TargetBookmarks,
 };
@@ -30,6 +30,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
         let cache = Cache::new(&config.cache_path, cache_mode);
         let client = Client::new(config)?;
+
         let target_bookmarks = init_bookmarks(
             &client,
             &cache,
@@ -75,13 +76,11 @@ async fn init_bookmarks(
             .join(", ")
     );
 
-    process_bookmarks(
-        client,
-        cache,
-        target_bookmarks.values_mut().collect(),
-        max_concurrent_requests,
-    )
-    .await?;
+    let bookmark_processor =
+        BookmarkProcessor::new(client.clone(), cache.clone(), max_concurrent_requests);
+    bookmark_processor
+        .process_bookmarks(target_bookmarks.values_mut().collect())
+        .await?;
 
     Ok(target_bookmarks)
 }

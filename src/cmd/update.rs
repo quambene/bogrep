@@ -1,8 +1,9 @@
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    cmd, utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
+    utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
 
@@ -60,13 +61,11 @@ async fn update_bookmarks(
 
     target_bookmarks.update(&source_bookmarks)?;
 
-    cmd::process_bookmarks(
-        client,
-        cache,
-        target_bookmarks.values_mut().collect(),
-        max_concurrent_requests,
-    )
-    .await?;
+    let bookmark_processor =
+        BookmarkProcessor::new(client.clone(), cache.clone(), max_concurrent_requests);
+    bookmark_processor
+        .process_bookmarks(target_bookmarks.values_mut().collect())
+        .await?;
 
     target_bookmarks.clean_up();
 

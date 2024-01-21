@@ -1,7 +1,9 @@
+mod bookmark_processor;
 mod source_bookmarks;
 mod target_bookmarks;
 
 use crate::CacheMode;
+pub use bookmark_processor::BookmarkProcessor;
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
 use std::{

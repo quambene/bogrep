@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use clap::ValueEnum;
 use log::debug;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -16,7 +17,7 @@ use std::{
     fs::File,
     io::Read,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::Arc,
 };
 
 #[derive(Debug, ValueEnum, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
@@ -62,7 +63,7 @@ impl CacheMode {
 /// A trait to manage the cache in a file system or a mock cache used in
 /// testing.
 #[async_trait]
-pub trait Caching {
+pub trait Caching: Clone {
     // Get the cache mode.
     fn mode(&self) -> &CacheMode;
 
@@ -104,6 +105,7 @@ pub trait Caching {
 }
 
 /// A cache to store the fetched bookmarks.
+#[derive(Debug, Clone)]
 pub struct Cache {
     /// The path to the cache directory.
     path: PathBuf,
@@ -279,17 +281,17 @@ impl Caching for Cache {
 }
 
 /// A mock cache to store fetched bookmarks used in testing.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MockCache {
     /// Mock the file system.
-    cache_map: Mutex<HashMap<String, String>>,
+    cache_map: Arc<Mutex<HashMap<String, String>>>,
     /// The file extension of the cached files.
     mode: CacheMode,
 }
 
 impl MockCache {
     pub fn new(cache_mode: CacheMode) -> Self {
-        let cache_map = Mutex::new(HashMap::new());
+        let cache_map = Arc::new(Mutex::new(HashMap::new()));
         Self {
             cache_map,
             mode: cache_mode,
@@ -297,7 +299,7 @@ impl MockCache {
     }
 
     pub fn cache_map(&self) -> HashMap<String, String> {
-        let cache_map = self.cache_map.lock().unwrap();
+        let cache_map = self.cache_map.lock();
         cache_map.clone()
     }
 }
@@ -313,7 +315,7 @@ impl Caching for MockCache {
     }
 
     fn is_empty(&self) -> bool {
-        let cache_map = self.cache_map.lock().unwrap();
+        let cache_map = self.cache_map.lock();
         cache_map.is_empty()
     }
 
@@ -326,7 +328,7 @@ impl Caching for MockCache {
     }
 
     fn get(&self, bookmark: &TargetBookmark) -> Result<Option<String>, BogrepError> {
-        let cache_map = self.cache_map.lock().unwrap();
+        let cache_map = self.cache_map.lock();
         let content = cache_map
             .get(&bookmark.id)
             .map(|content| content.to_owned());
@@ -338,7 +340,7 @@ impl Caching for MockCache {
         html: String,
         bookmark: &mut TargetBookmark,
     ) -> Result<String, BogrepError> {
-        let mut cache_map = self.cache_map.lock().unwrap();
+        let mut cache_map = self.cache_map.lock();
         let content = match self.mode {
             CacheMode::Html => html,
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
@@ -356,7 +358,7 @@ impl Caching for MockCache {
         html: String,
         bookmark: &mut TargetBookmark,
     ) -> Result<String, BogrepError> {
-        let mut cache_map = self.cache_map.lock().unwrap();
+        let mut cache_map = self.cache_map.lock();
         let content = match self.mode {
             CacheMode::Html => html,
             CacheMode::Text => html::convert_to_text(&html, &bookmark.url)?,
@@ -370,7 +372,7 @@ impl Caching for MockCache {
     }
 
     async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
-        let mut cache_map = self.cache_map.lock().unwrap();
+        let mut cache_map = self.cache_map.lock();
         cache_map.remove(&bookmark.id);
 
         bookmark.last_cached = None;
@@ -380,7 +382,7 @@ impl Caching for MockCache {
     }
 
     async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
-        let mut cache_map = self.cache_map.lock().unwrap();
+        let mut cache_map = self.cache_map.lock();
 
         for bookmark in bookmarks.values_mut() {
             cache_map.remove(&bookmark.id);
@@ -393,7 +395,7 @@ impl Caching for MockCache {
     }
 
     fn clear(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
-        let mut cache_map = self.cache_map.lock().unwrap();
+        let mut cache_map = self.cache_map.lock();
         cache_map.clear();
 
         for bookmark in bookmarks.values_mut() {
@@ -433,7 +435,7 @@ mod tests {
             cached_content,
             "<html><head></head><body><p>Test content</p></body></html>"
         );
-        let cache_map = cache.cache_map.lock().unwrap();
+        let cache_map = cache.cache_map.lock();
         assert_eq!(cache_map.keys().len(), 1);
         assert!(bookmark.last_cached.is_some());
         assert!(bookmark.cache_modes.contains(&CacheMode::Html));
@@ -456,7 +458,7 @@ mod tests {
         let content = "<html><head></head><body><p>Test content</p></body></html>";
         let cached_content = cache.add(content.to_owned(), &mut bookmark).await.unwrap();
         assert_eq!(cached_content, "Test content");
-        let cache_map = cache.cache_map.lock().unwrap();
+        let cache_map = cache.cache_map.lock();
         assert_eq!(cache_map.keys().len(), 1);
         assert!(bookmark.last_cached.is_some());
         assert!(bookmark.cache_modes.contains(&CacheMode::Text));
@@ -487,7 +489,7 @@ mod tests {
             replaced_content,
             "<html><head></head><body><p>Test content 2</p></body></html>"
         );
-        let cache_map = cache.cache_map.lock().unwrap();
+        let cache_map = cache.cache_map.lock();
         assert_eq!(cache_map.keys().len(), 1);
     }
 
@@ -513,7 +515,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(replaced_content, "Test content 2");
-        let cache_map = cache.cache_map.lock().unwrap();
+        let cache_map = cache.cache_map.lock();
         assert_eq!(cache_map.keys().len(), 1);
     }
 
@@ -540,7 +542,7 @@ mod tests {
         cache.remove(&mut bookmark).await.unwrap();
         assert!(bookmark.last_cached.is_none());
         assert!(bookmark.cache_modes.is_empty());
-        let cache_map = cache.cache_map.lock().unwrap();
+        let cache_map = cache.cache_map.lock();
         assert_eq!(cache_map.keys().len(), 0);
     }
 
@@ -588,7 +590,7 @@ mod tests {
         }
 
         cache.remove_all(&mut target_bookmarks).await.unwrap();
-        let cache_map = cache.cache_map.lock().unwrap();
+        let cache_map = cache.cache_map.lock();
         assert_eq!(cache_map.keys().len(), 0);
     }
 
@@ -621,7 +623,7 @@ mod tests {
         }
 
         cache.clear(&mut target_bookmarks).unwrap();
-        let cache_map = cache.cache_map.lock().unwrap();
+        let cache_map = cache.cache_map.lock();
         assert_eq!(cache_map.keys().len(), 0);
     }
 }

@@ -233,6 +233,7 @@ dependencies = [
  "html5ever 0.24.1",
  "log",
  "lz4",
+ "parking_lot",
  "predicates",
  "readability",
  "regex",

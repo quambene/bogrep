@@ -3,21 +3,23 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use log::debug;
+use parking_lot::Mutex;
 use reqwest::{Client as ReqwestClient, Url};
 use std::{
     collections::{hash_map::Entry, HashMap},
-    sync::Mutex,
+    sync::Arc,
 };
 use tokio::time::{self, Duration};
 
 /// A trait to fetch websites from a real or mock client.
 #[async_trait]
-pub trait Fetch {
+pub trait Fetch: Clone {
     /// Fetch content of a website as HTML.
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError>;
 }
 
 /// A client to fetch websites.
+#[derive(Debug, Clone)]
 pub struct Client {
     client: ReqwestClient,
     throttler: Option<Throttler>,
@@ -94,16 +96,16 @@ impl Fetch for Client {
 }
 
 /// A throttler to limit the number of requests.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Throttler {
-    last_fetched: Mutex<HashMap<String, DateTime<Utc>>>,
+    last_fetched: Arc<Mutex<HashMap<String, DateTime<Utc>>>>,
     request_throttling: u64,
 }
 
 impl Throttler {
     pub fn new(request_throttling: u64) -> Self {
         Self {
-            last_fetched: Mutex::new(HashMap::new()),
+            last_fetched: Arc::new(Mutex::new(HashMap::new())),
             request_throttling,
         }
     }
@@ -145,7 +147,7 @@ impl Throttler {
             .host_str()
             .ok_or(BogrepError::ConvertHost(bookmark.url.to_string()))?;
 
-        let mut map = self.last_fetched.lock().unwrap();
+        let mut map = self.last_fetched.lock();
         let entry = map.entry(bookmark_host.to_string());
 
         match entry {
@@ -162,26 +164,26 @@ impl Throttler {
 }
 
 /// A mock client to fetch websites used in testing.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MockClient {
     /// Mock the the HTML content.
-    client_map: Mutex<HashMap<Url, String>>,
+    client_map: Arc<Mutex<HashMap<Url, String>>>,
 }
 
 impl MockClient {
     pub fn new() -> Self {
-        let client_map = Mutex::new(HashMap::new());
+        let client_map = Arc::new(Mutex::new(HashMap::new()));
         Self { client_map }
     }
 
     pub fn add(&self, html: String, bookmark_url: &Url) -> Result<(), anyhow::Error> {
-        let mut client_map = self.client_map.lock().unwrap();
+        let mut client_map = self.client_map.lock();
         client_map.insert(bookmark_url.clone(), html);
         Ok(())
     }
 
     pub fn get(&self, bookmark_url: &Url) -> Option<String> {
-        let client_map = self.client_map.lock().unwrap();
+        let client_map = self.client_map.lock();
         client_map
             .get(bookmark_url)
             .map(|content| content.to_owned())

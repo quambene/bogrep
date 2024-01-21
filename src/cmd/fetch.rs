@@ -1,6 +1,6 @@
 use crate::{
     bookmark_reader::{ReadTarget, WriteTarget},
-    bookmarks::Action,
+    bookmarks::{Action, BookmarkProcessor},
     cache::CacheMode,
     errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, Settings, SourceType,
@@ -8,10 +8,9 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use colored::Colorize;
-use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::{collections::HashSet, error::Error, io::Write};
+use std::collections::HashSet;
 use url::Url;
 
 /// Fetch and cache bookmarks.
@@ -27,8 +26,8 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     fetch_bookmarks(
         &config.settings,
         &args,
-        &client,
-        &cache,
+        client,
+        cache,
         &mut target_reader,
         &mut target_writer,
     )
@@ -45,8 +44,8 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 pub async fn fetch_bookmarks(
     settings: &Settings,
     args: &FetchArgs,
-    client: &impl Fetch,
-    cache: &impl Caching,
+    client: impl Fetch,
+    cache: impl Caching,
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
@@ -61,13 +60,19 @@ pub async fn fetch_bookmarks(
 
     set_actions(&mut target_bookmarks, now, args)?;
 
-    process_bookmarks(
-        client,
-        cache,
-        target_bookmarks.values_mut().collect(),
-        settings.max_concurrent_requests,
-    )
-    .await?;
+    let bookmark_processor =
+        BookmarkProcessor::new(client, cache, settings.max_concurrent_requests);
+
+    bookmark_processor
+        .process_bookmarks(target_bookmarks.values_mut().collect())
+        .await?;
+
+    let underlying_bookmarks = bookmark_processor.underlying_bookmarks();
+    let underlying_bookmarks = underlying_bookmarks.lock();
+
+    for underlying_bookmark in underlying_bookmarks.iter() {
+        target_bookmarks.insert(underlying_bookmark.clone());
+    }
 
     trace!("Fetched bookmarks: {target_bookmarks:#?}");
 
@@ -114,144 +119,6 @@ pub fn set_actions(
     } else {
         target_bookmarks.set_action(&Action::FetchAndAdd);
     }
-
-    Ok(())
-}
-
-/// Process bookmarks for all actions except [`Action::None`].
-pub async fn process_bookmarks(
-    client: &impl Fetch,
-    cache: &impl Caching,
-    bookmarks: Vec<&mut TargetBookmark>,
-    max_concurrent_requests: usize,
-) -> Result<(), BogrepError> {
-    let bookmarks = bookmarks
-        .into_iter()
-        .filter(|bookmark| bookmark.action != Action::None)
-        .collect::<Vec<_>>();
-    let mut processed = 0;
-    let mut cached = 0;
-    let mut failed_response = 0;
-    let mut binary_response = 0;
-    let mut empty_response = 0;
-    let total = bookmarks.len();
-
-    let mut stream = stream::iter(bookmarks)
-        .map(|bookmark| execute_actions(client, cache, bookmark))
-        .buffer_unordered(max_concurrent_requests);
-
-    while let Some(item) = stream.next().await {
-        processed += 1;
-
-        print!("Processing bookmarks ({processed}/{total})\r");
-
-        if let Err(err) = item {
-            match err {
-                BogrepError::HttpResponse(ref error) => {
-                    // Usually, a lot of fetching errors are expected because of
-                    // invalid or outdated urls in the bookmarks, so we are
-                    // using a warning message only if the issue is on our side.
-                    if let Some(error) = error.source() {
-                        if error.to_string().contains("Too many open files") {
-                            warn!("{err}");
-                        } else {
-                            debug!("{err} ");
-                        }
-                    } else {
-                        debug!("{err} ");
-                    }
-
-                    failed_response += 1;
-                }
-                BogrepError::HttpStatus { .. } => {
-                    debug!("{err}");
-                    failed_response += 1;
-                }
-                BogrepError::ParseHttpResponse(_) => {
-                    debug!("{err}");
-                    failed_response += 1;
-                }
-                BogrepError::BinaryResponse(_) => {
-                    debug!("{err}");
-                    binary_response += 1;
-                }
-                BogrepError::EmptyResponse(_) => {
-                    debug!("{err}");
-                    empty_response += 1;
-                }
-                BogrepError::ConvertHost(_) => {
-                    warn!("{err}");
-                    failed_response += 1;
-                }
-                BogrepError::CreateFile { .. } => {
-                    // Write errors are expected if there are "Too many open
-                    // files", so we are issuing a warning instead of returning
-                    // a hard failure.
-                    warn!("{err}");
-                    failed_response += 1;
-                }
-                // We are aborting if there is an unexpected error.
-                err => {
-                    return Err(err);
-                }
-            }
-        } else {
-            cached += 1;
-        }
-
-        std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
-    }
-
-    println!();
-    println!(
-        "Processed {total} bookmarks, {cached} cached, {} ignored, {failed_response} failed",
-        binary_response + empty_response
-    );
-
-    Ok(())
-}
-
-/// Fetch and add bookmark to cache.
-async fn execute_actions(
-    client: &impl Fetch,
-    cache: &impl Caching,
-    bookmark: &mut TargetBookmark,
-) -> Result<(), BogrepError> {
-    match bookmark.action {
-        Action::FetchAndReplace => {
-            let website = client.fetch(bookmark).await?;
-            trace!("Fetched website: {website}");
-
-            if bookmark.underlying_url.is_none() {
-                let underlying_url = html::select_underlying(&website, &bookmark.underlying_type)?;
-                bookmark.underlying_url = underlying_url;
-            }
-
-            let html = html::filter_html(&website)?;
-            cache.replace(html, bookmark).await?;
-        }
-        Action::FetchAndAdd => {
-            if !cache.exists(bookmark) {
-                let website = client.fetch(bookmark).await?;
-                trace!("Fetched website: {website}");
-
-                if bookmark.underlying_url.is_none() {
-                    let underlying_url =
-                        html::select_underlying(&website, &bookmark.underlying_type)?;
-                    bookmark.underlying_url = underlying_url;
-                }
-
-                let html = html::filter_html(&website)?;
-                cache.add(html, bookmark).await?;
-            }
-        }
-        Action::Remove => {
-            cache.remove(bookmark).await?;
-        }
-        Action::None => (),
-    }
-
-    bookmark.action = Action::None;
 
     Ok(())
 }
@@ -365,13 +232,10 @@ mod tests {
                 .unwrap();
         }
 
-        let res = process_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-        )
-        .await;
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let res = bookmark_processor
+            .process_bookmarks(target_bookmarks.values_mut().collect())
+            .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -435,13 +299,10 @@ mod tests {
                 .unwrap();
         }
 
-        let res = process_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-        )
-        .await;
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let res = bookmark_processor
+            .process_bookmarks(target_bookmarks.values_mut().collect())
+            .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -513,13 +374,10 @@ mod tests {
             .await
             .unwrap();
 
-        let res = process_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-        )
-        .await;
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let res = bookmark_processor
+            .process_bookmarks(target_bookmarks.values_mut().collect())
+            .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
@@ -593,13 +451,10 @@ mod tests {
             .await
             .unwrap();
 
-        let res = process_bookmarks(
-            &client,
-            &cache,
-            target_bookmarks.values_mut().collect(),
-            100,
-        )
-        .await;
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let res = bookmark_processor
+            .process_bookmarks(target_bookmarks.values_mut().collect())
+            .await;
         assert!(res.is_ok());
         assert_eq!(
             cache.cache_map(),
