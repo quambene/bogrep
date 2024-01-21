@@ -66,8 +66,7 @@ async fn update_bookmarks(
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
-
-    // TODO: process underlyings
+    bookmark_processor.add_underlyings(target_bookmarks);
 
     target_bookmarks.clean_up();
 

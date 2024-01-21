@@ -1,6 +1,8 @@
 use std::{collections::HashSet, error::Error, io::Write, rc::Rc};
 
-use crate::{errors::BogrepError, html, Action, Caching, Fetch, TargetBookmark};
+use crate::{
+    errors::BogrepError, html, Action, Caching, Fetch, SourceType, TargetBookmark, TargetBookmarks,
+};
 use chrono::Utc;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
@@ -32,8 +34,12 @@ where
         }
     }
 
-    pub fn underlying_bookmarks(self) -> Rc<Mutex<Vec<TargetBookmark>>> {
-        self.underlying_bookmarks
+    pub fn add_underlyings(self, target_bookmarks: &mut TargetBookmarks) {
+        let underlying_bookmarks = self.underlying_bookmarks.lock();
+
+        for underlying_bookmark in underlying_bookmarks.iter() {
+            target_bookmarks.insert(underlying_bookmark.clone());
+        }
     }
 
     /// Process bookmarks for all actions except [`Action::None`].
@@ -136,28 +142,7 @@ where
             Action::FetchAndReplace => {
                 let website = self.client.fetch(bookmark).await?;
                 trace!("Fetched website: {website}");
-
-                if bookmark.underlying_url.is_none() {
-                    let underlying_url =
-                        html::select_underlying(&website, &bookmark.underlying_type)?;
-
-                    if let Some(url) = underlying_url {
-                        bookmark.underlying_url = Some(url.clone());
-
-                        let underlying_bookmark = TargetBookmark::new(
-                            url,
-                            None,
-                            Utc::now(),
-                            None,
-                            HashSet::new(),
-                            HashSet::new(),
-                            Action::FetchAndAdd,
-                        );
-                        let mut underlying_bookmarks = self.underlying_bookmarks.lock();
-                        underlying_bookmarks.push(underlying_bookmark);
-                    }
-                }
-
+                self.fetch_underlying(bookmark, &website).await?;
                 let html = html::filter_html(&website)?;
                 cache.replace(html, bookmark).await?;
             }
@@ -165,6 +150,7 @@ where
                 if !cache.exists(bookmark) {
                     let website = client.fetch(bookmark).await?;
                     trace!("Fetched website: {website}");
+                    self.fetch_underlying(bookmark, &website).await?;
                     let html = html::filter_html(&website)?;
                     cache.add(html, bookmark).await?;
                 }
@@ -176,6 +162,45 @@ where
         }
 
         bookmark.action = Action::None;
+
+        Ok(())
+    }
+
+    async fn fetch_underlying(
+        &self,
+        bookmark: &mut TargetBookmark,
+        website: &str,
+    ) -> Result<(), BogrepError> {
+        let client = &self.client;
+        let cache = &self.cache;
+
+        if bookmark.underlying_url.is_none() {
+            let underlying_url = html::select_underlying(&website, &bookmark.underlying_type)?;
+
+            if let Some(underlying_url) = underlying_url {
+                bookmark.underlying_url = Some(underlying_url.clone());
+
+                let mut underlying_bookmark = TargetBookmark::new(
+                    underlying_url.clone(),
+                    None,
+                    Utc::now(),
+                    None,
+                    HashSet::new(),
+                    HashSet::new(),
+                    Action::FetchAndAdd,
+                );
+                underlying_bookmark.set_source(SourceType::Underlying(bookmark.url.to_string()));
+
+                if !cache.exists(&underlying_bookmark) {
+                    let website = client.fetch(&underlying_bookmark).await?;
+                    let html = html::filter_html(&website)?;
+                    cache.add(html, &mut underlying_bookmark).await?;
+                }
+
+                let mut underlying_bookmarks = self.underlying_bookmarks.lock();
+                underlying_bookmarks.push(underlying_bookmark);
+            }
+        }
 
         Ok(())
     }
