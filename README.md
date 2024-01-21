@@ -27,6 +27,7 @@ bogrep -i "reed-solomon code"
   - [Edge](#edge)
 - [Specify bookmark folders](#specify-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
+- [Fetch underlying urls](#fetch-underlying-urls)
 - [Diff websites](#diff-websites)
 - [Manage internal bookmarks](#manage-internal-bookmarks)
 - [Request throttling](#request-throttling)
@@ -192,7 +193,7 @@ Fetch the underlying urls of supported websites:
 bogrep config --underlying <url1> <url2> ...
 ```
 
-For example, a specific url for <https://news.ycombinator.com> is
+For example, if a specific url for <https://news.ycombinator.com> is
 bookmarked, the article of discussion will be fetched and cached.
 
 ## Diff websites
