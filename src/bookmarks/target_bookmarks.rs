@@ -69,7 +69,10 @@ impl TryFrom<JsonBookmark> for TargetBookmark {
             .iter()
             .find(|source| matches!(source, SourceType::Underlying(_)));
         let underlying_url = match underlying_source {
-            Some(SourceType::Underlying(underlying_url)) => Some(underlying_url.to_owned()),
+            Some(SourceType::Underlying(underlying_url)) => {
+                let underlying_url = Url::parse(underlying_url)?;
+                Some(underlying_url)
+            }
             _ => None,
         };
 

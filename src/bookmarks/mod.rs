@@ -58,7 +58,7 @@ pub enum SourceType {
     Chrome,
     Edge,
     Simple,
-    Underlying(Url),
+    Underlying(String),
     Internal,
     External,
     #[default]
