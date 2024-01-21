@@ -1,4 +1,8 @@
-use crate::{bookmarks::RawSource, cache::CacheMode, json};
+use crate::{
+    bookmarks::{RawSource, SUPPORTED_UNDERLYING_DOMAINS},
+    cache::CacheMode,
+    json,
+};
 use anyhow::{anyhow, Context};
 use log::debug;
 use reqwest::Url;
@@ -23,9 +27,6 @@ const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 10;
 
 /// The  default for `Setting::idle_connections_timeout`.
 const IDLE_CONNECTIONS_TIMEOUT: u64 = 5_000;
-
-/// The supported domains to fetch the underlying.
-const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &["news.ycombinator.com"];
 
 /// Describes the settings used in Bogrep.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

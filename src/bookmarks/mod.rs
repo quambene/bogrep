@@ -14,6 +14,11 @@ pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
 use url::Url;
 use uuid::Uuid;
 
+pub const HACKER_NEWS_DOMAIN: &str = "news.ycombinator.com";
+
+/// The supported domains to fetch the underlying.
+pub const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &[HACKER_NEWS_DOMAIN];
+
 /// The action to be performed on the bookmark.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Action {
@@ -22,11 +27,6 @@ pub enum Action {
     FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
     FetchAndAdd,
-    /// Fetch and replace bookmark and underlying.
-    FetchUnderlyingAndReplace,
-    /// Fetch and add bookmark and underlying.
-    FetchUnderlyingAndAdd,
-    /// Remove bookmark from cache.
     Remove,
     /// No actions to be performed.
     None,
@@ -35,19 +35,15 @@ pub enum Action {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum UnderlyingType {
     HackerNews,
+    None,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Underlying {
-    url: Url,
-    r#type: UnderlyingType,
-}
-
-impl Underlying {
-    pub fn new(url: &Url, r#type: UnderlyingType) -> Self {
-        Self {
-            url: url.to_owned(),
-            r#type,
+impl From<&Url> for UnderlyingType {
+    fn from(url: &Url) -> Self {
+        if url.domain() == Some("https://news.ycombinator.com/") {
+            UnderlyingType::HackerNews
+        } else {
+            UnderlyingType::None
         }
     }
 }

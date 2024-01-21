@@ -105,19 +105,22 @@ pub fn convert_to_markdown(html: &str) -> String {
     html2md::parse_html(html)
 }
 
-pub fn select_underlying(html: &str, underlying_type: &UnderlyingType) -> Result<Url, BogrepError> {
-    let document = Html::parse_document(html);
-
+pub fn select_underlying(
+    html: &str,
+    underlying_type: &UnderlyingType,
+) -> Result<Option<Url>, BogrepError> {
     match underlying_type {
         UnderlyingType::HackerNews => {
+            let document = Html::parse_document(html);
             let span_selector = Selector::parse("span.titleline").unwrap();
             let a_selector = Selector::parse("a").unwrap();
             let span = document.select(&span_selector).collect::<Vec<_>>()[0];
             let a = span.select(&a_selector).collect::<Vec<_>>()[0];
             let underlying_link = a.attr("href").unwrap();
             let underlying_url = Url::parse(underlying_link)?;
-            Ok(underlying_url)
+            Ok(Some(underlying_url))
         }
+        _ => Ok(None),
     }
 }
 
@@ -281,7 +284,7 @@ mod tests {
         let underlying_url = res.unwrap();
         assert_eq!(
             underlying_url,
-            Url::parse("https://github.com/quambene/bogrep").unwrap()
+            Some(Url::parse("https://github.com/quambene/bogrep").unwrap())
         );
     }
 }

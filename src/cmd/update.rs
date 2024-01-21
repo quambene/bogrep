@@ -76,7 +76,9 @@ async fn update_bookmarks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::RawSource, Action, MockCache, MockClient, TargetBookmark};
+    use crate::{
+        bookmarks::RawSource, Action, MockCache, MockClient, TargetBookmark, UnderlyingType,
+    };
     use chrono::Utc;
     use std::{
         collections::{HashMap, HashSet},
@@ -108,7 +110,8 @@ mod tests {
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: url1.clone(),
-                    underlying: None,
+                    underlying_url: None,
+                    underlying_type: UnderlyingType::None,
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
@@ -121,7 +124,8 @@ mod tests {
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: url2.clone(),
-                    underlying: None,
+                    underlying_url: None,
+                    underlying_type: UnderlyingType::None,
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
@@ -226,7 +230,8 @@ mod tests {
                 TargetBookmark {
                     id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                     url: url1.clone(),
-                    underlying: None,
+                    underlying_url: None,
+                    underlying_type: UnderlyingType::None,
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
@@ -239,7 +244,8 @@ mod tests {
                 TargetBookmark {
                     id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
                     url: url2.clone(),
-                    underlying: None,
+                    underlying_url: None,
+                    underlying_type: UnderlyingType::None,
                     last_imported: now.timestamp_millis(),
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),

@@ -107,7 +107,7 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
         bookmarks.insert(
             url.clone(),
             TargetBookmark::new(
-                url,
+                url.clone(),
                 None,
                 now,
                 None,
