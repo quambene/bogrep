@@ -1,7 +1,10 @@
 use super::{Action, JsonBookmark};
-use crate::{cache::CacheMode, SourceBookmark, SourceBookmarks, SourceType, UnderlyingType};
+use crate::{
+    cache::CacheMode, errors::BogrepError, SourceBookmark, SourceBookmarks, SourceType,
+    UnderlyingType,
+};
 use chrono::{DateTime, Utc};
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use std::collections::{
     hash_map::{Entry, IntoIter, IntoValues, Iter, IterMut, Keys, Values, ValuesMut},
     HashMap, HashSet,
@@ -212,11 +215,21 @@ impl TargetBookmarks {
         &self,
         source_bookmarks: &'a SourceBookmarks,
     ) -> Vec<&'a SourceBookmark> {
-        // TODO: refactor unwrap
         source_bookmarks
             .iter()
-            .filter(|(url, _)| !self.0.contains_key(&Url::parse(url).unwrap()))
-            .map(|(_, bookmark)| bookmark)
+            .filter_map(|(url, bookmark)| match Url::parse(url) {
+                Ok(url) => {
+                    if !self.0.contains_key(&url) {
+                        Some(bookmark)
+                    } else {
+                        None
+                    }
+                }
+                Err(err) => {
+                    warn!("{}", BogrepError::ParseUrl(err));
+                    None
+                }
+            })
             .collect()
     }
 
