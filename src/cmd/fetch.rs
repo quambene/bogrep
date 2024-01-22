@@ -60,13 +60,14 @@ pub async fn fetch_bookmarks(
 
     set_actions(&mut target_bookmarks, now, args)?;
 
-    let bookmark_processor =
-        BookmarkProcessor::new(client, cache, settings.max_concurrent_requests);
+    let bookmark_processor = BookmarkProcessor::new(client, cache, settings.to_owned());
 
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
-    bookmark_processor.add_underlyings(&mut target_bookmarks);
+    bookmark_processor
+        .process_underlyings(&mut target_bookmarks)
+        .await?;
 
     trace!("Fetched bookmarks: {target_bookmarks:#?}");
 
@@ -225,7 +226,8 @@ mod tests {
                 .unwrap();
         }
 
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let settings = Settings::default();
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;
@@ -292,7 +294,8 @@ mod tests {
                 .unwrap();
         }
 
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let settings = Settings::default();
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;
@@ -367,7 +370,8 @@ mod tests {
             .await
             .unwrap();
 
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let settings = Settings::default();
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;
@@ -444,7 +448,8 @@ mod tests {
             .await
             .unwrap();
 
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), 100);
+        let settings = Settings::default();
+        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;
