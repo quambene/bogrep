@@ -57,8 +57,10 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
     let cache = Cache::new(&cache_path, CacheMode::Text);
     let client = MockClient::new();
     let mut bookmarks = HashMap::new();
-    let mut settings = Settings::default();
-    settings.max_concurrent_requests = max_concurrent_requests;
+    let settings = Settings {
+        max_concurrent_requests,
+        ..Default::default()
+    };
 
     for i in 0..10000 {
         let url = Url::parse(&format!("https://url{i}.com")).unwrap();

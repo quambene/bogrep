@@ -144,11 +144,7 @@ where
             return Ok(());
         }
 
-        let underlying_bookmarks = self.underlying_bookmarks.lock();
-
-        for underlying_bookmark in underlying_bookmarks.iter() {
-            target_bookmarks.insert(underlying_bookmark.clone());
-        }
+        self.add_underlyings(target_bookmarks);
 
         println!("Processing underlying bookmarks");
         self.process_bookmarks(target_bookmarks.values_mut().collect())
@@ -188,6 +184,14 @@ where
         bookmark.action = Action::None;
 
         Ok(())
+    }
+
+    fn add_underlyings(&self, bookmarks: &mut TargetBookmarks) {
+        let underlying_bookmarks = self.underlying_bookmarks.lock();
+
+        for underlying_bookmark in underlying_bookmarks.iter() {
+            bookmarks.insert(underlying_bookmark.clone());
+        }
     }
 
     fn add_underlying(

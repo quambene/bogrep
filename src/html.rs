@@ -124,8 +124,8 @@ fn select_underlying_hackernews(html: &str) -> Result<Option<Url>, BogrepError> 
         Selector::parse("span.titleline").map_err(|err| BogrepError::ParseHtml(err.to_string()))?;
     let a_selector = Selector::parse("a").map_err(|err| BogrepError::ParseHtml(err.to_string()))?;
 
-    if let Some(span) = document.select(&span_selector).collect::<Vec<_>>().get(0) {
-        if let Some(a) = span.select(&a_selector).collect::<Vec<_>>().get(0) {
+    if let Some(span) = document.select(&span_selector).collect::<Vec<_>>().first() {
+        if let Some(a) = span.select(&a_selector).collect::<Vec<_>>().first() {
             if let Some(underlying_link) = a.attr("href") {
                 let underlying_url = Url::parse(underlying_link)?;
                 debug!("Selected underlying: {underlying_url}");
@@ -142,7 +142,7 @@ fn select_underlying_reddit(html: &str) -> Result<Option<Url>, BogrepError> {
     let a_selector = Selector::parse("a.styled-outbound-link")
         .map_err(|err| BogrepError::ParseHtml(err.to_string()))?;
 
-    if let Some(a) = document.select(&a_selector).collect::<Vec<_>>().get(0) {
+    if let Some(a) = document.select(&a_selector).collect::<Vec<_>>().first() {
         if let Some(underlying_link) = a.attr("href") {
             let underlying_url = Url::parse(underlying_link)?;
             debug!("Selected underlying: {underlying_url}");
