@@ -3,7 +3,7 @@ use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    utils, Cache, Caching, Client, Config, Fetch, SourceBookmarks, TargetBookmarks,
+    utils, Cache, Caching, Client, Config, Fetch, Settings, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
 
@@ -33,7 +33,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         &cache,
         &mut source_reader,
         &mut target_bookmarks,
-        config.settings.max_concurrent_requests,
+        &config.settings,
     )
     .await?;
 
@@ -51,7 +51,7 @@ async fn update_bookmarks(
     cache: &impl Caching,
     source_reader: &mut [SourceReader],
     target_bookmarks: &mut TargetBookmarks,
-    max_concurrent_requests: usize,
+    settings: &Settings,
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
@@ -62,11 +62,13 @@ async fn update_bookmarks(
     target_bookmarks.update(&source_bookmarks)?;
 
     let bookmark_processor =
-        BookmarkProcessor::new(client.clone(), cache.clone(), max_concurrent_requests);
+        BookmarkProcessor::new(client.clone(), cache.clone(), settings.clone());
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
-    bookmark_processor.add_underlyings(target_bookmarks);
+    bookmark_processor
+        .process_underlyings(target_bookmarks)
+        .await?;
 
     target_bookmarks.clean_up();
 
@@ -94,7 +96,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
-        let max_concurrent_requests = 100;
+        let settings = Settings::default();
         let url1 = Url::parse("https://www.deepl.com/translator").unwrap();
         let url2 = Url::parse(
             "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
@@ -165,7 +167,7 @@ mod tests {
             &cache,
             &mut [source_reader],
             &mut target_bookmarks,
-            max_concurrent_requests,
+            &settings,
         )
         .await;
         assert!(res.is_ok());
@@ -214,7 +216,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
-        let max_concurrent_requests = 100;
+        let settings = Settings::default();
         let url1 = Url::parse("https://www.deepl.com/translator").unwrap();
         let url2 = Url::parse(
             "https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/",
@@ -285,7 +287,7 @@ mod tests {
             &cache,
             &mut [source_reader],
             &mut target_bookmarks,
-            max_concurrent_requests,
+            &settings,
         )
         .await;
         assert!(res.is_ok());

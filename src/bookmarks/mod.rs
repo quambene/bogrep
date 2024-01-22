@@ -16,10 +16,16 @@ pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
 use url::Url;
 use uuid::Uuid;
 
-pub const HACKER_NEWS_DOMAIN: &str = "news.ycombinator.com";
+pub const HACKER_NEWS_DOMAINS: &[&str] = &["news.ycombinator.com", "www.news.ycombinator.com"];
+pub const REDDIT_DOMAINS: &[&str] = &["reddit.com", "www.reddit.com"];
 
 /// The supported domains to fetch the underlying.
-pub const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &[HACKER_NEWS_DOMAIN];
+pub const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &[
+    "news.ycombinator.com",
+    "www.news.ycombinator.com",
+    "reddit.com",
+    "www.reddit.com",
+];
 
 /// The action to be performed on the bookmark.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -37,13 +43,22 @@ pub enum Action {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum UnderlyingType {
     HackerNews,
+    Reddit,
     None,
 }
 
 impl From<&Url> for UnderlyingType {
     fn from(url: &Url) -> Self {
-        if url.domain() == Some(HACKER_NEWS_DOMAIN) {
+        if url
+            .domain()
+            .is_some_and(|domain| HACKER_NEWS_DOMAINS.contains(&domain))
+        {
             UnderlyingType::HackerNews
+        } else if url
+            .domain()
+            .is_some_and(|domain| REDDIT_DOMAINS.contains(&domain))
+        {
+            UnderlyingType::Reddit
         } else {
             UnderlyingType::None
         }

@@ -2,7 +2,7 @@ use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks,
+    utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
     TargetBookmarks,
 };
 use log::debug;
@@ -31,13 +31,8 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         let cache = Cache::new(&config.cache_path, cache_mode);
         let client = Client::new(config)?;
 
-        let target_bookmarks = init_bookmarks(
-            &client,
-            &cache,
-            source_reader.as_mut(),
-            config.settings.max_concurrent_requests,
-        )
-        .await?;
+        let target_bookmarks =
+            init_bookmarks(&client, &cache, source_reader.as_mut(), &config.settings).await?;
         target_writer.write(&target_bookmarks)?;
 
         utils::close_and_rename(
@@ -53,7 +48,7 @@ async fn init_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
     source_reader: &mut [SourceReader],
-    max_concurrent_requests: usize,
+    settings: &Settings,
 ) -> Result<TargetBookmarks, anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
@@ -77,11 +72,13 @@ async fn init_bookmarks(
     );
 
     let bookmark_processor =
-        BookmarkProcessor::new(client.clone(), cache.clone(), max_concurrent_requests);
+        BookmarkProcessor::new(client.clone(), cache.clone(), settings.clone());
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
-    bookmark_processor.add_underlyings(&mut target_bookmarks);
+    bookmark_processor
+        .process_underlyings(&mut target_bookmarks)
+        .await?;
 
     Ok(target_bookmarks)
 }
@@ -103,7 +100,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
-        let max_concurrent_requests = 100;
+        let settings = Settings::default();
         let expected_bookmarks: HashSet<Url> = HashSet::from_iter([
             Url::parse("https://www.deepl.com/translator").unwrap(),
             Url::parse("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
@@ -120,13 +117,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = init_bookmarks(
-            &client,
-            &cache,
-            &mut [source_reader],
-            max_concurrent_requests,
-        )
-        .await;
+        let res = init_bookmarks(&client, &cache, &mut [source_reader], &settings).await;
         assert!(res.is_ok());
 
         let target_bookmarks = res.unwrap();
@@ -161,7 +152,7 @@ mod tests {
         let bookmark_path = Path::new("test_data/bookmarks_chromium.json");
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
-        let max_concurrent_requests = 100;
+        let settings = Settings::default();
         let expected_bookmarks: HashSet<Url> = HashSet::from_iter([
             Url::parse("https://www.deepl.com/translator").unwrap(),
             Url::parse("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
@@ -178,13 +169,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = init_bookmarks(
-            &client,
-            &cache,
-            &mut [source_reader],
-            max_concurrent_requests,
-        )
-        .await;
+        let res = init_bookmarks(&client, &cache, &mut [source_reader], &settings).await;
         assert!(res.is_ok());
 
         let target_bookmarks = res.unwrap();

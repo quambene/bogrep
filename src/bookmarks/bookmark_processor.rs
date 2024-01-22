@@ -1,5 +1,6 @@
 use crate::{
-    errors::BogrepError, html, Action, Caching, Fetch, SourceType, TargetBookmark, TargetBookmarks,
+    errors::BogrepError, html, Action, Caching, Fetch, Settings, SourceType, TargetBookmark,
+    TargetBookmarks,
 };
 use chrono::Utc;
 use futures::{stream, StreamExt};
@@ -11,7 +12,7 @@ use std::{collections::HashSet, error::Error, io::Write, rc::Rc};
 pub struct BookmarkProcessor<C: Caching, F: Fetch> {
     client: F,
     cache: C,
-    max_concurrent_requests: usize,
+    settings: Settings,
     underlying_bookmarks: Rc<Mutex<Vec<TargetBookmark>>>,
 }
 
@@ -20,7 +21,7 @@ where
     F: Fetch,
     C: Caching,
 {
-    pub fn new(client: F, cache: C, max_concurrent_requests: usize) -> Self
+    pub fn new(client: F, cache: C, settings: Settings) -> Self
     where
         F: Fetch,
         C: Caching,
@@ -28,17 +29,14 @@ where
         Self {
             client,
             cache,
-            max_concurrent_requests,
+            settings,
             underlying_bookmarks: Rc::new(Mutex::new(vec![])),
         }
     }
 
-    pub fn add_underlyings(self, target_bookmarks: &mut TargetBookmarks) {
+    pub fn underlying_bookmarks(&self) -> Vec<TargetBookmark> {
         let underlying_bookmarks = self.underlying_bookmarks.lock();
-
-        for underlying_bookmark in underlying_bookmarks.iter() {
-            target_bookmarks.insert(underlying_bookmark.clone());
-        }
+        underlying_bookmarks.clone()
     }
 
     /// Process bookmarks for all actions except [`Action::None`].
@@ -59,7 +57,7 @@ where
 
         let mut stream = stream::iter(bookmarks)
             .map(|bookmark| self.execute_actions(bookmark))
-            .buffer_unordered(self.max_concurrent_requests);
+            .buffer_unordered(self.settings.max_concurrent_requests);
 
         while let Some(item) = stream.next().await {
             processed += 1;
@@ -123,11 +121,34 @@ where
             std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
         }
 
-        println!();
+        if total == 0 {
+            println!("Processing bookmarks (0/0)");
+        } else {
+            println!();
+        }
+
         println!(
             "Processed {total} bookmarks, {cached} cached, {} ignored, {failed_response} failed",
             binary_response + empty_response
         );
+
+        Ok(())
+    }
+
+    /// Process underlying bookmarks for all actions except [`Action::None`].
+    pub async fn process_underlyings(
+        self,
+        target_bookmarks: &mut TargetBookmarks,
+    ) -> Result<(), BogrepError> {
+        if self.settings.underlying_urls.is_empty() {
+            return Ok(());
+        }
+
+        self.add_underlyings(target_bookmarks);
+
+        println!("Processing underlying bookmarks");
+        self.process_bookmarks(target_bookmarks.values_mut().collect())
+            .await?;
 
         Ok(())
     }
@@ -141,7 +162,7 @@ where
             Action::FetchAndReplace => {
                 let website = self.client.fetch(bookmark).await?;
                 trace!("Fetched website: {website}");
-                self.fetch_underlying(bookmark, &website).await?;
+                self.add_underlying(bookmark, &website)?;
                 let html = html::filter_html(&website)?;
                 cache.replace(html, bookmark).await?;
             }
@@ -149,7 +170,7 @@ where
                 if !cache.exists(bookmark) {
                     let website = client.fetch(bookmark).await?;
                     trace!("Fetched website: {website}");
-                    self.fetch_underlying(bookmark, &website).await?;
+                    self.add_underlying(bookmark, &website)?;
                     let html = html::filter_html(&website)?;
                     cache.add(html, bookmark).await?;
                 }
@@ -165,13 +186,20 @@ where
         Ok(())
     }
 
-    async fn fetch_underlying(
+    fn add_underlyings(&self, bookmarks: &mut TargetBookmarks) {
+        let underlying_bookmarks = self.underlying_bookmarks.lock();
+
+        for underlying_bookmark in underlying_bookmarks.iter() {
+            bookmarks.insert(underlying_bookmark.clone());
+        }
+    }
+
+    fn add_underlying(
         &self,
         bookmark: &mut TargetBookmark,
         website: &str,
     ) -> Result<(), BogrepError> {
-        let client = &self.client;
-        let cache = &self.cache;
+        debug!("Add underlying");
 
         if bookmark.underlying_url.is_none() {
             let underlying_url = html::select_underlying(website, &bookmark.underlying_type)?;
@@ -190,11 +218,7 @@ where
                 );
                 underlying_bookmark.set_source(SourceType::Underlying(bookmark.url.to_string()));
 
-                if !cache.exists(&underlying_bookmark) {
-                    let website = client.fetch(&underlying_bookmark).await?;
-                    let html = html::filter_html(&website)?;
-                    cache.add(html, &mut underlying_bookmark).await?;
-                }
+                debug!("Added underlying bookmark: {underlying_bookmark:#?}");
 
                 let mut underlying_bookmarks = self.underlying_bookmarks.lock();
                 underlying_bookmarks.push(underlying_bookmark);
@@ -202,5 +226,82 @@ where
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CacheMode, MockCache, MockClient, UnderlyingType};
+    use url::Url;
+
+    #[test]
+    fn test_add_underlying() {
+        let settings = Settings::default();
+        let client = MockClient::new();
+        let cache = MockCache::new(CacheMode::Text);
+        let bookmark_processor = BookmarkProcessor::new(client, cache, settings);
+        let url = Url::parse("https://news.ycombinator.com").unwrap();
+        let website = r#"
+            <html>
+
+            <head>
+                <title>title_content</title>
+                <meta>
+                <script>script_content_1</script>
+            </head>
+
+            <body>
+                <td class="title">
+                    <span class="titleline">
+                        <a href="https://underlying_url.com">The underlying article</a>
+                        <span class="sitebit comhead"> (<a href="from?site=underlying_url.com">
+                                <span class="sitestr">underlying_url.com</span></a>)
+                        </span>
+                    </span>
+                </td>
+            </body>
+
+            </html>
+        "#;
+        let mut bookmark = TargetBookmark::new(
+            url.clone(),
+            None,
+            Utc::now(),
+            None,
+            HashSet::from([SourceType::Internal]),
+            HashSet::from_iter([CacheMode::Text]),
+            Action::None,
+        );
+
+        let res = bookmark_processor.add_underlying(&mut bookmark, website);
+        assert!(res.is_ok());
+
+        assert!(bookmark
+            .underlying_url
+            .is_some_and(|url| url == Url::parse("https://underlying_url.com").unwrap()));
+        assert_eq!(bookmark.underlying_type, UnderlyingType::HackerNews);
+        assert_eq!(bookmark.sources, HashSet::from([SourceType::Internal]));
+        assert!(bookmark.last_cached.is_none());
+
+        let underlying_bookmarks = bookmark_processor.underlying_bookmarks();
+        assert_eq!(underlying_bookmarks.len(), 1);
+
+        let underlying_bookmark = &underlying_bookmarks[0];
+        assert_eq!(
+            underlying_bookmark.url,
+            Url::parse("https://underlying_url.com").unwrap()
+        );
+        assert!(underlying_bookmark.underlying_url.is_none());
+        assert_eq!(underlying_bookmark.underlying_type, UnderlyingType::None);
+        assert!(underlying_bookmark.last_cached.is_none());
+        assert_eq!(
+            underlying_bookmark.sources,
+            HashSet::from_iter([SourceType::Underlying(
+                "https://news.ycombinator.com/".to_owned()
+            )])
+        );
+        assert!(underlying_bookmark.cache_modes.is_empty());
+        assert_eq!(underlying_bookmark.action, Action::FetchAndAdd);
     }
 }

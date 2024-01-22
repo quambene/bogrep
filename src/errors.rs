@@ -25,6 +25,8 @@ pub enum BogrepError {
     DeserializeJson(serde_json::Error),
     #[error("Can't parse url")]
     ParseUrl(#[from] ParseError),
+    #[error("Can't parse html")]
+    ParseHtml(String),
     #[error("Can't parse url: {0}")]
     ConvertHtml(readability::error::Error),
     #[error("Invalid utf8: {0}")]
