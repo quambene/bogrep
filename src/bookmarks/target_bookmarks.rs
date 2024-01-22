@@ -64,22 +64,11 @@ impl TryFrom<JsonBookmark> for TargetBookmark {
     fn try_from(value: JsonBookmark) -> Result<Self, anyhow::Error> {
         let url = Url::parse(&value.url)?;
         let underlying_type = UnderlyingType::from(&url);
-        let underlying_source = value
-            .sources
-            .iter()
-            .find(|source| matches!(source, SourceType::Underlying(_)));
-        let underlying_url = match underlying_source {
-            Some(SourceType::Underlying(underlying_url)) => {
-                let underlying_url = Url::parse(underlying_url)?;
-                Some(underlying_url)
-            }
-            _ => None,
-        };
 
         Ok(Self {
             id: value.id,
             url,
-            underlying_url,
+            underlying_url: None,
             underlying_type,
             last_imported: value.last_imported,
             last_cached: value.last_cached,

@@ -66,14 +66,7 @@ pub async fn fetch_bookmarks(
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
-
-    let underlying_bookmarks = bookmark_processor.underlying_bookmarks();
-    let underlying_bookmarks = underlying_bookmarks.lock();
-
-    for underlying_bookmark in underlying_bookmarks.iter() {
-        target_bookmarks.insert(underlying_bookmark.clone());
-    }
-    // TODO: process underlyings
+    bookmark_processor.add_underlyings(&mut target_bookmarks);
 
     trace!("Fetched bookmarks: {target_bookmarks:#?}");
 
