@@ -193,8 +193,14 @@ Fetch the underlying urls of supported websites:
 bogrep config --underlying <url1> <url2> ...
 ```
 
-For example, if a specific url for <https://news.ycombinator.com> is
-bookmarked, the article of discussion will be fetched and cached.
+For example, if a specific url like
+`https://news.ycombinator.com/item?id=00000000` is bookmarked, the underlying
+article will be fetched and cached.
+
+Supported domains are:
+
+- news.ycombinator.com
+- reddit.com
 
 ## Diff websites
 
