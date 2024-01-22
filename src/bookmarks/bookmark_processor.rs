@@ -1,5 +1,3 @@
-use std::{collections::HashSet, error::Error, io::Write, rc::Rc};
-
 use crate::{
     errors::BogrepError, html, Action, Caching, Fetch, SourceType, TargetBookmark, TargetBookmarks,
 };
@@ -7,6 +5,7 @@ use chrono::Utc;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use parking_lot::Mutex;
+use std::{collections::HashSet, error::Error, io::Write, rc::Rc};
 
 #[derive(Debug)]
 pub struct BookmarkProcessor<C: Caching, F: Fetch> {

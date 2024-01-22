@@ -70,11 +70,10 @@ fn add_urls(
 
 #[cfg(test)]
 mod tests {
-    use url::Url;
-
     use super::*;
     use crate::{json, JsonBookmarks};
     use std::io::{Cursor, Write};
+    use url::Url;
 
     #[test]
     fn test_add_urls() {

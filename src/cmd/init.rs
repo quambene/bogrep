@@ -88,14 +88,13 @@ async fn init_bookmarks(
 
 #[cfg(test)]
 mod tests {
-    use url::Url;
-
     use super::*;
     use crate::{bookmarks::RawSource, MockCache, MockClient};
     use std::{
         collections::{HashMap, HashSet},
         path::Path,
     };
+    use url::Url;
 
     #[tokio::test]
     async fn test_init_bookmarks_mode_html() {

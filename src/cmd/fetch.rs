@@ -173,11 +173,10 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 
 #[cfg(test)]
 mod tests {
-    use url::Url;
-
     use super::*;
     use crate::{MockCache, MockClient, UnderlyingType};
     use std::collections::HashMap;
+    use url::Url;
 
     #[tokio::test]
     async fn test_fetch_and_add_all_mode_html() {
