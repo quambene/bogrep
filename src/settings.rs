@@ -176,7 +176,7 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmarks::HACKER_NEWS_DOMAIN;
+    use crate::bookmarks::{HACKER_NEWS_DOMAINS, REDDIT_DOMAINS};
     use std::path::PathBuf;
 
     #[test]
@@ -218,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    fn test_add_underlying_urls() {
+    fn test_add_underlying_urls_hackernews() {
         let mut settings = Settings::default();
         assert!(settings.underlying_urls.is_empty());
         let url = "https://news.ycombinator.com/item?id=00000000";
@@ -228,7 +228,21 @@ mod tests {
         assert_eq!(settings.underlying_urls.len(), 1);
         let actual_url = Url::parse(&settings.underlying_urls[0]).unwrap();
         assert_eq!(actual_url, Url::parse(url).unwrap());
-        assert_eq!(actual_url.domain().unwrap(), HACKER_NEWS_DOMAIN);
+        assert!(HACKER_NEWS_DOMAINS.contains(&actual_url.domain().unwrap()));
+    }
+
+    #[test]
+    fn test_add_underlying_urls_reddit() {
+        let mut settings = Settings::default();
+        assert!(settings.underlying_urls.is_empty());
+        let url = "https://www.reddit.com/r/programming/comments/article_id";
+
+        let res = settings.add_underlying_url(url);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        assert_eq!(settings.underlying_urls.len(), 1);
+        let actual_url = Url::parse(&settings.underlying_urls[0]).unwrap();
+        assert_eq!(actual_url, Url::parse(url).unwrap());
+        assert!(REDDIT_DOMAINS.contains(&actual_url.domain().unwrap()));
     }
 
     #[test]

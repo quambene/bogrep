@@ -112,24 +112,84 @@ pub fn select_underlying(
 ) -> Result<Option<Url>, BogrepError> {
     debug!("Select underlying for underlying type: {underlying_type:?}");
     match underlying_type {
-        UnderlyingType::HackerNews => {
-            let document = Html::parse_document(html);
-            let span_selector = Selector::parse("span.titleline").unwrap();
-            let a_selector = Selector::parse("a").unwrap();
-            let span = document.select(&span_selector).collect::<Vec<_>>()[0];
-            let a = span.select(&a_selector).collect::<Vec<_>>()[0];
-            let underlying_link = a.attr("href").unwrap();
+        UnderlyingType::HackerNews => select_underlying_hackernews(html),
+        UnderlyingType::Reddit => select_underlying_reddit(html),
+        UnderlyingType::None => Ok(None),
+    }
+}
+
+fn select_underlying_hackernews(html: &str) -> Result<Option<Url>, BogrepError> {
+    let document = Html::parse_document(html);
+    let span_selector =
+        Selector::parse("span.titleline").map_err(|err| BogrepError::ParseHtml(err.to_string()))?;
+    let a_selector = Selector::parse("a").map_err(|err| BogrepError::ParseHtml(err.to_string()))?;
+
+    if let Some(span) = document.select(&span_selector).collect::<Vec<_>>().get(0) {
+        if let Some(a) = span.select(&a_selector).collect::<Vec<_>>().get(0) {
+            if let Some(underlying_link) = a.attr("href") {
+                let underlying_url = Url::parse(underlying_link)?;
+                debug!("Selected underlying: {underlying_url}");
+                return Ok(Some(underlying_url));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+fn select_underlying_reddit(html: &str) -> Result<Option<Url>, BogrepError> {
+    let document = Html::parse_document(html);
+    let a_selector = Selector::parse("a.styled-outbound-link")
+        .map_err(|err| BogrepError::ParseHtml(err.to_string()))?;
+
+    if let Some(a) = document.select(&a_selector).collect::<Vec<_>>().get(0) {
+        if let Some(underlying_link) = a.attr("href") {
             let underlying_url = Url::parse(underlying_link)?;
             debug!("Selected underlying: {underlying_url}");
-            Ok(Some(underlying_url))
+            return Ok(Some(underlying_url));
         }
-        _ => Ok(None),
     }
+
+    Ok(None)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_select_underlying_reddit() {
+        let html = r#"
+            <html>
+
+            <head>
+                <title>title_content</title>
+                <meta>
+                <script>script_content_1</script>
+            </head>
+
+            <body>
+                <a href="https://url.com"></a>
+                <div class="gfk49d">
+                    <a href="https://github.com/quambene/bogrep" class="iek49s styled-outbound-link"
+                        rel="noopener nofollow ugc" target="_blank" data-testid="outbound-link">github.com/quambe...<i
+                            class="icon icon-external_link_fill k239sk">
+                        </i>
+                    </a>
+                </div>
+            </body>
+
+            </html>
+        "#;
+        let res = select_underlying(html, &UnderlyingType::Reddit);
+        assert!(res.is_ok());
+
+        let underlying_url = res.unwrap();
+        assert_eq!(
+            underlying_url,
+            Some(Url::parse("https://github.com/quambene/bogrep").unwrap())
+        );
+    }
 
     fn filter_whitespaces(html: impl Into<String>) -> String {
         html.into()
@@ -258,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    fn test_select_underlying_link_hacker_news() {
+    fn test_select_underlying_hackernews() {
         let html = r#"
             <html>
 
