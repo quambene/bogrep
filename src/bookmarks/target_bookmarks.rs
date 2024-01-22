@@ -239,7 +239,7 @@ impl TargetBookmarks {
     ) -> Vec<&'a mut TargetBookmark> {
         self.0
             .iter_mut()
-            .filter(|(url, _)| !source_bookmarks.contains_key(&url.to_string()))
+            .filter(|(url, _)| !source_bookmarks.contains_key(url.as_str()))
             .map(|(_, target_bookmark)| target_bookmark)
             .collect()
     }
@@ -383,19 +383,19 @@ mod tests {
         let source_bookmarks = SourceBookmarks::new(HashMap::from_iter([
             (
                 url1.to_string(),
-                SourceBookmarkBuilder::new(&url1.to_string()).build(),
+                SourceBookmarkBuilder::new(url1.as_str()).build(),
             ),
             (
                 url2.to_string(),
-                SourceBookmarkBuilder::new(&url2.to_string()).build(),
+                SourceBookmarkBuilder::new(url2.as_str()).build(),
             ),
             (
                 url3.to_string(),
-                SourceBookmarkBuilder::new(&url3.to_string()).build(),
+                SourceBookmarkBuilder::new(url3.as_str()).build(),
             ),
             (
                 url4.to_string(),
-                SourceBookmarkBuilder::new(&url4.to_string()).build(),
+                SourceBookmarkBuilder::new(url4.as_str()).build(),
             ),
         ]));
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([

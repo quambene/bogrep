@@ -43,7 +43,7 @@ fn remove_urls(
     target_reader.read(&mut target_bookmarks)?;
 
     for url in urls {
-        if target_bookmarks.remove(&url).is_some() {
+        if target_bookmarks.remove(url).is_some() {
             counter += 1;
         }
     }

@@ -37,8 +37,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
             if bookmark
                 .sources
                 .iter()
-                .find(|source| matches!(source, SourceType::Underlying(_)))
-                .is_some()
+                .any(|source| matches!(source, SourceType::Underlying(_)))
             {
                 Some(bookmark.clone())
             } else {

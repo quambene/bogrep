@@ -119,7 +119,7 @@ impl Settings {
     }
 
     pub fn add_ignored_url(&mut self, url: &str) -> Result<(), anyhow::Error> {
-        let url = Url::parse(&url).context(format!("Invalid url {url}"))?;
+        let url = Url::parse(url).context(format!("Invalid url {url}"))?;
         let normalized_url = url.to_string();
 
         if self.ignored_urls.iter().any(|url| *url == normalized_url) {
@@ -132,7 +132,7 @@ impl Settings {
     }
 
     pub fn add_underlying_url(&mut self, url: &str) -> Result<(), anyhow::Error> {
-        let url = Url::parse(&url).context(format!("Invalid url {url}"))?;
+        let url = Url::parse(url).context(format!("Invalid url {url}"))?;
         let normalized_url = url.to_string();
         let domain = url.domain().ok_or(anyhow!(format!("Invalid url {url}")))?;
 

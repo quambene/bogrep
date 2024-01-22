@@ -174,7 +174,7 @@ where
         let cache = &self.cache;
 
         if bookmark.underlying_url.is_none() {
-            let underlying_url = html::select_underlying(&website, &bookmark.underlying_type)?;
+            let underlying_url = html::select_underlying(website, &bookmark.underlying_type)?;
 
             if let Some(underlying_url) = underlying_url {
                 bookmark.underlying_url = Some(underlying_url.clone());

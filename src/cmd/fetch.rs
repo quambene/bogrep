@@ -25,7 +25,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 
     fetch_bookmarks(
         &config.settings,
-        &args,
+        args,
         client,
         cache,
         &mut target_reader,

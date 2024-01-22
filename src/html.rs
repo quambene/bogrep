@@ -98,7 +98,7 @@ fn is_filtered_tag(tag_name: &QualName) -> bool {
 pub fn convert_to_text(html: &str, bookmark_url: &Url) -> Result<String, BogrepError> {
     let mut cursor = Cursor::new(html);
     let product =
-        extractor::extract(&mut cursor, &bookmark_url).map_err(BogrepError::ConvertHtml)?;
+        extractor::extract(&mut cursor, bookmark_url).map_err(BogrepError::ConvertHtml)?;
     Ok(product.text)
 }
 
