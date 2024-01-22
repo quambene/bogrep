@@ -34,6 +34,11 @@ where
         }
     }
 
+    pub fn underlying_bookmarks(&self) -> Vec<TargetBookmark> {
+        let underlying_bookmarks = self.underlying_bookmarks.lock();
+        underlying_bookmarks.clone()
+    }
+
     /// Process bookmarks for all actions except [`Action::None`].
     pub async fn process_bookmarks(
         &self,
@@ -161,7 +166,7 @@ where
             Action::FetchAndReplace => {
                 let website = self.client.fetch(bookmark).await?;
                 trace!("Fetched website: {website}");
-                self.add_underlying(bookmark, &website).await?;
+                self.add_underlying(bookmark, &website)?;
                 let html = html::filter_html(&website)?;
                 cache.replace(html, bookmark).await?;
             }
@@ -169,7 +174,7 @@ where
                 if !cache.exists(bookmark) {
                     let website = client.fetch(bookmark).await?;
                     trace!("Fetched website: {website}");
-                    self.add_underlying(bookmark, &website).await?;
+                    self.add_underlying(bookmark, &website)?;
                     let html = html::filter_html(&website)?;
                     cache.add(html, bookmark).await?;
                 }
@@ -185,7 +190,7 @@ where
         Ok(())
     }
 
-    async fn add_underlying(
+    fn add_underlying(
         &self,
         bookmark: &mut TargetBookmark,
         website: &str,
@@ -217,5 +222,82 @@ where
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CacheMode, MockCache, MockClient, UnderlyingType};
+    use url::Url;
+
+    #[test]
+    fn test_add_underlying() {
+        let settings = Settings::default();
+        let client = MockClient::new();
+        let cache = MockCache::new(CacheMode::Text);
+        let bookmark_processor = BookmarkProcessor::new(client, cache, settings);
+        let url = Url::parse("https://news.ycombinator.com").unwrap();
+        let website = r#"
+            <html>
+
+            <head>
+                <title>title_content</title>
+                <meta>
+                <script>script_content_1</script>
+            </head>
+
+            <body>
+                <td class="title">
+                    <span class="titleline">
+                        <a href="https://underlying_url.com">The underlying article</a>
+                        <span class="sitebit comhead"> (<a href="from?site=underlying_url.com">
+                                <span class="sitestr">underlying_url.com</span></a>)
+                        </span>
+                    </span>
+                </td>
+            </body>
+
+            </html>
+        "#;
+        let mut bookmark = TargetBookmark::new(
+            url.clone(),
+            None,
+            Utc::now(),
+            None,
+            HashSet::from([SourceType::Internal]),
+            HashSet::from_iter([CacheMode::Text]),
+            Action::None,
+        );
+
+        let res = bookmark_processor.add_underlying(&mut bookmark, website);
+        assert!(res.is_ok());
+
+        assert!(bookmark
+            .underlying_url
+            .is_some_and(|url| url == Url::parse("https://underlying_url.com").unwrap()));
+        assert_eq!(bookmark.underlying_type, UnderlyingType::HackerNews);
+        assert_eq!(bookmark.sources, HashSet::from([SourceType::Internal]));
+        assert!(bookmark.last_cached.is_none());
+
+        let underlying_bookmarks = bookmark_processor.underlying_bookmarks();
+        assert_eq!(underlying_bookmarks.len(), 1);
+
+        let underlying_bookmark = &underlying_bookmarks[0];
+        assert_eq!(
+            underlying_bookmark.url,
+            Url::parse("https://underlying_url.com").unwrap()
+        );
+        assert!(underlying_bookmark.underlying_url.is_none());
+        assert_eq!(underlying_bookmark.underlying_type, UnderlyingType::None);
+        assert!(underlying_bookmark.last_cached.is_none());
+        assert_eq!(
+            underlying_bookmark.sources,
+            HashSet::from_iter([SourceType::Underlying(
+                "https://news.ycombinator.com/".to_owned()
+            )])
+        );
+        assert!(underlying_bookmark.cache_modes.is_empty());
+        assert_eq!(underlying_bookmark.action, Action::FetchAndAdd);
     }
 }
