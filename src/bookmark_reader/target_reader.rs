@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_convert_underlyings() {
         let mut target_bookmarks = TargetBookmarks::default();
-        let url1 = Url::parse("https://news.ycombinator.com/item?id=38147943").unwrap();
+        let url1 = Url::parse("https://news.ycombinator.com/item?id=00000000").unwrap();
         let underlying_url1 = None;
         target_bookmarks.insert(TargetBookmark::new(
             url1.clone(),
@@ -91,7 +91,7 @@ mod tests {
             HashSet::from_iter([CacheMode::Text]),
             Action::None,
         ));
-        let url2 = Url::parse("https://github.com/quambene/bogrep").unwrap();
+        let url2 = Url::parse("https://github.com/some_project").unwrap();
         let underlying_url2 = None;
         target_bookmarks.insert(TargetBookmark::new(
             url2.clone(),
@@ -99,7 +99,7 @@ mod tests {
             Utc::now(),
             None,
             HashSet::from_iter([SourceType::Underlying(
-                "https://news.ycombinator.com/item?id=38147943".to_owned(),
+                "https://news.ycombinator.com/item?id=00000000".to_owned(),
             )]),
             HashSet::from_iter([CacheMode::Text]),
             Action::None,
