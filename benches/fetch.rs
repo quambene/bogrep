@@ -1,6 +1,6 @@
 use bogrep::{
-    cmd, errors::BogrepError, html, Action, Cache, CacheMode, Caching, Fetch, MockClient,
-    TargetBookmark, TargetBookmarks,
+    errors::BogrepError, html, Action, BookmarkProcessor, Cache, CacheMode, Caching, Fetch,
+    MockClient, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -15,6 +15,7 @@ use std::{
 };
 use tempfile::tempdir;
 use tokio::sync::Mutex;
+use url::Url;
 
 fn bench_fetch(c: &mut Criterion) {
     c.bench_function("concurrent 100", |b| {
@@ -58,12 +59,13 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
     let mut bookmarks = HashMap::new();
 
     for i in 0..10000 {
-        let url = format!("https://url{i}.com");
+        let url = Url::parse(&format!("https://url{i}.com")).unwrap();
         client.add(CONTENT.to_owned(), &url).unwrap();
         bookmarks.insert(
-            url.to_owned(),
+            url.clone(),
             TargetBookmark::new(
-                url,
+                url.clone(),
+                None,
                 now,
                 None,
                 HashSet::new(),
@@ -76,14 +78,12 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
     let mut bookmarks = TargetBookmarks::new(bookmarks);
     assert_eq!(bookmarks.len(), 10000);
 
-    cmd::process_bookmarks(
-        &client,
-        &cache,
-        bookmarks.values_mut().collect(),
-        max_concurrent_requests,
-    )
-    .await
-    .unwrap();
+    let bookmark_processor =
+        BookmarkProcessor::new(client.clone(), cache.clone(), max_concurrent_requests);
+    bookmark_processor
+        .process_bookmarks(bookmarks.values_mut().collect())
+        .await
+        .unwrap();
 }
 
 async fn fetch_in_parallel(max_parallel_requests: usize) {
@@ -100,12 +100,13 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
     let mut bookmarks = HashMap::new();
 
     for i in 0..10000 {
-        let url = format!("https://url{i}.com");
+        let url = Url::parse(&format!("https://url{i}.com")).unwrap();
         client.add(CONTENT.to_owned(), &url).unwrap();
         bookmarks.insert(
-            url.to_owned(),
+            url.clone(),
             TargetBookmark::new(
-                url,
+                url.clone(),
+                None,
                 now,
                 None,
                 HashSet::new(),

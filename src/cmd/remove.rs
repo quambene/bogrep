@@ -5,15 +5,21 @@ use crate::{
 };
 use anyhow::anyhow;
 use log::debug;
+use url::Url;
 
 pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    let urls = args
+        .urls
+        .iter()
+        .map(|url| Url::parse(url))
+        .collect::<Result<Vec<_>, _>>()?;
 
-    if !args.urls.is_empty() {
-        remove_urls(&args.urls, &mut target_reader, &mut target_writer)?;
+    if !urls.is_empty() {
+        remove_urls(&urls, &mut target_reader, &mut target_writer)?;
     } else {
         return Err(anyhow!("Invalid argument: Specify the URLs to be removed"));
     }
@@ -27,7 +33,7 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
 }
 
 fn remove_urls(
-    urls: &[String],
+    urls: &[Url],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
@@ -59,23 +65,34 @@ mod tests {
         io::{Cursor, Write},
     };
 
-    fn create_target_bookmark(url: &str, now: DateTime<Utc>) -> TargetBookmark {
+    fn create_target_bookmark(url: &Url, now: DateTime<Utc>) -> TargetBookmark {
         let mut sources = HashSet::new();
         sources.insert(SourceType::Internal);
-        TargetBookmark::new(url, now, None, sources, HashSet::new(), Action::None)
+        TargetBookmark::new(
+            url.to_owned(),
+            None,
+            now,
+            None,
+            sources,
+            HashSet::new(),
+            Action::None,
+        )
     }
 
     #[test]
     fn test_remove_urls() {
         let now = Utc::now();
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let url3 = Url::parse("https://url3.com").unwrap();
 
         let mut expected_urls = HashSet::new();
-        expected_urls.insert("https://url1.com".to_owned());
+        expected_urls.insert(url1.clone());
 
         let mut target_bookmarks = TargetBookmarks::default();
-        target_bookmarks.insert(create_target_bookmark("https://url1.com", now));
-        target_bookmarks.insert(create_target_bookmark("https://url2.com", now));
-        target_bookmarks.insert(create_target_bookmark("https://url3.com", now));
+        target_bookmarks.insert(create_target_bookmark(&url1, now));
+        target_bookmarks.insert(create_target_bookmark(&url2, now));
+        target_bookmarks.insert(create_target_bookmark(&url3, now));
         let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
 
@@ -85,7 +102,7 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
 
-        let urls = vec!["https://url2.com".to_owned(), "https://url3.com".to_owned()];
+        let urls = vec![url2, url3];
 
         let res = remove_urls(&urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -109,7 +126,10 @@ mod tests {
                 .iter()
                 .map(|bookmark| bookmark.url.clone())
                 .collect::<HashSet<_>>(),
-            expected_urls,
+            expected_urls
+                .into_iter()
+                .map(|url| url.to_string())
+                .collect(),
         );
     }
 }

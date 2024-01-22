@@ -1,7 +1,7 @@
 use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    cmd::process_bookmarks,
     utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, SourceBookmarks,
     TargetBookmarks,
 };
@@ -30,6 +30,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
         let cache = Cache::new(&config.cache_path, cache_mode);
         let client = Client::new(config)?;
+
         let target_bookmarks = init_bookmarks(
             &client,
             &cache,
@@ -60,7 +61,7 @@ async fn init_bookmarks(
         reader.read_and_parse(&mut source_bookmarks)?;
     }
 
-    let mut target_bookmarks = TargetBookmarks::from(source_bookmarks);
+    let mut target_bookmarks = TargetBookmarks::try_from(source_bookmarks)?;
 
     target_bookmarks.set_action(&Action::FetchAndAdd);
 
@@ -75,13 +76,12 @@ async fn init_bookmarks(
             .join(", ")
     );
 
-    process_bookmarks(
-        client,
-        cache,
-        target_bookmarks.values_mut().collect(),
-        max_concurrent_requests,
-    )
-    .await?;
+    let bookmark_processor =
+        BookmarkProcessor::new(client.clone(), cache.clone(), max_concurrent_requests);
+    bookmark_processor
+        .process_bookmarks(target_bookmarks.values_mut().collect())
+        .await?;
+    bookmark_processor.add_underlyings(&mut target_bookmarks);
 
     Ok(target_bookmarks)
 }
@@ -94,6 +94,7 @@ mod tests {
         collections::{HashMap, HashSet},
         path::Path,
     };
+    use url::Url;
 
     #[tokio::test]
     async fn test_init_bookmarks_mode_html() {
@@ -103,11 +104,11 @@ mod tests {
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
-        let expected_bookmarks: HashSet<String> = HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        let expected_bookmarks: HashSet<Url> = HashSet::from_iter([
+            Url::parse("https://www.deepl.com/translator").unwrap(),
+            Url::parse("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+            Url::parse("https://en.wikipedia.org/wiki/Design_Patterns").unwrap(),
+            Url::parse("https://doc.rust-lang.org/book/title-page.html").unwrap(),
         ]);
         for url in &expected_bookmarks {
             client
@@ -161,11 +162,11 @@ mod tests {
         let source = RawSource::new(bookmark_path, vec![]);
         let source_reader = SourceReader::init(&source).unwrap();
         let max_concurrent_requests = 100;
-        let expected_bookmarks: HashSet<String> = HashSet::from_iter([
-            String::from("https://www.deepl.com/translator"),
-            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
-            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
-            String::from("https://doc.rust-lang.org/book/title-page.html"),
+        let expected_bookmarks: HashSet<Url> = HashSet::from_iter([
+            Url::parse("https://www.deepl.com/translator").unwrap(),
+            Url::parse("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap(),
+            Url::parse("https://en.wikipedia.org/wiki/Design_Patterns").unwrap(),
+            Url::parse("https://doc.rust-lang.org/book/title-page.html").unwrap(),
         ]);
         for url in &expected_bookmarks {
             client

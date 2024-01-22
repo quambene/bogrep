@@ -1,7 +1,9 @@
+mod bookmark_processor;
 mod source_bookmarks;
 mod target_bookmarks;
 
 use crate::CacheMode;
+pub use bookmark_processor::BookmarkProcessor;
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
 use std::{
@@ -11,7 +13,13 @@ use std::{
     slice::Iter,
 };
 pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
+use url::Url;
 use uuid::Uuid;
+
+pub const HACKER_NEWS_DOMAIN: &str = "news.ycombinator.com";
+
+/// The supported domains to fetch the underlying.
+pub const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &[HACKER_NEWS_DOMAIN];
 
 /// The action to be performed on the bookmark.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -21,10 +29,25 @@ pub enum Action {
     FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
     FetchAndAdd,
-    /// Remove bookmark from cache.
     Remove,
     /// No actions to be performed.
     None,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum UnderlyingType {
+    HackerNews,
+    None,
+}
+
+impl From<&Url> for UnderlyingType {
+    fn from(url: &Url) -> Self {
+        if url.domain() == Some(HACKER_NEWS_DOMAIN) {
+            UnderlyingType::HackerNews
+        } else {
+            UnderlyingType::None
+        }
+    }
 }
 
 /// The type used to identify a source.
@@ -35,6 +58,7 @@ pub enum SourceType {
     Chrome,
     Edge,
     Simple,
+    Underlying(String),
     Internal,
     External,
     #[default]
@@ -119,7 +143,7 @@ impl From<TargetBookmark> for JsonBookmark {
     fn from(value: TargetBookmark) -> Self {
         Self {
             id: value.id,
-            url: value.url,
+            url: value.url.to_string(),
             last_imported: value.last_imported,
             last_cached: value.last_cached,
             sources: value.sources,
@@ -132,7 +156,7 @@ impl From<&TargetBookmark> for JsonBookmark {
     fn from(value: &TargetBookmark) -> Self {
         Self {
             id: value.id.clone(),
-            url: value.url.clone(),
+            url: value.url.to_string(),
             last_imported: value.last_imported,
             last_cached: value.last_cached,
             sources: value.sources.clone(),

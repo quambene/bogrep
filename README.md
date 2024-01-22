@@ -27,6 +27,7 @@ bogrep -i "reed-solomon code"
   - [Edge](#edge)
 - [Specify bookmark folders](#specify-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
+- [Fetch underlying urls](#fetch-underlying-urls)
 - [Diff websites](#diff-websites)
 - [Manage internal bookmarks](#manage-internal-bookmarks)
 - [Request throttling](#request-throttling)
@@ -183,6 +184,17 @@ usually don't include relevant text to grep.
 # Ignore one or more urls
 bogrep config --ignore <url1> <url2> ...
 ```
+
+## Fetch underlying urls
+
+Fetch the underlying urls of supported websites:
+
+``` bash
+bogrep config --underlying <url1> <url2> ...
+```
+
+For example, if a specific url for <https://news.ycombinator.com> is
+bookmarked, the article of discussion will be fetched and cached.
 
 ## Diff websites
 

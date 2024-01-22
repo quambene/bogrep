@@ -32,6 +32,7 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
         source,
         cache_mode,
         &args.set_ignored_urls.ignore,
+        &args.set_underlying_urls.underlying,
         settings_file,
     )?;
 
@@ -42,7 +43,8 @@ fn configure_settings(
     settings: &mut Settings,
     source: Option<RawSource>,
     cache_mode: Option<CacheMode>,
-    urls: &[String],
+    ignored_urls: &[String],
+    underlying_urls: &[String],
     mut writer: impl Write,
 ) -> Result<(), anyhow::Error> {
     let settings_read = settings.clone();
@@ -53,10 +55,12 @@ fn configure_settings(
 
     settings.set_cache_mode(cache_mode);
 
-    if !urls.is_empty() {
-        for url in urls {
-            settings.add_url(url.to_string())?;
-        }
+    for ignored_url in ignored_urls {
+        settings.add_ignored_url(ignored_url)?;
+    }
+
+    for underlying_url in underlying_urls {
+        settings.add_underlying_url(underlying_url)?;
     }
 
     if &settings_read != settings {
@@ -80,10 +84,18 @@ mod tests {
             path: PathBuf::from("test_data/bookmarks_simple.txt"),
             folders: vec!["dev".to_string(), "articles".to_string()],
         };
-        let urls = vec![];
+        let ignored_urls = vec![];
+        let underlying_urls = vec![];
         let cache_mode = None;
 
-        let res = configure_settings(&mut settings, Some(source), cache_mode, &urls, &mut cursor);
+        let res = configure_settings(
+            &mut settings,
+            Some(source),
+            cache_mode,
+            &ignored_urls,
+            &underlying_urls,
+            &mut cursor,
+        );
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
@@ -98,6 +110,7 @@ mod tests {
         }
     ],
     "ignored_urls": [],
+    "underlying_urls": [],
     "cache_mode": "text",
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
@@ -112,14 +125,23 @@ mod tests {
     fn test_configure_cache_mode() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let urls = vec![];
+        let ignored_urls = vec![];
+        let underlying_urls = vec![];
         let cache_mode = Some(CacheMode::Html);
-        let res = configure_settings(&mut settings, None, cache_mode, &urls, &mut cursor);
+        let res = configure_settings(
+            &mut settings,
+            None,
+            cache_mode,
+            &ignored_urls,
+            &underlying_urls,
+            &mut cursor,
+        );
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
         let expected_settings = r#"{
     "sources": [],
     "ignored_urls": [],
+    "underlying_urls": [],
     "cache_mode": "html",
     "max_concurrent_requests": 100,
     "request_timeout": 60000,
@@ -131,14 +153,22 @@ mod tests {
     }
 
     #[test]
-    fn test_configure_ignored_urls() {
+    fn test_configure_urls() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let urls = vec![
+        let ignored_urls = vec![
             "https://url1.com".to_string(),
             "https://url2.com".to_string(),
         ];
-        let res = configure_settings(&mut settings, None, None, &urls, &mut cursor);
+        let underlying_urls = vec!["https://news.ycombinator.com".to_string()];
+        let res = configure_settings(
+            &mut settings,
+            None,
+            None,
+            &ignored_urls,
+            &underlying_urls,
+            &mut cursor,
+        );
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
 
@@ -147,6 +177,9 @@ mod tests {
     "ignored_urls": [
         "https://url1.com/",
         "https://url2.com/"
+    ],
+    "underlying_urls": [
+        "https://news.ycombinator.com/"
     ],
     "cache_mode": "text",
     "max_concurrent_requests": 100,

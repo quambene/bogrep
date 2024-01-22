@@ -1,4 +1,4 @@
-use crate::errors::BogrepError;
+use crate::{errors::BogrepError, UnderlyingType};
 use html5ever::{
     parse_document,
     rcdom::{Node, NodeData, RcDom},
@@ -6,8 +6,10 @@ use html5ever::{
     tendril::TendrilSink,
     ParseOpts, QualName,
 };
+use log::debug;
 use readability::extractor;
 use reqwest::Url;
+use scraper::{Html, Selector};
 use std::{borrow::BorrowMut, io::Cursor, rc::Rc};
 
 pub fn filter_html(html: &str) -> Result<String, BogrepError> {
@@ -93,16 +95,36 @@ fn is_filtered_tag(tag_name: &QualName) -> bool {
         || tag_name.local.contains("script")
 }
 
-pub fn convert_to_text(html: &str, bookmark_url: &str) -> Result<String, BogrepError> {
+pub fn convert_to_text(html: &str, bookmark_url: &Url) -> Result<String, BogrepError> {
     let mut cursor = Cursor::new(html);
-    let bookmark_url = Url::parse(bookmark_url).map_err(BogrepError::ParseUrl)?;
     let product =
-        extractor::extract(&mut cursor, &bookmark_url).map_err(BogrepError::ConvertHtml)?;
+        extractor::extract(&mut cursor, bookmark_url).map_err(BogrepError::ConvertHtml)?;
     Ok(product.text)
 }
 
 pub fn convert_to_markdown(html: &str) -> String {
     html2md::parse_html(html)
+}
+
+pub fn select_underlying(
+    html: &str,
+    underlying_type: &UnderlyingType,
+) -> Result<Option<Url>, BogrepError> {
+    debug!("Select underlying for underlying type: {underlying_type:?}");
+    match underlying_type {
+        UnderlyingType::HackerNews => {
+            let document = Html::parse_document(html);
+            let span_selector = Selector::parse("span.titleline").unwrap();
+            let a_selector = Selector::parse("a").unwrap();
+            let span = document.select(&span_selector).collect::<Vec<_>>()[0];
+            let a = span.select(&a_selector).collect::<Vec<_>>()[0];
+            let underlying_link = a.attr("href").unwrap();
+            let underlying_url = Url::parse(underlying_link)?;
+            debug!("Selected underlying: {underlying_url}");
+            Ok(Some(underlying_url))
+        }
+        _ => Ok(None),
+    }
 }
 
 #[cfg(test)]
@@ -197,8 +219,8 @@ mod tests {
 
         </html>
         "#;
-        let url = "https://example.net";
-        let res = convert_to_text(html, url);
+        let url = Url::parse("https://example.net").unwrap();
+        let res = convert_to_text(html, &url);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let text = res.unwrap();
@@ -233,5 +255,39 @@ mod tests {
         let markdown = convert_to_markdown(html);
         // TODO: fix superfluous backslashes
         assert_eq!(markdown.replace('\\', ""), expected_markdown);
+    }
+
+    #[test]
+    fn test_select_underlying_link_hacker_news() {
+        let html = r#"
+            <html>
+
+            <head>
+                <title>title_content</title>
+                <meta>
+                <script>script_content_1</script>
+            </head>
+
+            <body>
+                <td class="title">
+                    <span class="titleline">
+                        <a href="https://github.com/quambene/bogrep">Bogrep – Grep Your Bookmarks</a>
+                        <span class="sitebit comhead"> (<a href="from?site=github.com/quambene">
+                                <span class="sitestr">github.com/quambene</span></a>)
+                        </span>
+                    </span>
+                </td>
+            </body>
+
+            </html>
+        "#;
+        let res = select_underlying(html, &UnderlyingType::HackerNews);
+        assert!(res.is_ok());
+
+        let underlying_url = res.unwrap();
+        assert_eq!(
+            underlying_url,
+            Some(Url::parse("https://github.com/quambene/bogrep").unwrap())
+        );
     }
 }

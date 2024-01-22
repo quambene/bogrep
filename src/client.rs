@@ -3,21 +3,23 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use log::debug;
+use parking_lot::Mutex;
 use reqwest::{Client as ReqwestClient, Url};
 use std::{
     collections::{hash_map::Entry, HashMap},
-    sync::Mutex,
+    sync::Arc,
 };
 use tokio::time::{self, Duration};
 
 /// A trait to fetch websites from a real or mock client.
 #[async_trait]
-pub trait Fetch {
+pub trait Fetch: Clone {
     /// Fetch content of a website as HTML.
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError>;
 }
 
 /// A client to fetch websites.
+#[derive(Debug, Clone)]
 pub struct Client {
     client: ReqwestClient,
     throttler: Option<Throttler>,
@@ -54,7 +56,7 @@ impl Fetch for Client {
 
         let response = self
             .client
-            .get(&bookmark.url)
+            .get(bookmark.url.clone())
             .send()
             .await
             .map_err(BogrepError::HttpResponse)?;
@@ -76,34 +78,34 @@ impl Fetch for Client {
                     if !html.is_empty() {
                         Ok(html)
                     } else {
-                        Err(BogrepError::EmptyResponse(bookmark.url.to_owned()))
+                        Err(BogrepError::EmptyResponse(bookmark.url.to_string()))
                     }
                 } else {
-                    Err(BogrepError::BinaryResponse(bookmark.url.to_owned()))
+                    Err(BogrepError::BinaryResponse(bookmark.url.to_string()))
                 }
             } else {
-                Err(BogrepError::BinaryResponse(bookmark.url.to_owned()))
+                Err(BogrepError::BinaryResponse(bookmark.url.to_string()))
             }
         } else {
             Err(BogrepError::HttpStatus {
                 status: response.status().to_string(),
-                url: bookmark.url.to_owned(),
+                url: bookmark.url.to_string(),
             })
         }
     }
 }
 
 /// A throttler to limit the number of requests.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Throttler {
-    last_fetched: Mutex<HashMap<String, DateTime<Utc>>>,
+    last_fetched: Arc<Mutex<HashMap<String, DateTime<Utc>>>>,
     request_throttling: u64,
 }
 
 impl Throttler {
     pub fn new(request_throttling: u64) -> Self {
         Self {
-            last_fetched: Mutex::new(HashMap::new()),
+            last_fetched: Arc::new(Mutex::new(HashMap::new())),
             request_throttling,
         }
     }
@@ -140,12 +142,12 @@ impl Throttler {
         bookmark: &TargetBookmark,
         now: DateTime<Utc>,
     ) -> Result<Option<DateTime<Utc>>, BogrepError> {
-        let bookmark_url = Url::parse(&bookmark.url)?;
-        let bookmark_host = bookmark_url
+        let bookmark_host = bookmark
+            .url
             .host_str()
-            .ok_or(BogrepError::ConvertHost(bookmark.url.clone()))?;
+            .ok_or(BogrepError::ConvertHost(bookmark.url.to_string()))?;
 
-        let mut map = self.last_fetched.lock().unwrap();
+        let mut map = self.last_fetched.lock();
         let entry = map.entry(bookmark_host.to_string());
 
         match entry {
@@ -162,26 +164,26 @@ impl Throttler {
 }
 
 /// A mock client to fetch websites used in testing.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MockClient {
     /// Mock the the HTML content.
-    client_map: Mutex<HashMap<String, String>>,
+    client_map: Arc<Mutex<HashMap<Url, String>>>,
 }
 
 impl MockClient {
     pub fn new() -> Self {
-        let client_map = Mutex::new(HashMap::new());
+        let client_map = Arc::new(Mutex::new(HashMap::new()));
         Self { client_map }
     }
 
-    pub fn add(&self, html: String, bookmark_url: &str) -> Result<(), anyhow::Error> {
-        let mut client_map = self.client_map.lock().unwrap();
-        client_map.insert(bookmark_url.to_owned(), html);
+    pub fn add(&self, html: String, bookmark_url: &Url) -> Result<(), anyhow::Error> {
+        let mut client_map = self.client_map.lock();
+        client_map.insert(bookmark_url.clone(), html);
         Ok(())
     }
 
-    pub fn get(&self, bookmark_url: &str) -> Option<String> {
-        let client_map = self.client_map.lock().unwrap();
+    pub fn get(&self, bookmark_url: &Url) -> Option<String> {
+        let client_map = self.client_map.lock();
         client_map
             .get(bookmark_url)
             .map(|content| content.to_owned())
@@ -210,9 +212,12 @@ mod tests {
         tokio::time::pause();
         let now = Utc::now();
         let request_throttling = 1000;
+        let url1 = Url::parse("https://url/path1.com").unwrap();
+        let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Applicative_functor",
+            url1,
+            None,
             now,
             None,
             HashSet::new(),
@@ -220,7 +225,8 @@ mod tests {
             Action::None,
         );
         let bookmark2 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
+            url2,
+            None,
             now,
             None,
             HashSet::new(),
@@ -244,9 +250,12 @@ mod tests {
     fn test_last_fetched() {
         let now = Utc::now();
         let request_throttling = 1000;
+        let url1 = Url::parse("https://url/path1.com").unwrap();
+        let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Applicative_functor",
+            url1,
+            None,
             now,
             None,
             HashSet::new(),
@@ -254,7 +263,8 @@ mod tests {
             Action::None,
         );
         let bookmark2 = TargetBookmark::new(
-            "https://en.wikipedia.org/wiki/Monad_(functional_programming)",
+            url2,
+            None,
             now,
             None,
             HashSet::new(),
