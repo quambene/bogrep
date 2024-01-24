@@ -6,7 +6,7 @@ use html5ever::{
     tendril::TendrilSink,
     ParseOpts, QualName,
 };
-use log::debug;
+use log::{debug, trace};
 use readability::extractor;
 use reqwest::Url;
 use scraper::{Html, Selector};
@@ -111,6 +111,8 @@ pub fn select_underlying(
     underlying_type: &UnderlyingType,
 ) -> Result<Option<Url>, BogrepError> {
     debug!("Select underlying for underlying type: {underlying_type:?}");
+    trace!("Select underlying in\n{html}");
+
     match underlying_type {
         UnderlyingType::HackerNews => select_underlying_hackernews(html),
         UnderlyingType::Reddit => select_underlying_reddit(html),
@@ -127,8 +129,8 @@ fn select_underlying_hackernews(html: &str) -> Result<Option<Url>, BogrepError> 
     if let Some(span) = document.select(&span_selector).collect::<Vec<_>>().first() {
         if let Some(a) = span.select(&a_selector).collect::<Vec<_>>().first() {
             if let Some(underlying_link) = a.attr("href") {
+                debug!("Select underlying: {underlying_link}");
                 let underlying_url = Url::parse(underlying_link)?;
-                debug!("Selected underlying: {underlying_url}");
                 return Ok(Some(underlying_url));
             }
         }
