@@ -27,7 +27,7 @@ pub enum BogrepError {
     ParseUrl(#[from] ParseError),
     #[error("Can't parse html")]
     ParseHtml(String),
-    #[error("Can't parse url: {0}")]
+    #[error("Can't convert html: {0}")]
     ConvertHtml(readability::error::Error),
     #[error("Invalid utf8: {0}")]
     ConvertUtf8(#[from] FromUtf8Error),
