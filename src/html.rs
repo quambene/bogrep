@@ -129,9 +129,12 @@ fn select_underlying_hackernews(html: &str) -> Result<Option<Url>, BogrepError> 
     if let Some(span) = document.select(&span_selector).collect::<Vec<_>>().first() {
         if let Some(a) = span.select(&a_selector).collect::<Vec<_>>().first() {
             if let Some(underlying_link) = a.attr("href") {
-                debug!("Select underlying: {underlying_link}");
-                let underlying_url = Url::parse(underlying_link)?;
-                return Ok(Some(underlying_url));
+                // We are ignoring invalid underlying urls, e.g. for "Ask HN"
+                // where no underlying is expected.
+                if let Ok(underlying_url) = Url::parse(underlying_link) {
+                    debug!("Select underlying: {underlying_link}");
+                    return Ok(Some(underlying_url));
+                }
             }
         }
     }
