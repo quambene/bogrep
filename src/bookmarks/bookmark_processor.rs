@@ -140,11 +140,11 @@ where
         self,
         target_bookmarks: &mut TargetBookmarks,
     ) -> Result<(), BogrepError> {
-        if self.settings.underlying_urls.is_empty() {
+        self.add_underlyings(target_bookmarks);
+
+        if self.underlying_bookmarks().is_empty() {
             return Ok(());
         }
-
-        self.add_underlyings(target_bookmarks);
 
         println!("Processing underlying bookmarks");
         self.process_bookmarks(target_bookmarks.values_mut().collect())
