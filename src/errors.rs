@@ -43,8 +43,10 @@ pub enum BogrepError {
     RemoveFile { path: String, err: io::Error },
     #[error("Can't read file: {0}")]
     ReadFile(io::Error),
+    #[error("Can't write: {0}")]
+    WriteFile(io::Error),
     #[error("Can't write to file at {path}: {err}")]
-    WriteFile { path: String, err: io::Error },
+    WriteFilePath { path: String, err: io::Error },
     #[error("Can't append file at {path}: {err}")]
     AppendFile { path: String, err: io::Error },
     #[error("Can't rename file from {from} to {to}: {err}")]

@@ -35,7 +35,7 @@ pub fn write_file(path: &Path, content: String) -> Result<(), BogrepError> {
     debug!("Write file to {}", path.display());
     let mut file = create_file(path)?;
     file.write_all(content.as_bytes())
-        .map_err(|err| BogrepError::WriteFile {
+        .map_err(|err| BogrepError::WriteFilePath {
             path: path.to_string_lossy().to_string(),
             err,
         })?;
@@ -50,7 +50,7 @@ pub async fn write_file_async(path: &Path, content: &[u8]) -> Result<(), BogrepE
     let mut file = create_file_async(path).await?;
     file.write_all(content)
         .await
-        .map_err(|err| BogrepError::WriteFile {
+        .map_err(|err| BogrepError::WriteFilePath {
             path: path.to_string_lossy().to_string(),
             err,
         })?;
