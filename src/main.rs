@@ -8,10 +8,10 @@ async fn main() -> Result<(), anyhow::Error> {
     tokio::select! {
         _ = signal::ctrl_c() => {
             // Err for a graceful shutdown.
-            return Err(anyhow!("Aborting ..."));
+            Err(anyhow!("Aborting ..."))
         },
         res = run_app() => {
-            return res;
+            res
         }
     }
 }
