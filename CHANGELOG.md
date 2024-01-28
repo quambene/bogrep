@@ -7,7 +7,7 @@
   - Add benchmarks for fetching
   - Take ignored urls into account in `bogrep import`
   - Fetch underlying urls
-  - Clean up lock file when aborting
+  - Clean up lock file if `bogrep` is aborted
 - changed
   - Update to rust 1.75
   - Fix duplicate cache files for `bogrep fetch --urls`
