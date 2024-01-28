@@ -1,9 +1,22 @@
 use anyhow::anyhow;
 use bogrep::{cmd, Args, Config, Logger, Subcommands};
 use clap::Parser;
+use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
+    tokio::select! {
+        _ = signal::ctrl_c() => {
+            // Err for a graceful shutdown.
+            return Err(anyhow!("Aborting ..."));
+        },
+        res = run_app() => {
+            return res;
+        }
+    }
+}
+
+async fn run_app() -> Result<(), anyhow::Error> {
     let args = Args::parse();
     Logger::init(args.verbose);
     let config = Config::init()?;

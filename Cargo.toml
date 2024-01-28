@@ -34,7 +34,7 @@ colored = "2.0.4"
 lz4 = "1.24.0"
 similar = "2.2.1"
 chrono = "0.4.26"
-tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "time", "test-util"] }
+tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "time", "signal"] }
 futures = "0.3.28"
 html2md = "0.2.14"
 readability = "0.2.0"
