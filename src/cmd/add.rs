@@ -1,8 +1,8 @@
 use crate::{
     args::AddArgs,
-    bookmark_reader::{ReadTarget, WriteTarget},
+    bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
     bookmarks::Action,
-    utils, Config, SourceType, TargetBookmark, TargetBookmarks,
+    Config, SourceType, TargetBookmark, TargetBookmarks,
 };
 use anyhow::anyhow;
 use chrono::Utc;
@@ -13,8 +13,10 @@ use url::Url;
 pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
-    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
-    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    let target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
     let urls = args
         .urls
         .iter()
@@ -22,15 +24,16 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
-        add_urls(&urls, &mut target_reader, &mut target_writer)?;
+        add_urls(
+            &urls,
+            &mut target_reader_writer.reader(),
+            &mut target_reader_writer.writer(),
+        )?;
     } else {
         return Err(anyhow!("Invalid argument: Specify the URLs to be added"));
     }
 
-    utils::close_and_rename(
-        (target_writer, &config.target_bookmark_lock_file),
-        (target_reader, &config.target_bookmark_file),
-    )?;
+    target_reader_writer.close()?;
 
     Ok(())
 }

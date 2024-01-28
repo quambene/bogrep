@@ -1,5 +1,5 @@
 use crate::{
-    bookmark_reader::{ReadTarget, WriteTarget},
+    bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
     bookmarks::{Action, BookmarkProcessor},
     cache::CacheMode,
     errors::BogrepError,
@@ -20,23 +20,22 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
-    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
-    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    let target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
 
     fetch_bookmarks(
         &config.settings,
         args,
         client,
         cache,
-        &mut target_reader,
-        &mut target_writer,
+        &mut target_reader_writer.reader(),
+        &mut target_reader_writer.writer(),
     )
     .await?;
 
-    utils::close_and_rename(
-        (target_writer, &config.target_bookmark_lock_file),
-        (target_reader, &config.target_bookmark_file),
-    )?;
+    target_reader_writer.close()?;
 
     Ok(())
 }

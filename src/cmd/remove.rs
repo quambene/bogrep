@@ -1,7 +1,7 @@
 use crate::{
     args::RemoveArgs,
-    bookmark_reader::{ReadTarget, WriteTarget},
-    utils, Config, TargetBookmarks,
+    bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
+    Config, TargetBookmarks,
 };
 use anyhow::anyhow;
 use log::debug;
@@ -10,8 +10,10 @@ use url::Url;
 pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
-    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
-    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
+    let target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
     let urls = args
         .urls
         .iter()
@@ -19,15 +21,16 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
-        remove_urls(&urls, &mut target_reader, &mut target_writer)?;
+        remove_urls(
+            &urls,
+            &mut target_reader_writer.reader(),
+            &mut target_reader_writer.writer(),
+        )?;
     } else {
         return Err(anyhow!("Invalid argument: Specify the URLs to be removed"));
     }
 
-    utils::close_and_rename(
-        (target_writer, &config.target_bookmark_lock_file),
-        (target_reader, &config.target_bookmark_file),
-    )?;
+    target_reader_writer.close()?;
 
     Ok(())
 }
