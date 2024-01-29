@@ -1,9 +1,9 @@
 use crate::{
     args::UpdateArgs,
-    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmark_reader::{SourceReader, TargetReaderWriter},
     bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    utils, Cache, Caching, Client, Config, Fetch, Settings, SourceBookmarks, TargetBookmarks,
+    Cache, Caching, Client, Config, Fetch, Settings, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
 
@@ -24,9 +24,11 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
-    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
-    target_reader.read(&mut target_bookmarks)?;
+    let mut target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
+    target_reader_writer.read(&mut target_bookmarks)?;
 
     update_bookmarks(
         &client,
@@ -37,12 +39,9 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     )
     .await?;
 
-    target_writer.write(&target_bookmarks)?;
+    target_reader_writer.write(&target_bookmarks)?;
+    target_reader_writer.close()?;
 
-    utils::close_and_rename(
-        (target_writer, &config.target_bookmark_lock_file),
-        (target_reader, &config.target_bookmark_file),
-    )?;
     Ok(())
 }
 

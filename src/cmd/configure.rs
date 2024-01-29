@@ -25,7 +25,7 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
         SourceReader::init(source)?;
     }
 
-    let settings_file = utils::open_file_in_read_write_mode(&config.settings_path)?;
+    let settings_file = utils::open_and_truncate_file(&config.settings_path)?;
 
     configure_settings(
         &mut config.settings,
@@ -47,8 +47,6 @@ fn configure_settings(
     underlying_urls: &[String],
     mut writer: impl Write,
 ) -> Result<(), anyhow::Error> {
-    let settings_read = settings.clone();
-
     if let Some(source) = source {
         settings.set_source(source)?;
     }
@@ -63,10 +61,8 @@ fn configure_settings(
         settings.add_underlying_url(underlying_url)?;
     }
 
-    if &settings_read != settings {
-        let settings_json = json::serialize(settings)?;
-        writer.write_all(&settings_json)?;
-    }
+    let settings_json = json::serialize(settings)?;
+    writer.write_all(&settings_json)?;
 
     Ok(())
 }

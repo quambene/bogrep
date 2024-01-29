@@ -1,8 +1,8 @@
 use crate::{
-    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmark_reader::{SourceReader, TargetReaderWriter},
     bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
+    Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
     TargetBookmarks,
 };
 use log::debug;
@@ -20,9 +20,11 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
-    let mut target_writer = utils::open_and_truncate_file(&config.target_bookmark_lock_file)?;
-    target_reader.read(&mut target_bookmarks)?;
+    let mut target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
+    target_reader_writer.read(&mut target_bookmarks)?;
 
     if !target_bookmarks.is_empty() {
         println!("Bookmarks already imported");
@@ -33,12 +35,8 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
 
         let target_bookmarks =
             init_bookmarks(&client, &cache, source_reader.as_mut(), &config.settings).await?;
-        target_writer.write(&target_bookmarks)?;
-
-        utils::close_and_rename(
-            (target_writer, &config.target_bookmark_lock_file),
-            (target_reader, &config.target_bookmark_file),
-        )?;
+        target_reader_writer.write(&target_bookmarks)?;
+        target_reader_writer.close()?;
     }
 
     Ok(())
