@@ -6,8 +6,6 @@ use std::{
 };
 
 /// A helper struct to read from and write to target files.
-///
-/// Cleans up the lock file when dropped.
 pub struct TargetReaderWriter {
     reader: File,
     reader_path: PathBuf,
