@@ -85,7 +85,7 @@ pub fn open_file_in_read_mode(path: &Path) -> Result<File, BogrepError> {
 /// Helper function to open a file in read-write mode.
 pub fn open_file_in_read_write_mode(path: &Path) -> Result<File, BogrepError> {
     debug!("Open file in read and write mode at {}", path.display());
-    let file = OpenOptions::new()
+    let file = File::options()
         .read(true)
         .write(true)
         .open(path)
