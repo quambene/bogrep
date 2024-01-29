@@ -105,16 +105,16 @@ fn test_configure_source_chrome_no_extension() {
 }
 
 #[test]
-fn test_configure_source_and_folders_firefox() {
+fn test_configure_source_firefox_consecutive() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
     let source = "./test_data/bookmarks_firefox.json";
-    let folder = Some("dev");
+    let folder = Some("science");
     test_configure_source(temp_path, source, folder);
 
-    let folder = Some("science");
+    let folder = Some("dev");
     test_configure_source(temp_path, source, folder);
 }
 
