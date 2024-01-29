@@ -8,7 +8,7 @@ use std::{fs, io::Write};
 
 /// Configure the source files to import the bookmarks, the cache mode, or the
 /// ignoure urls .
-pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> {
+pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let cache_mode = args.set_cache_mode.cache_mode;
@@ -26,9 +26,10 @@ pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Err
     }
 
     let settings_file = utils::open_and_truncate_file(&config.settings_path)?;
+    let mut settings = config.settings;
 
     configure_settings(
-        &mut config.settings,
+        &mut settings,
         source,
         cache_mode,
         &args.set_ignored_urls.ignore,
