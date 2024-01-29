@@ -1,7 +1,6 @@
-use std::path::Path;
-
 use assert_cmd::Command;
 use bogrep::{json, utils, JsonBookmarks, Settings};
+use std::path::Path;
 use tempfile::tempdir;
 
 fn test_configure_source(temp_path: &Path, source: &str, folder: Option<&str>) {
