@@ -98,3 +98,28 @@ fn test_configure_ignored_urls() {
     let settings = res.unwrap();
     assert!(!settings.ignored_urls.is_empty());
 }
+
+#[test]
+fn test_configure_underlying_urls() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+    assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+    let url1 = "https://news.ycombinator.com";
+    let url2 = "https://www.reddit.com";
+
+    println!("Execute 'bogrep config --underlying {url1} {url2}'");
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.env("BOGREP_HOME", temp_path);
+    cmd.args(["config", "--underlying", url1, url2]);
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
+
+    let settings_path = temp_dir.path().join("settings.json");
+    let settings = utils::read_file(&settings_path).unwrap();
+    let res = json::deserialize::<Settings>(&settings);
+    assert!(res.is_ok());
+
+    let settings = res.unwrap();
+    assert!(!settings.underlying_urls.is_empty());
+}
