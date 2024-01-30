@@ -168,6 +168,8 @@ pub async fn remove_file_async(path: &Path) -> Result<(), BogrepError> {
 }
 
 /// Helper function to close and rename a file.
+///
+/// Closing the file before renaming it is needed on Windows.
 pub fn close_and_rename(from: (File, &Path), to: (File, &Path)) -> Result<(), BogrepError> {
     debug!("Close file at {}", from.1.display());
     drop(from.0);
