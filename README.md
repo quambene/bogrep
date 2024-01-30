@@ -25,7 +25,7 @@ bogrep -i "reed-solomon code"
   - [Chrome](#chrome)
   - [Chromium](#chromium)
   - [Edge](#edge)
-- [Specify bookmark folders](#specify-bookmark-folders)
+- [Filter bookmark folders](#filter-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
 - [Fetch underlying urls](#fetch-underlying-urls)
 - [Diff websites](#diff-websites)
@@ -165,9 +165,9 @@ Configure Edge as source for bookmarks:
 bogrep config --source ~/.config/microsoft-edge/Default/Bookmarks
 ```
 
-## Specify bookmark folders
+## Filter bookmark folders
 
-Specify which bookmark folders are imported. Multiple folders are separated by comma:
+Filter which bookmark folders are imported. Multiple folders are separated by comma:
 
 ``` bash
 bogrep config --source "my/path/to/bookmarks_file.json" --folders dev,science,articles
