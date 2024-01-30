@@ -1,5 +1,6 @@
 mod chromium;
 mod firefox;
+mod safari;
 mod simple;
 mod source_reader;
 mod target_reader;
@@ -27,6 +28,7 @@ pub enum ReaderName {
     FirefoxCompressed,
     Chromium,
     ChromiumNoExtension,
+    Safari,
     Simple,
 }
 
@@ -37,6 +39,7 @@ impl fmt::Display for ReaderName {
             ReaderName::FirefoxCompressed => "Firefox (compressed)",
             ReaderName::Chromium => "Chromium",
             ReaderName::ChromiumNoExtension => "Chromium (no extension)",
+            ReaderName::Safari => "Safari",
             ReaderName::Simple => "Simple",
         };
         write!(f, "{}", reader_name)
