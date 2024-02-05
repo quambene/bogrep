@@ -69,6 +69,7 @@ impl From<&Url> for UnderlyingType {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SourceType {
     Firefox,
+    ChromiumFamily,
     Chromium,
     Chrome,
     Edge,
@@ -106,8 +107,8 @@ impl RawSource {
 pub struct Source {
     /// The name of the source.
     pub name: SourceType,
-    /// The path of the source file used for displaying.
-    pub path: String,
+    /// The path of the source file used for logging.
+    pub path: PathBuf,
     /// The folders to be imported.
     ///
     /// If no folders are selected, all bookmarks in the source file will be
@@ -116,10 +117,10 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new(name: SourceType, path: &Path, folders: Vec<String>) -> Self {
+    pub fn new(source_type: SourceType, path: &Path, folders: Vec<String>) -> Self {
         Self {
-            name,
-            path: path.to_string_lossy().to_string(),
+            name: source_type,
+            path: path.to_owned(),
             folders,
         }
     }

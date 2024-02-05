@@ -13,6 +13,7 @@
 # Test data
 **/*.jsonlz4
 **/*.html
+**/*.plist
 
 # Testing
 /bogrep

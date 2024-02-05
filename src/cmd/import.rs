@@ -1,8 +1,13 @@
 use crate::{
     args::ImportArgs,
-    bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
-    Action, Config, SourceBookmarks, TargetBookmarks,
+    bookmark_reader::{
+        CompressedJsonReader, JsonReader, PlistReader, ReadSource, ReadTarget,
+        SafariBookmarkReader, SourceReader, TargetReaderWriter, TextReader, WriteTarget,
+    },
+    Action, ChromiumBookmarkReader, Config, FirefoxBookmarkReader, ReadBookmark,
+    SimpleBookmarkReader, Source, SourceBookmarks, TargetBookmarks,
 };
+use anyhow::anyhow;
 use log::{debug, trace};
 use url::Url;
 
@@ -15,7 +20,7 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         .settings
         .sources
         .iter()
-        .map(SourceReader::init)
+        .map(|source| SourceReader::init(source))
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
@@ -41,15 +46,91 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
 }
 
 fn import_source(
-    mut source_reader: Vec<SourceReader>,
+    source_readers: Vec<SourceReader>,
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
     ignored_urls: &[Url],
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for reader in &mut source_reader {
-        reader.read_and_parse(&mut source_bookmarks)?;
+    for mut source_reader in source_readers {
+        let raw_source = source_reader.source().clone();
+        let source_path = &raw_source.path;
+        let source_folders = &raw_source.folders;
+        let source_extension = source_path.extension().and_then(|path| path.to_str());
+        let reader = source_reader.reader_mut();
+
+        match source_extension {
+            Some("txt") => {
+                let source_reader = TextReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let simple_reader = SimpleBookmarkReader;
+
+                if let Some(source_type) =
+                    simple_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    simple_reader.import(&source, parsed_bookmarks, &mut source_bookmarks)?;
+                }
+            }
+            Some("json") => {
+                let source_reader = JsonReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let firefox_reader = FirefoxBookmarkReader;
+                let chromium_reader = ChromiumBookmarkReader;
+
+                if let Some(source_type) =
+                    firefox_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    firefox_reader.import(&source, parsed_bookmarks, &mut source_bookmarks)?;
+                } else if let Some(source_type) =
+                    chromium_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    chromium_reader.import(&source, parsed_bookmarks, &mut source_bookmarks)?;
+                }
+            }
+            Some("jsonlz4") => {
+                let source_reader = CompressedJsonReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let firefox_reader = FirefoxBookmarkReader;
+
+                if let Some(source_type) =
+                    firefox_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    firefox_reader.import(&source, parsed_bookmarks, &mut source_bookmarks)?;
+                }
+            }
+            Some("plist") => {
+                let source_reader = PlistReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let safari_reader = SafariBookmarkReader;
+
+                if let Some(source_type) =
+                    safari_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    safari_reader.import(&source, parsed_bookmarks, &mut source_bookmarks)?;
+                }
+            }
+            Some(others) => {
+                return Err(anyhow!(format!("File type {others} not supported")));
+            }
+            None => {
+                let source_reader = JsonReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let chromium_reader = ChromiumBookmarkReader;
+
+                if let Some(source_type) =
+                    chromium_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    chromium_reader.import(&source, parsed_bookmarks, &mut source_bookmarks)?;
+                }
+            }
+        }
     }
 
     let mut target_bookmarks = TargetBookmarks::default();
@@ -61,7 +142,8 @@ fn import_source(
 
     target_writer.write(&target_bookmarks)?;
 
-    log_import(&source_reader, &target_bookmarks);
+    // TODO: log import
+    // log_import(&source_readers, &target_bookmarks);
 
     Ok(())
 }
@@ -84,7 +166,7 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
         source_reader.len(),
         source_reader
             .iter()
-            .map(|source_reader| source_reader.source().path.clone())
+            .map(|source_reader| source_reader.source().path.to_string_lossy())
             .collect::<Vec<_>>()
             .join(", ")
     );
@@ -95,8 +177,7 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 mod tests {
     use super::*;
     use crate::{
-        bookmarks::{RawSource, Source},
-        json, test_utils, JsonBookmarks, ReadBookmark, SimpleBookmarkReader, SourceType,
+        bookmarks::RawSource, json, test_utils, JsonBookmarks, ReadBookmark, SimpleBookmarkReader,
     };
     use std::{
         collections::HashSet,
@@ -140,7 +221,7 @@ mod tests {
 
     fn test_import_source_bookmarks(
         source_bookmarks: HashSet<String>,
-        source: &Source,
+        source: &RawSource,
         source_reader_writer: &mut Cursor<Vec<u8>>,
         bookmark_reader: impl ReadBookmark + 'static,
         target_reader: &mut Cursor<Vec<u8>>,
@@ -151,11 +232,8 @@ mod tests {
         }
         source_reader_writer.set_position(0);
 
-        let source_reader = SourceReader::new(
-            source.clone(),
-            Box::new(source_reader_writer.clone()),
-            Box::new(bookmark_reader),
-        );
+        let source_reader =
+            SourceReader::new(source.clone(), Box::new(source_reader_writer.clone()));
         let ignored_urls = vec![];
 
         let res = import_source(
@@ -269,7 +347,7 @@ mod tests {
     fn test_import_bookmarks_simple_add_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(SourceType::Simple, source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
@@ -316,7 +394,7 @@ mod tests {
     fn test_import_bookmarks_simple_delete_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(SourceType::Simple, source_path, source_folders);
+        let source = RawSource::new(source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),

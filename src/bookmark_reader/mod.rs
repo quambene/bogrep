@@ -8,14 +8,15 @@ mod target_reader_writer;
 mod target_writer;
 
 use crate::{Source, SourceBookmarks, SourceType};
-pub use chromium::{ChromiumBookmarkReader, ChromiumNoExtensionBookmarkReader};
-pub use firefox::{FirefoxBookmarkReader, FirefoxCompressedBookmarkReader};
-use log::debug;
+pub use chromium::ChromiumBookmarkReader;
+pub use firefox::FirefoxBookmarkReader;
+pub use safari::SafariBookmarkReader;
 pub use simple::SimpleBookmarkReader;
-pub use source_reader::SourceReader;
+pub use source_reader::{
+    CompressedJsonReader, JsonReader, PlistReader, ReadSource, SeekRead, SourceReader, TextReader,
+};
 use std::{
     fmt,
-    io::Read,
     path::{Path, PathBuf},
 };
 pub use target_reader::ReadTarget;
@@ -48,6 +49,8 @@ impl fmt::Display for ReaderName {
 
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
 pub trait ReadBookmark: fmt::Debug {
+    type ParsedValue<'a>;
+
     fn name(&self) -> ReaderName;
 
     fn extension(&self) -> Option<&str>;
@@ -56,58 +59,21 @@ pub trait ReadBookmark: fmt::Debug {
     ///
     /// A bookmark reader can read from multiple sources. For example, the json
     /// format for bookmarks from Chromium can be used for Chrome and Edge.
-    fn select_source(&self, source_path: &Path) -> Result<Option<SourceType>, anyhow::Error>;
+    fn select_source<'a>(
+        &self,
+        source_path: &Path,
+        parsed_bookmarks: &Self::ParsedValue<'a>,
+    ) -> Result<Option<SourceType>, anyhow::Error>;
 
     /// Select the bookmarks file if the source is given as a directory.
     fn select_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         Ok(None)
     }
 
-    fn read(&self, reader: &mut dyn Read) -> Result<String, anyhow::Error> {
-        let mut buf = String::new();
-        reader.read_to_string(&mut buf)?;
-        Ok(buf)
-    }
-
-    fn parse(
+    fn import<'a>(
         &self,
-        _raw_bookmarks: &str,
-        _source: &Source,
-        _bookmarks: &mut SourceBookmarks,
-    ) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
-
-    fn read_and_parse(
-        &self,
-        reader: &mut dyn Read,
         source: &Source,
-        bookmarks: &mut SourceBookmarks,
-    ) -> Result<(), anyhow::Error> {
-        debug!("Read bookmarks from file '{}'", source.path);
-
-        let raw_bookmarks = self.read(reader)?;
-        self.parse(&raw_bookmarks, source, bookmarks)?;
-        Ok(())
-    }
-}
-
-pub struct BookmarkReaders(pub Vec<Box<dyn ReadBookmark>>);
-
-impl BookmarkReaders {
-    pub fn new() -> Self {
-        BookmarkReaders(vec![
-            Box::new(FirefoxBookmarkReader),
-            Box::new(FirefoxCompressedBookmarkReader),
-            Box::new(ChromiumBookmarkReader),
-            Box::new(ChromiumNoExtensionBookmarkReader),
-            Box::new(SimpleBookmarkReader),
-        ])
-    }
-}
-
-impl Default for BookmarkReaders {
-    fn default() -> Self {
-        Self::new()
-    }
+        parsed_bookmarks: Self::ParsedValue<'a>,
+        source_bookmarks: &mut SourceBookmarks,
+    ) -> Result<(), anyhow::Error>;
 }

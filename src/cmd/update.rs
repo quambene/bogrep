@@ -48,14 +48,14 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
 async fn update_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
-    source_reader: &mut [SourceReader],
+    source_readers: &[SourceReader],
     target_bookmarks: &mut TargetBookmarks,
     settings: &Settings,
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for reader in source_reader.iter_mut() {
-        reader.read_and_parse(&mut source_bookmarks)?;
+    for source_reader in source_readers {
+        todo!()
     }
 
     target_bookmarks.update(&source_bookmarks)?;

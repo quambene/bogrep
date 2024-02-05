@@ -1,11 +1,10 @@
-use super::BookmarkReaders;
-use crate::{bookmarks::RawSource, utils};
+use crate::{bookmarks::RawSource, utils, FirefoxBookmarkReader, ReadBookmark};
 use anyhow::anyhow;
 use log::debug;
 use lz4::block;
 use std::io::{BufRead, BufReader, Lines, Read, Seek};
 
-trait SeekRead: Seek + Read {}
+pub trait SeekRead: Seek + Read {}
 impl<T> SeekRead for T where T: Seek + Read {}
 
 pub trait ReadSource {
@@ -127,28 +126,26 @@ impl SourceReader {
     /// Select the source file if a source directory is given.
     pub fn init(source: &RawSource) -> Result<Self, anyhow::Error> {
         let bookmark_file = utils::open_file(&source.path)?;
-        let bookmark_readers = BookmarkReaders::new();
+        let source_path = &source.path;
+        let source_extension = source_path.extension().and_then(|path| path.to_str());
 
-        for bookmark_reader in bookmark_readers.0 {
-            if source.path.is_dir() {
-                if let Some(bookmarks_path) = bookmark_reader.select_file(&source.path)? {
-                    if bookmarks_path.is_file()
-                        && bookmark_reader.extension()
-                            == bookmarks_path.extension().and_then(|path| path.to_str())
-                    {
-                        return Ok(Self {
-                            // Overwrite raw source
-                            source: RawSource::new(&source.path, source.folders.clone()),
-                            reader: Box::new(bookmark_file),
-                        });
-                    }
+        if source.path.is_dir() {
+            let bookmark_reader = FirefoxBookmarkReader;
+
+            if let Some(bookmarks_path) = bookmark_reader.select_file(&source.path)? {
+                if bookmarks_path.is_file() && bookmark_reader.extension() == source_extension {
+                    return Ok(Self {
+                        // Overwrite raw source
+                        source: RawSource::new(&source.path, source.folders.clone()),
+                        reader: Box::new(bookmark_file),
+                    });
                 }
-            } else if source.path.is_file() {
-                return Ok(Self {
-                    source: source.to_owned(),
-                    reader: Box::new(bookmark_file),
-                });
             }
+        } else if source.path.is_file() {
+            return Ok(Self {
+                source: source.to_owned(),
+                reader: Box::new(bookmark_file),
+            });
         }
 
         Err(anyhow!(
@@ -161,7 +158,7 @@ impl SourceReader {
         &self.source
     }
 
-    pub fn reader_mut(&mut self) -> &mut dyn Read {
+    pub fn reader_mut(&mut self) -> &mut dyn SeekRead {
         &mut self.reader
     }
 }
