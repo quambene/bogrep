@@ -49,6 +49,7 @@ impl fmt::Display for ReaderName {
 
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
 pub trait ReadBookmark: fmt::Debug {
+    // TODO: remove life lifetime parameter for object safety
     type ParsedValue<'a>;
 
     fn name(&self) -> ReaderName;
