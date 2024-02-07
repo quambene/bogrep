@@ -25,7 +25,7 @@ pub trait ReadSource {
     fn read_and_parse<'a>(
         &self,
         reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks, anyhow::Error>;
+    ) -> Result<ParsedBookmarks<'a>, anyhow::Error>;
 }
 
 pub struct TextReader;
@@ -38,7 +38,7 @@ impl ReadSource for TextReader {
     fn read_and_parse<'a>(
         &self,
         reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks, anyhow::Error> {
+    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let buf_reader = BufReader::new(reader);
@@ -55,9 +55,9 @@ impl ReadSource for JsonReader {
     }
 
     fn read_and_parse<'a>(
-        &'a self,
-        reader: &mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks, anyhow::Error> {
+        &self,
+        reader: &'a mut dyn SeekRead,
+    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let mut raw_bookmarks = Vec::new();
@@ -76,9 +76,9 @@ impl ReadSource for CompressedJsonReader {
     }
 
     fn read_and_parse<'a>(
-        &'a self,
-        reader: &mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks, anyhow::Error> {
+        &self,
+        reader: &'a mut dyn SeekRead,
+    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let mut compressed_data = Vec::new();
@@ -100,9 +100,9 @@ impl ReadSource for PlistReader {
     }
 
     fn read_and_parse<'a>(
-        &'a self,
-        reader: &mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks, anyhow::Error> {
+        &self,
+        reader: &'a mut dyn SeekRead,
+    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let mut bookmarks = Vec::new();
