@@ -57,7 +57,7 @@ impl ReadBookmark for SimpleBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{ReadSource, TextReader},
+        bookmark_reader::source_reader::{ReadSource, TextReader},
         bookmarks::SourceBookmarkBuilder,
         utils,
     };

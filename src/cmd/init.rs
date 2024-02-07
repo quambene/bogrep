@@ -45,13 +45,13 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
 async fn init_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
-    source_readers: &[SourceReader],
+    source_readers: &mut [SourceReader],
     settings: &Settings,
 ) -> Result<TargetBookmarks, anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for source_reader in source_readers {
-        todo!()
+    for source_reader in source_readers.as_mut() {
+        source_reader.import(&mut source_bookmarks)?;
     }
 
     let mut target_bookmarks = TargetBookmarks::try_from(source_bookmarks)?;

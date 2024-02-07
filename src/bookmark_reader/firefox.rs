@@ -161,7 +161,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
                             if path_str.contains("firefox") || path_str.contains("Firefox") {
                                 SourceType::Firefox
                             } else {
-                                SourceType::Others
+                                SourceType::Firefox
                             };
                         Ok(Some(source_type))
                     } else {
@@ -210,7 +210,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{JsonReader, ReadSource},
+        bookmark_reader::source_reader::{JsonReader, ReadSource},
         utils,
     };
     use std::collections::HashMap;

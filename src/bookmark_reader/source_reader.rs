@@ -1,13 +1,19 @@
-use crate::{bookmarks::RawSource, utils, FirefoxBookmarkReader, ReadBookmark};
+use crate::{
+    bookmarks::RawSource, utils, ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark,
+    SimpleBookmarkReader, Source, SourceBookmarks,
+};
 use anyhow::anyhow;
 use log::debug;
 use lz4::block;
 use std::io::{BufRead, BufReader, Lines, Read, Seek};
 
+use super::SafariBookmarkReader;
+
 pub trait SeekRead: Seek + Read {}
 impl<T> SeekRead for T where T: Seek + Read {}
 
 pub trait ReadSource {
+    // TODO: remove life lifetime parameter for object safety
     type ParsedValue<'a>;
 
     fn extension(&self) -> Option<&str>;
@@ -158,8 +164,90 @@ impl SourceReader {
         &self.source
     }
 
-    pub fn reader_mut(&mut self) -> &mut dyn SeekRead {
-        &mut self.reader
+    pub fn read_and_parse() {
+        todo!()
+    }
+
+    pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
+        let raw_source = self.source().clone();
+        let source_path = &raw_source.path;
+        let source_folders = &raw_source.folders;
+        let source_extension = source_path.extension().and_then(|path| path.to_str());
+        let reader = &mut self.reader;
+
+        match source_extension {
+            Some("txt") => {
+                let source_reader = TextReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let simple_reader = SimpleBookmarkReader;
+
+                if let Some(source_type) =
+                    simple_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    simple_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
+                }
+            }
+            Some("json") => {
+                let source_reader = JsonReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let firefox_reader = FirefoxBookmarkReader;
+                let chromium_reader = ChromiumBookmarkReader;
+
+                if let Some(source_type) =
+                    firefox_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    firefox_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
+                } else if let Some(source_type) =
+                    chromium_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    chromium_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
+                }
+            }
+            Some("jsonlz4") => {
+                let source_reader = CompressedJsonReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let firefox_reader = FirefoxBookmarkReader;
+
+                if let Some(source_type) =
+                    firefox_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    firefox_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
+                }
+            }
+            Some("plist") => {
+                let source_reader = PlistReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let safari_reader = SafariBookmarkReader;
+
+                if let Some(source_type) =
+                    safari_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    safari_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
+                }
+            }
+            Some(others) => {
+                return Err(anyhow!(format!("File type {others} not supported")));
+            }
+            None => {
+                let source_reader = JsonReader;
+                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+                let chromium_reader = ChromiumBookmarkReader;
+
+                if let Some(source_type) =
+                    chromium_reader.select_source(&source_path, &parsed_bookmarks)?
+                {
+                    let source = Source::new(source_type, &source_path, source_folders.clone());
+                    chromium_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -12,9 +12,7 @@ pub use chromium::ChromiumBookmarkReader;
 pub use firefox::FirefoxBookmarkReader;
 pub use safari::SafariBookmarkReader;
 pub use simple::SimpleBookmarkReader;
-pub use source_reader::{
-    CompressedJsonReader, JsonReader, PlistReader, ReadSource, SeekRead, SourceReader, TextReader,
-};
+pub use source_reader::{SeekRead, SourceReader};
 use std::{
     fmt,
     path::{Path, PathBuf},

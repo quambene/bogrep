@@ -156,7 +156,7 @@ impl ReadBookmark for ChromiumBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{JsonReader, ReadSource},
+        bookmark_reader::source_reader::{JsonReader, ReadSource},
         utils,
     };
     use std::{

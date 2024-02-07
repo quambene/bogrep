@@ -16,7 +16,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
 
-    let mut source_reader = config
+    let mut source_readers = config
         .settings
         .sources
         .iter()
@@ -33,7 +33,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     update_bookmarks(
         &client,
         &cache,
-        &mut source_reader,
+        &mut source_readers,
         &mut target_bookmarks,
         &config.settings,
     )
@@ -48,14 +48,14 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
 async fn update_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
-    source_readers: &[SourceReader],
+    source_readers: &mut [SourceReader],
     target_bookmarks: &mut TargetBookmarks,
     settings: &Settings,
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for source_reader in source_readers {
-        todo!()
+    for source_reader in source_readers.as_mut() {
+        source_reader.import(&mut source_bookmarks)?;
     }
 
     target_bookmarks.update(&source_bookmarks)?;
