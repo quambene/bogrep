@@ -2,7 +2,7 @@ use crate::{
     bookmark_reader::{SourceReader, TargetReaderWriter},
     bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
+    utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
     TargetBookmarks,
 };
 use log::debug;
@@ -50,25 +50,15 @@ async fn init_bookmarks(
 ) -> Result<TargetBookmarks, anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for source_reader in source_readers {
-        let parsed_bookmarks = source_reader.read_and_parse()?;
-        source_reader.import(parsed_bookmarks, &mut source_bookmarks)?;
+    for source_reader in source_readers.iter_mut() {
+        source_reader.import(&mut source_bookmarks)?;
     }
 
     let mut target_bookmarks = TargetBookmarks::try_from(source_bookmarks)?;
 
     target_bookmarks.set_action(&Action::FetchAndAdd);
 
-    println!(
-        "Imported {} bookmarks from {} sources: {}",
-        target_bookmarks.len(),
-        source_readers.len(),
-        source_readers
-            .iter()
-            .map(|reader| reader.source().path.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    utils::log_import(&source_readers, &target_bookmarks);
 
     let bookmark_processor =
         BookmarkProcessor::new(client.clone(), cache.clone(), settings.clone());

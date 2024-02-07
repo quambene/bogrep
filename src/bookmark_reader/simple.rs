@@ -57,10 +57,7 @@ impl ReadBookmark for SimpleBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{
-            source_reader::{ReadSource, TextReader},
-            SourceReader,
-        },
+        bookmark_reader::{source_reader::TextReader, SourceReader},
         bookmarks::{RawSource, SourceBookmarkBuilder},
         utils,
     };
@@ -75,14 +72,12 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let mut bookmark_file = utils::open_file(source_path).unwrap();
-        let source_reader = Box::new(TextReader);
-        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
-        let bookmark_reader = Box::new(SimpleBookmarkReader);
         let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
+        let bookmark_file = utils::open_file(source_path).unwrap();
+        let source_reader = Box::new(TextReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(&mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://www.deepl.com/translator";

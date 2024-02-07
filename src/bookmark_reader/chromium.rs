@@ -157,10 +157,7 @@ impl ReadBookmark for ChromiumBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{
-            source_reader::{JsonReader, ReadSource},
-            SourceReader,
-        },
+        bookmark_reader::{source_reader::JsonReader, SourceReader},
         bookmarks::RawSource,
         utils,
     };
@@ -175,14 +172,12 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let mut bookmark_file = utils::open_file(source_path).unwrap();
-        let source_reader = Box::new(JsonReader);
-        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
-        let bookmark_reader = Box::new(ChromiumBookmarkReader);
         let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
-        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
+        let bookmark_file = utils::open_file(source_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(&mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://www.deepl.com/translator";
@@ -228,14 +223,12 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let mut bookmark_file = utils::open_file(source_path).unwrap();
-        let source_reader = Box::new(JsonReader);
-        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
-        let bookmark_reader = Box::new(ChromiumBookmarkReader);
         let source = RawSource::new(&PathBuf::from("dummy_path"), vec!["dev".to_owned()]);
-        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
+        let bookmark_file = utils::open_file(source_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(&mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://en.wikipedia.org/wiki/Design_Patterns";

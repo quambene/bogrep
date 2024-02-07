@@ -55,8 +55,7 @@ async fn update_bookmarks(
     let mut source_bookmarks = SourceBookmarks::default();
 
     for source_reader in source_readers {
-        let parsed_bookmarks = source_reader.read_and_parse()?;
-        source_reader.import(parsed_bookmarks, &mut source_bookmarks)?;
+        source_reader.import(&mut source_bookmarks)?;
     }
 
     target_bookmarks.update(&source_bookmarks)?;

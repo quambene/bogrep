@@ -12,7 +12,9 @@ pub use chromium::ChromiumBookmarkReader;
 pub use firefox::FirefoxBookmarkReader;
 pub use safari::SafariBookmarkReader;
 pub use simple::SimpleBookmarkReader;
-pub use source_reader::{ReadSource, SeekRead, SourceReader, TextReader};
+#[cfg(test)]
+pub use source_reader::{ReadSource, TextReader};
+pub use source_reader::{SeekRead, SourceReader};
 use std::{
     fmt,
     path::{Path, PathBuf},

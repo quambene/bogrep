@@ -210,10 +210,7 @@ impl ReadBookmark for FirefoxBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{
-            source_reader::{JsonReader, ReadSource},
-            SourceReader,
-        },
+        bookmark_reader::{source_reader::JsonReader, SourceReader},
         bookmarks::RawSource,
         utils,
     };
@@ -224,14 +221,12 @@ mod tests {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let mut bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
-        let source_reader = Box::new(JsonReader);
-        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
-        let bookmark_reader = Box::new(FirefoxBookmarkReader);
         let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
-        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
+        let bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(&mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://www.mozilla.org/en-US/firefox/central/";
@@ -276,14 +271,12 @@ mod tests {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let mut bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
-        let source_reader = Box::new(JsonReader);
-        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
-        let bookmark_reader = Box::new(FirefoxBookmarkReader);
         let source = RawSource::new(&PathBuf::from("dummy_path"), vec![String::from("dev")]);
-        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
+        let bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(&mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://en.wikipedia.org/wiki/Design_Patterns";

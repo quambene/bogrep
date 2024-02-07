@@ -181,19 +181,16 @@ impl SourceReader {
         &self.source
     }
 
-    pub fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
+    fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
         let parsed_bookmarks = self.source_reader.read_and_parse(&mut self.reader)?;
         Ok(parsed_bookmarks)
     }
 
-    pub fn import(
-        &mut self,
-        parsed_bookmarks: ParsedBookmarks,
-        source_bookmarks: &mut SourceBookmarks,
-    ) -> Result<(), anyhow::Error> {
-        let raw_source = self.source();
+    pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
+        let raw_source = self.source().clone();
         let source_path = &raw_source.path;
         let source_folders = &raw_source.folders;
+        let parsed_bookmarks = self.read_and_parse()?;
 
         match parsed_bookmarks {
             ParsedBookmarks::Text(parsed_bookmarks) => {
