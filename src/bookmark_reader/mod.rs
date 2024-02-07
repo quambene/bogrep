@@ -12,7 +12,7 @@ pub use chromium::ChromiumBookmarkReader;
 pub use firefox::FirefoxBookmarkReader;
 pub use safari::SafariBookmarkReader;
 pub use simple::SimpleBookmarkReader;
-pub use source_reader::{SeekRead, SourceReader};
+pub use source_reader::{ReadSource, SeekRead, SourceReader, TextReader};
 use std::{
     fmt,
     path::{Path, PathBuf},
@@ -47,7 +47,6 @@ impl fmt::Display for ReaderName {
 
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
 pub trait ReadBookmark: fmt::Debug {
-    // TODO: remove life lifetime parameter for object safety
     type ParsedValue<'a>;
 
     fn name(&self) -> ReaderName;

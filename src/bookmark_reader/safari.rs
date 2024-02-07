@@ -1,20 +1,21 @@
 use super::ReaderName;
 use crate::{ReadBookmark, Source, SourceBookmarks, SourceType};
+use log::debug;
 use plist::Value;
 use std::path::Path;
 
 pub struct Safari;
 
 impl Safari {
-    fn select_bookmark(obj: &Value, source_bookmarks: &mut SourceBookmarks, source: &Source) {
+    fn select_bookmark(source: &Source, obj: &Value, source_bookmarks: &mut SourceBookmarks) {
         todo!()
     }
 
-    fn traverse_json(value: &Value, source_bookmarks: &mut SourceBookmarks, source: &Source) {
+    fn traverse_json(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
         todo!()
     }
 
-    fn traverse_children(value: &Value, source_bookmarks: &mut SourceBookmarks, source: &Source) {
+    fn traverse_children(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
         todo!()
     }
 }
@@ -37,7 +38,7 @@ impl ReadBookmark for SafariBookmarkReader {
     fn select_source(
         &self,
         source_path: &Path,
-        value: &Value,
+        parsed_bookmarks: &Value,
     ) -> Result<Option<SourceType>, anyhow::Error> {
         todo!()
     }
@@ -48,7 +49,9 @@ impl ReadBookmark for SafariBookmarkReader {
         parsed_bookmarks: Value,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        todo!()
+        debug!("Import bookmarks from {}", self.name());
+        Safari::traverse_json(source, &parsed_bookmarks, source_bookmarks);
+        Ok(())
     }
 }
 

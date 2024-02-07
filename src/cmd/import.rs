@@ -48,8 +48,9 @@ fn import_source(
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for source_reader in source_readers.as_mut() {
-        source_reader.import(&mut source_bookmarks)?;
+    for source_reader in source_readers {
+        let parsed_bookmarks = source_reader.read_and_parse()?;
+        source_reader.import(parsed_bookmarks, &mut source_bookmarks)?;
     }
 
     let mut target_bookmarks = TargetBookmarks::default();
@@ -94,7 +95,11 @@ fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::RawSource, json, test_utils, JsonBookmarks};
+    use crate::{
+        bookmark_reader::{ReadSource, TextReader},
+        bookmarks::RawSource,
+        json, test_utils, JsonBookmarks,
+    };
     use std::{
         collections::HashSet,
         io::{Cursor, Write},
@@ -138,6 +143,7 @@ mod tests {
     fn test_import_source_bookmarks(
         source_bookmarks: HashSet<String>,
         source: &RawSource,
+        source_reader: Box<dyn ReadSource>,
         source_reader_writer: &mut Cursor<Vec<u8>>,
         target_reader: &mut Cursor<Vec<u8>>,
         target_writer: &mut Cursor<Vec<u8>>,
@@ -147,8 +153,11 @@ mod tests {
         }
         source_reader_writer.set_position(0);
 
-        let source_reader =
-            SourceReader::new(source.clone(), Box::new(source_reader_writer.clone()));
+        let source_reader = SourceReader::new(
+            source.clone(),
+            Box::new(source_reader_writer.clone()),
+            source_reader,
+        );
         let ignored_urls = vec![];
 
         let res = import_source(
@@ -263,6 +272,7 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
+        let source_reader = Box::new(TextReader);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
@@ -279,6 +289,7 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            source_reader,
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,
@@ -297,6 +308,7 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            source_reader,
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,
@@ -308,6 +320,7 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
+        let source_reader = Box::new(TextReader);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),
@@ -329,6 +342,7 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            source_reader,
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,
@@ -344,6 +358,7 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            source_reader,
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,

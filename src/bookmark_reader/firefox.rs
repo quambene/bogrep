@@ -145,9 +145,9 @@ impl ReadBookmark for FirefoxBookmarkReader {
     fn select_source(
         &self,
         source_path: &Path,
-        value: &Value,
+        parsed_bookmarks: &Value,
     ) -> Result<Option<SourceType>, anyhow::Error> {
-        match value {
+        match parsed_bookmarks {
             Value::Object(obj) => {
                 if let Some(Value::String(type_value)) = obj.get("type") {
                     if type_value == "text/x-moz-place-container" {
@@ -178,11 +178,11 @@ impl ReadBookmark for FirefoxBookmarkReader {
     fn import(
         &self,
         source: &Source,
-        value: Value,
-        bookmarks: &mut SourceBookmarks,
+        parsed_bookmarks: Value,
+        source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        debug!("Parse bookmarks from {}", self.name());
-        Firefox::traverse_json(&value, source, bookmarks);
+        debug!("Import bookmarks from {}", self.name());
+        Firefox::traverse_json(&parsed_bookmarks, source, source_bookmarks);
         Ok(())
     }
 
@@ -210,7 +210,11 @@ impl ReadBookmark for FirefoxBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::source_reader::{JsonReader, ReadSource},
+        bookmark_reader::{
+            source_reader::{JsonReader, ReadSource},
+            SourceReader,
+        },
+        bookmarks::RawSource,
         utils,
     };
     use std::collections::HashMap;
@@ -219,15 +223,15 @@ mod tests {
     fn test_import_all() {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
-        let mut bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
-        let json_reader = JsonReader;
-        let parsed_bookmarks = json_reader.read_and_parse(&mut bookmark_file).unwrap();
-
-        let bookmark_reader = FirefoxBookmarkReader;
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(SourceType::Firefox, &PathBuf::from("dummy_path"), vec![]);
+        let mut bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
+        let bookmark_reader = Box::new(FirefoxBookmarkReader);
+        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
+        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = bookmark_reader.import(&source, parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://www.mozilla.org/en-US/firefox/central/";
@@ -271,19 +275,15 @@ mod tests {
     fn test_parse_folder() {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
-        let mut bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
-        let json_reader = JsonReader;
-        let parsed_bookmarks = json_reader.read_and_parse(&mut bookmark_file).unwrap();
-
-        let bookmark_reader = FirefoxBookmarkReader;
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(
-            SourceType::Firefox,
-            &PathBuf::from("dummy_path"),
-            vec![String::from("dev")],
-        );
+        let mut bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
+        let bookmark_reader = Box::new(FirefoxBookmarkReader);
+        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![String::from("dev")]);
+        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = bookmark_reader.import(&source, parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://en.wikipedia.org/wiki/Design_Patterns";

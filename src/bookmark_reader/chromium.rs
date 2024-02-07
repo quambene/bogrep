@@ -4,7 +4,7 @@ use crate::{
     SourceBookmarks, SourceType,
 };
 use anyhow::anyhow;
-use log::trace;
+use log::{debug, trace};
 use serde_json::{Map, Value};
 use std::path::Path;
 
@@ -111,9 +111,9 @@ impl ReadBookmark for ChromiumBookmarkReader {
     fn select_source(
         &self,
         source_path: &Path,
-        value: &Value,
+        parsed_bookmarks: &Value,
     ) -> Result<Option<SourceType>, anyhow::Error> {
-        match value {
+        match parsed_bookmarks {
             Value::Object(obj) => {
                 if obj.get("checksum").is_some()
                     && obj.get("roots").is_some()
@@ -144,10 +144,11 @@ impl ReadBookmark for ChromiumBookmarkReader {
     fn import(
         &self,
         source: &Source,
-        value: Value,
-        bookmarks: &mut SourceBookmarks,
+        parsed_bookmarks: Value,
+        source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        Chromium::traverse_json(source, &value, bookmarks);
+        debug!("Import bookmarks from {}", self.name());
+        Chromium::traverse_json(source, &parsed_bookmarks, source_bookmarks);
         Ok(())
     }
 }
@@ -156,7 +157,11 @@ impl ReadBookmark for ChromiumBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::source_reader::{JsonReader, ReadSource},
+        bookmark_reader::{
+            source_reader::{JsonReader, ReadSource},
+            SourceReader,
+        },
+        bookmarks::RawSource,
         utils,
     };
     use std::{
@@ -169,15 +174,15 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
         assert!(source_path.exists());
 
-        let mut bookmark_file = utils::open_file(source_path).unwrap();
-        let json_reader = JsonReader;
-        let parsed_bookmarks = json_reader.read_and_parse(&mut bookmark_file).unwrap();
-
-        let bookmark_reader = ChromiumBookmarkReader;
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(SourceType::Chromium, &PathBuf::from("dummy_path"), vec![]);
+        let mut bookmark_file = utils::open_file(source_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
+        let bookmark_reader = Box::new(ChromiumBookmarkReader);
+        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
+        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = bookmark_reader.import(&source, parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://www.deepl.com/translator";
@@ -222,19 +227,15 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
         assert!(source_path.exists());
 
-        let mut bookmark_file = utils::open_file(source_path).unwrap();
-        let json_reader = JsonReader;
-        let parsed_bookmarks = json_reader.read_and_parse(&mut bookmark_file).unwrap();
-
-        let bookmark_reader = ChromiumBookmarkReader;
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(
-            SourceType::Chromium,
-            &PathBuf::from("dummy_path"),
-            vec!["dev".to_owned()],
-        );
+        let mut bookmark_file = utils::open_file(source_path).unwrap();
+        let source_reader = Box::new(JsonReader);
+        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
+        let bookmark_reader = Box::new(ChromiumBookmarkReader);
+        let source = RawSource::new(&PathBuf::from("dummy_path"), vec!["dev".to_owned()]);
+        let source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = bookmark_reader.import(&source, parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://en.wikipedia.org/wiki/Design_Patterns";

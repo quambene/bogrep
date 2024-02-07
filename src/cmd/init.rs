@@ -50,8 +50,9 @@ async fn init_bookmarks(
 ) -> Result<TargetBookmarks, anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for source_reader in source_readers.as_mut() {
-        source_reader.import(&mut source_bookmarks)?;
+    for source_reader in source_readers {
+        let parsed_bookmarks = source_reader.read_and_parse()?;
+        source_reader.import(parsed_bookmarks, &mut source_bookmarks)?;
     }
 
     let mut target_bookmarks = TargetBookmarks::try_from(source_bookmarks)?;

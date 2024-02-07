@@ -27,7 +27,7 @@ impl ReadBookmark for SimpleBookmarkReader {
     fn select_source<'a>(
         &self,
         _source_path: &Path,
-        _value: &Self::ParsedValue<'a>,
+        _parsed_bookmarks: &Self::ParsedValue<'a>,
     ) -> Result<Option<SourceType>, anyhow::Error> {
         Ok(Some(SourceType::Simple))
     }
@@ -35,10 +35,10 @@ impl ReadBookmark for SimpleBookmarkReader {
     fn import<'a>(
         &self,
         source: &Source,
-        parsed_value: Self::ParsedValue<'a>,
+        parsed_bookmarks: Self::ParsedValue<'a>,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        for line in parsed_value {
+        for line in parsed_bookmarks {
             let url = line?;
 
             if !url.is_empty() {
@@ -57,8 +57,11 @@ impl ReadBookmark for SimpleBookmarkReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::source_reader::{ReadSource, TextReader},
-        bookmarks::SourceBookmarkBuilder,
+        bookmark_reader::{
+            source_reader::{ReadSource, TextReader},
+            SourceReader,
+        },
+        bookmarks::{RawSource, SourceBookmarkBuilder},
         utils,
     };
     use std::{
@@ -71,15 +74,15 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         assert!(source_path.exists());
 
-        let mut bookmark_file = utils::open_file(source_path).unwrap();
-        let text_reader = TextReader;
-        let parsed_bookmarks = text_reader.read_and_parse(&mut bookmark_file).unwrap();
-
-        let bookmark_reader = SimpleBookmarkReader;
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(SourceType::Simple, &PathBuf::from("dummy_path"), vec![]);
+        let mut bookmark_file = utils::open_file(source_path).unwrap();
+        let source_reader = Box::new(TextReader);
+        let parsed_bookmarks = source_reader.read_and_parse(&mut bookmark_file).unwrap();
+        let bookmark_reader = Box::new(SimpleBookmarkReader);
+        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
+        let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = bookmark_reader.import(&source, parsed_bookmarks, &mut source_bookmarks);
+        let res = source_reader.import(parsed_bookmarks, &mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://www.deepl.com/translator";

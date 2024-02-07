@@ -9,26 +9,28 @@ use std::io::{BufRead, BufReader, Lines, Read, Seek};
 
 use super::SafariBookmarkReader;
 
+pub enum ParsedBookmarks<'a> {
+    Json(serde_json::Value),
+    Html(scraper::Html),
+    Plist(plist::Value),
+    Text(Lines<BufReader<&'a mut dyn SeekRead>>),
+}
+
 pub trait SeekRead: Seek + Read {}
 impl<T> SeekRead for T where T: Seek + Read {}
 
 pub trait ReadSource {
-    // TODO: remove life lifetime parameter for object safety
-    type ParsedValue<'a>;
-
     fn extension(&self) -> Option<&str>;
 
     fn read_and_parse<'a>(
         &self,
         reader: &'a mut dyn SeekRead,
-    ) -> Result<Self::ParsedValue<'a>, anyhow::Error>;
+    ) -> Result<ParsedBookmarks, anyhow::Error>;
 }
 
 pub struct TextReader;
 
 impl ReadSource for TextReader {
-    type ParsedValue<'a> = Lines<BufReader<&'a mut dyn SeekRead>>;
-
     fn extension(&self) -> Option<&str> {
         Some("txt")
     }
@@ -36,20 +38,18 @@ impl ReadSource for TextReader {
     fn read_and_parse<'a>(
         &self,
         reader: &'a mut dyn SeekRead,
-    ) -> Result<Self::ParsedValue<'a>, anyhow::Error> {
+    ) -> Result<ParsedBookmarks, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let buf_reader = BufReader::new(reader);
         let lines = buf_reader.lines();
-        Ok(lines)
+        Ok(ParsedBookmarks::Text(lines))
     }
 }
 
 pub struct JsonReader;
 
 impl ReadSource for JsonReader {
-    type ParsedValue<'a> = serde_json::Value;
-
     fn extension(&self) -> Option<&str> {
         Some("json")
     }
@@ -57,22 +57,20 @@ impl ReadSource for JsonReader {
     fn read_and_parse<'a>(
         &'a self,
         reader: &mut dyn SeekRead,
-    ) -> Result<Self::ParsedValue<'a>, anyhow::Error> {
+    ) -> Result<ParsedBookmarks, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let mut raw_bookmarks = Vec::new();
         reader.read_to_end(&mut raw_bookmarks)?;
 
         let parsed_bookmarks = serde_json::from_slice(&raw_bookmarks)?;
-        Ok(parsed_bookmarks)
+        Ok(ParsedBookmarks::Json(parsed_bookmarks))
     }
 }
 
 pub struct CompressedJsonReader;
 
 impl ReadSource for CompressedJsonReader {
-    type ParsedValue<'a> = serde_json::Value;
-
     fn extension(&self) -> Option<&str> {
         Some("jsonlz4")
     }
@@ -80,7 +78,7 @@ impl ReadSource for CompressedJsonReader {
     fn read_and_parse<'a>(
         &'a self,
         reader: &mut dyn SeekRead,
-    ) -> Result<Self::ParsedValue<'a>, anyhow::Error> {
+    ) -> Result<ParsedBookmarks, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let mut compressed_data = Vec::new();
@@ -90,15 +88,13 @@ impl ReadSource for CompressedJsonReader {
         let decompressed_data = block::decompress(&compressed_data[8..], None)?;
 
         let parsed_bookmarks = serde_json::from_slice(&decompressed_data)?;
-        Ok(parsed_bookmarks)
+        Ok(ParsedBookmarks::Json(parsed_bookmarks))
     }
 }
 
 pub struct PlistReader;
 
 impl ReadSource for PlistReader {
-    type ParsedValue<'a> = plist::Value;
-
     fn extension(&self) -> Option<&str> {
         Some("plist")
     }
@@ -106,14 +102,14 @@ impl ReadSource for PlistReader {
     fn read_and_parse<'a>(
         &'a self,
         reader: &mut dyn SeekRead,
-    ) -> Result<Self::ParsedValue<'a>, anyhow::Error> {
+    ) -> Result<ParsedBookmarks, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
         let mut bookmarks = Vec::new();
         reader.read_to_end(&mut bookmarks).unwrap();
 
         let parsed_bookmarks = plist::Value::from_reader(reader).unwrap();
-        Ok(parsed_bookmarks)
+        Ok(ParsedBookmarks::Plist(parsed_bookmarks))
     }
 }
 
@@ -122,11 +118,33 @@ impl ReadSource for PlistReader {
 pub struct SourceReader {
     source: RawSource,
     reader: Box<dyn SeekRead>,
+    source_reader: Box<dyn ReadSource>,
 }
 
 impl SourceReader {
-    pub fn new(source: RawSource, reader: Box<dyn SeekRead>) -> Self {
-        Self { source, reader }
+    pub fn new(
+        source: RawSource,
+        reader: Box<dyn SeekRead>,
+        source_reader: Box<dyn ReadSource>,
+    ) -> Self {
+        Self {
+            source,
+            reader,
+            source_reader,
+        }
+    }
+
+    pub fn select(source_extension: Option<&str>) -> Result<Box<dyn ReadSource>, anyhow::Error> {
+        match source_extension {
+            Some("txt") => Ok(Box::new(TextReader)),
+            Some("json") => Ok(Box::new(JsonReader)),
+            Some("jsonlz4") => Ok(Box::new(CompressedJsonReader)),
+            Some("plist") => Ok(Box::new(PlistReader)),
+            Some(others) => Err(anyhow!(format!("File type {others} not supported"))),
+            // Chrome's bookmarks in json format are provided without file
+            // extension.
+            None => Ok(Box::new(JsonReader)),
+        }
     }
 
     /// Select the source file if a source directory is given.
@@ -140,18 +158,17 @@ impl SourceReader {
 
             if let Some(bookmarks_path) = bookmark_reader.select_file(&source.path)? {
                 if bookmarks_path.is_file() && bookmark_reader.extension() == source_extension {
-                    return Ok(Self {
-                        // Overwrite raw source
-                        source: RawSource::new(&source.path, source.folders.clone()),
-                        reader: Box::new(bookmark_file),
-                    });
+                    // Overwrite raw source
+                    let source = RawSource::new(&source.path, source.folders.clone());
+                    let reader = Box::new(bookmark_file);
+                    let source_reader = Self::select(source_extension)?;
+                    return Ok(Self::new(source, reader, source_reader));
                 }
             }
         } else if source.path.is_file() {
-            return Ok(Self {
-                source: source.to_owned(),
-                reader: Box::new(bookmark_file),
-            });
+            let reader = Box::new(bookmark_file);
+            let source_reader = Self::select(source_extension)?;
+            return Ok(Self::new(source.clone(), reader, source_reader));
         }
 
         Err(anyhow!(
@@ -164,21 +181,22 @@ impl SourceReader {
         &self.source
     }
 
-    pub fn read_and_parse() {
-        todo!()
+    pub fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
+        let parsed_bookmarks = self.source_reader.read_and_parse(&mut self.reader)?;
+        Ok(parsed_bookmarks)
     }
 
-    pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
-        let raw_source = self.source().clone();
+    pub fn import(
+        &mut self,
+        parsed_bookmarks: ParsedBookmarks,
+        source_bookmarks: &mut SourceBookmarks,
+    ) -> Result<(), anyhow::Error> {
+        let raw_source = self.source();
         let source_path = &raw_source.path;
         let source_folders = &raw_source.folders;
-        let source_extension = source_path.extension().and_then(|path| path.to_str());
-        let reader = &mut self.reader;
 
-        match source_extension {
-            Some("txt") => {
-                let source_reader = TextReader;
-                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+        match parsed_bookmarks {
+            ParsedBookmarks::Text(parsed_bookmarks) => {
                 let simple_reader = SimpleBookmarkReader;
 
                 if let Some(source_type) =
@@ -188,9 +206,7 @@ impl SourceReader {
                     simple_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
                 }
             }
-            Some("json") => {
-                let source_reader = JsonReader;
-                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+            ParsedBookmarks::Json(parsed_bookmarks) => {
                 let firefox_reader = FirefoxBookmarkReader;
                 let chromium_reader = ChromiumBookmarkReader;
 
@@ -206,21 +222,7 @@ impl SourceReader {
                     chromium_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
                 }
             }
-            Some("jsonlz4") => {
-                let source_reader = CompressedJsonReader;
-                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
-                let firefox_reader = FirefoxBookmarkReader;
-
-                if let Some(source_type) =
-                    firefox_reader.select_source(&source_path, &parsed_bookmarks)?
-                {
-                    let source = Source::new(source_type, &source_path, source_folders.clone());
-                    firefox_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
-                }
-            }
-            Some("plist") => {
-                let source_reader = PlistReader;
-                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
+            ParsedBookmarks::Plist(parsed_bookmarks) => {
                 let safari_reader = SafariBookmarkReader;
 
                 if let Some(source_type) =
@@ -230,20 +232,8 @@ impl SourceReader {
                     safari_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
                 }
             }
-            Some(others) => {
-                return Err(anyhow!(format!("File type {others} not supported")));
-            }
-            None => {
-                let source_reader = JsonReader;
-                let parsed_bookmarks = source_reader.read_and_parse(reader)?;
-                let chromium_reader = ChromiumBookmarkReader;
-
-                if let Some(source_type) =
-                    chromium_reader.select_source(&source_path, &parsed_bookmarks)?
-                {
-                    let source = Source::new(source_type, &source_path, source_folders.clone());
-                    chromium_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
-                }
+            ParsedBookmarks::Html(_parsed_bookmarks) => {
+                return Err(anyhow!("Format not supported for HTML files"));
             }
         }
 
