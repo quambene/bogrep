@@ -13,8 +13,8 @@ use std::{
 #[derive(Debug)]
 pub struct SimpleBookmarkReader;
 
-impl ReadBookmark for SimpleBookmarkReader {
-    type ParsedValue<'a> = Lines<BufReader<&'a mut dyn SeekRead>>;
+impl<'a> ReadBookmark<'a> for SimpleBookmarkReader {
+    type ParsedValue = Lines<BufReader<&'a mut dyn SeekRead>>;
 
     fn name(&self) -> ReaderName {
         ReaderName::Simple
@@ -24,18 +24,18 @@ impl ReadBookmark for SimpleBookmarkReader {
         Some("txt")
     }
 
-    fn select_source<'a>(
+    fn select_source(
         &self,
         _source_path: &Path,
-        _parsed_bookmarks: &Self::ParsedValue<'a>,
+        _parsed_bookmarks: &Self::ParsedValue,
     ) -> Result<Option<SourceType>, anyhow::Error> {
         Ok(Some(SourceType::Simple))
     }
 
-    fn import<'a>(
+    fn import(
         &self,
         source: &Source,
-        parsed_bookmarks: Self::ParsedValue<'a>,
+        parsed_bookmarks: Self::ParsedValue,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         for line in parsed_bookmarks {

@@ -26,9 +26,7 @@ pub use target_writer::WriteTarget;
 #[derive(Debug, PartialEq)]
 pub enum ReaderName {
     Firefox,
-    FirefoxCompressed,
     Chromium,
-    ChromiumNoExtension,
     Safari,
     Simple,
 }
@@ -37,9 +35,7 @@ impl fmt::Display for ReaderName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let reader_name = match &self {
             ReaderName::Firefox => "Firefox",
-            ReaderName::FirefoxCompressed => "Firefox (compressed)",
             ReaderName::Chromium => "Chromium",
-            ReaderName::ChromiumNoExtension => "Chromium (no extension)",
             ReaderName::Safari => "Safari",
             ReaderName::Simple => "Simple",
         };
@@ -48,8 +44,11 @@ impl fmt::Display for ReaderName {
 }
 
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.
-pub trait ReadBookmark: fmt::Debug {
-    type ParsedValue<'a>;
+///
+/// We use a trait generic over the lifetime instead of a generic associative
+/// type `ParsedValue<'a>` to achieve object safety.
+pub trait ReadBookmark<'a>: fmt::Debug {
+    type ParsedValue;
 
     fn name(&self) -> ReaderName;
 
@@ -59,10 +58,10 @@ pub trait ReadBookmark: fmt::Debug {
     ///
     /// A bookmark reader can read from multiple sources. For example, the json
     /// format for bookmarks from Chromium can be used for Chrome and Edge.
-    fn select_source<'a>(
+    fn select_source(
         &self,
         source_path: &Path,
-        parsed_bookmarks: &Self::ParsedValue<'a>,
+        parsed_bookmarks: &Self::ParsedValue,
     ) -> Result<Option<SourceType>, anyhow::Error>;
 
     /// Select the bookmarks file if the source is given as a directory.
@@ -70,10 +69,10 @@ pub trait ReadBookmark: fmt::Debug {
         Ok(None)
     }
 
-    fn import<'a>(
+    fn import(
         &self,
         source: &Source,
-        parsed_bookmarks: Self::ParsedValue<'a>,
+        parsed_bookmarks: Self::ParsedValue,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error>;
 }

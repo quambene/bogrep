@@ -97,8 +97,8 @@ impl Chromium {
 #[derive(Debug)]
 pub struct ChromiumBookmarkReader;
 
-impl ReadBookmark for ChromiumBookmarkReader {
-    type ParsedValue<'a> = serde_json::Value;
+impl<'a> ReadBookmark<'a> for ChromiumBookmarkReader {
+    type ParsedValue = serde_json::Value;
 
     fn name(&self) -> ReaderName {
         ReaderName::Chromium

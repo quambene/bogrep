@@ -24,8 +24,8 @@ impl Safari {
 #[derive(Debug)]
 pub struct SafariBookmarkReader;
 
-impl ReadBookmark for SafariBookmarkReader {
-    type ParsedValue<'a> = plist::Value;
+impl<'a> ReadBookmark<'a> for SafariBookmarkReader {
+    type ParsedValue = plist::Value;
 
     fn name(&self) -> ReaderName {
         ReaderName::Safari

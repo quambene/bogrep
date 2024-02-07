@@ -1,13 +1,14 @@
 use crate::{
     bookmarks::RawSource, utils, ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark,
-    SimpleBookmarkReader, Source, SourceBookmarks,
+    SafariBookmarkReader, SimpleBookmarkReader, Source, SourceBookmarks,
 };
 use anyhow::anyhow;
 use log::debug;
 use lz4::block;
-use std::io::{BufRead, BufReader, Lines, Read, Seek};
-
-use super::SafariBookmarkReader;
+use std::{
+    io::{BufRead, BufReader, Lines, Read, Seek},
+    path::Path,
+};
 
 pub enum ParsedBookmarks<'a> {
     Json(serde_json::Value),
@@ -181,11 +182,6 @@ impl SourceReader {
         &self.source
     }
 
-    fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
-        let parsed_bookmarks = self.source_reader.read_and_parse(&mut self.reader)?;
-        Ok(parsed_bookmarks)
-    }
-
     pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
         let raw_source = self.source().clone();
         let source_path = &raw_source.path;
@@ -204,33 +200,56 @@ impl SourceReader {
                 }
             }
             ParsedBookmarks::Json(parsed_bookmarks) => {
-                let firefox_reader = FirefoxBookmarkReader;
-                let chromium_reader = ChromiumBookmarkReader;
-
-                if let Some(source_type) =
-                    firefox_reader.select_source(&source_path, &parsed_bookmarks)?
-                {
-                    let source = Source::new(source_type, &source_path, source_folders.clone());
-                    firefox_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
-                } else if let Some(source_type) =
-                    chromium_reader.select_source(&source_path, &parsed_bookmarks)?
-                {
-                    let source = Source::new(source_type, &source_path, source_folders.clone());
-                    chromium_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
-                }
+                let bookmark_readers: Vec<Box<dyn ReadBookmark<ParsedValue = serde_json::Value>>> = vec![
+                    Box::new(FirefoxBookmarkReader),
+                    Box::new(ChromiumBookmarkReader),
+                ];
+                Self::import_by_source(
+                    source_path,
+                    source_folders,
+                    source_bookmarks,
+                    parsed_bookmarks,
+                    bookmark_readers,
+                )?;
             }
             ParsedBookmarks::Plist(parsed_bookmarks) => {
-                let safari_reader = SafariBookmarkReader;
-
-                if let Some(source_type) =
-                    safari_reader.select_source(&source_path, &parsed_bookmarks)?
-                {
-                    let source = Source::new(source_type, &source_path, source_folders.clone());
-                    safari_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
-                }
+                let bookmark_readers: Vec<Box<dyn ReadBookmark<ParsedValue = plist::Value>>> =
+                    vec![Box::new(SafariBookmarkReader)];
+                Self::import_by_source(
+                    source_path,
+                    source_folders,
+                    source_bookmarks,
+                    parsed_bookmarks,
+                    bookmark_readers,
+                )?;
             }
             ParsedBookmarks::Html(_parsed_bookmarks) => {
                 return Err(anyhow!("Format not supported for HTML files"));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
+        let parsed_bookmarks = self.source_reader.read_and_parse(&mut self.reader)?;
+        Ok(parsed_bookmarks)
+    }
+
+    fn import_by_source<'a, P: 'a>(
+        source_path: &Path,
+        source_folders: &[String],
+        source_bookmarks: &mut SourceBookmarks,
+        parsed_bookmarks: P,
+        bookmark_readers: Vec<Box<dyn ReadBookmark<'a, ParsedValue = P>>>,
+    ) -> Result<(), anyhow::Error> {
+        for bookmark_reader in bookmark_readers {
+            if let Some(source_type) =
+                bookmark_reader.select_source(source_path, &parsed_bookmarks)?
+            {
+                let source = Source::new(source_type, &source_path, source_folders.to_vec());
+                bookmark_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
+                break;
             }
         }
 

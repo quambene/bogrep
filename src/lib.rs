@@ -50,7 +50,8 @@ pub mod utils;
 
 pub use args::{Args, ConfigArgs, FetchArgs, InitArgs, Subcommands};
 pub use bookmark_reader::{
-    ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark, SimpleBookmarkReader,
+    ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark, SafariBookmarkReader,
+    SimpleBookmarkReader,
 };
 pub use bookmarks::{
     Action, BookmarkProcessor, JsonBookmark, JsonBookmarks, Source, SourceBookmark,

@@ -131,8 +131,8 @@ impl Firefox {
 #[derive(Debug)]
 pub struct FirefoxBookmarkReader;
 
-impl ReadBookmark for FirefoxBookmarkReader {
-    type ParsedValue<'a> = serde_json::Value;
+impl<'a> ReadBookmark<'a> for FirefoxBookmarkReader {
+    type ParsedValue = serde_json::Value;
 
     fn name(&self) -> ReaderName {
         ReaderName::Firefox
