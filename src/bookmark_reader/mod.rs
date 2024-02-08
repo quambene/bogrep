@@ -12,16 +12,25 @@ pub use chromium::ChromiumBookmarkReader;
 pub use firefox::FirefoxBookmarkReader;
 pub use safari::SafariBookmarkReader;
 pub use simple::SimpleBookmarkReader;
+pub use source_reader::SourceReader;
 #[cfg(test)]
-pub use source_reader::{ReadSource, TextReader};
-pub use source_reader::{SeekRead, SourceReader};
+pub use source_reader::TextReader;
 use std::{
     fmt,
+    io::{BufReader, Lines, Read, Seek},
     path::{Path, PathBuf},
 };
 pub use target_reader::ReadTarget;
 pub use target_reader_writer::TargetReaderWriter;
 pub use target_writer::WriteTarget;
+
+#[derive(Debug)]
+pub enum ParsedBookmarks<'a> {
+    Json(serde_json::Value),
+    Html(scraper::Html),
+    Plist(plist::Value),
+    Text(Lines<BufReader<&'a mut dyn SeekRead>>),
+}
 
 #[derive(Debug, PartialEq)]
 pub enum ReaderName {
@@ -41,6 +50,18 @@ impl fmt::Display for ReaderName {
         };
         write!(f, "{}", reader_name)
     }
+}
+
+pub trait SeekRead: Seek + Read + fmt::Debug {}
+impl<T> SeekRead for T where T: Seek + Read + fmt::Debug {}
+
+pub trait ReadSource {
+    fn extension(&self) -> Option<&str>;
+
+    fn read_and_parse<'a>(
+        &self,
+        reader: &'a mut dyn SeekRead,
+    ) -> Result<ParsedBookmarks<'a>, anyhow::Error>;
 }
 
 /// A trait to read bookmarks from multiple sources, like Firefox or Chrome.

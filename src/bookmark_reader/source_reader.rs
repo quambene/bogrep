@@ -1,3 +1,4 @@
+use super::{ParsedBookmarks, ReadSource, SeekRead};
 use crate::{
     bookmarks::RawSource, utils, ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark,
     SafariBookmarkReader, SimpleBookmarkReader, Source, SourceBookmarks,
@@ -6,28 +7,9 @@ use anyhow::anyhow;
 use log::debug;
 use lz4::block;
 use std::{
-    io::{BufRead, BufReader, Lines, Read, Seek},
+    io::{BufRead, BufReader},
     path::Path,
 };
-
-pub enum ParsedBookmarks<'a> {
-    Json(serde_json::Value),
-    Html(scraper::Html),
-    Plist(plist::Value),
-    Text(Lines<BufReader<&'a mut dyn SeekRead>>),
-}
-
-pub trait SeekRead: Seek + Read {}
-impl<T> SeekRead for T where T: Seek + Read {}
-
-pub trait ReadSource {
-    fn extension(&self) -> Option<&str>;
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error>;
-}
 
 pub struct TextReader;
 
