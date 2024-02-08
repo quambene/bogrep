@@ -24,6 +24,8 @@ pub use target_reader::ReadTarget;
 pub use target_reader_writer::TargetReaderWriter;
 pub use target_writer::WriteTarget;
 
+pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
+
 #[derive(Debug)]
 pub enum ParsedBookmarks<'a> {
     Json(serde_json::Value),

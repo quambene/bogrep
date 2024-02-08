@@ -1,8 +1,6 @@
 use super::{
-    chromium::JsonBookmarkReader,
-    safari::PlistBookmarkReader,
-    simple::{LinesReader, TextBookmarkReader},
-    ParsedBookmarks, ReadSource, SeekRead,
+    chromium::JsonBookmarkReader, safari::PlistBookmarkReader, simple::TextBookmarkReader,
+    BookmarkReader, ParsedBookmarks, ReadSource, SeekRead,
 };
 use crate::{
     bookmarks::RawSource, utils, ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark,
@@ -210,7 +208,7 @@ impl SourceReader {
         source_folders: &[String],
         source_bookmarks: &mut SourceBookmarks,
         parsed_bookmarks: P,
-        bookmark_readers: Vec<Box<dyn ReadBookmark<'a, ParsedValue = P>>>,
+        bookmark_readers: Vec<BookmarkReader<P>>,
     ) -> Result<(), anyhow::Error> {
         for bookmark_reader in bookmark_readers {
             if let Some(source_type) =
