@@ -154,10 +154,7 @@ impl SourceReader {
         &self.source
     }
 
-    pub fn import<'a>(
-        &'a mut self,
-        source_bookmarks: &mut SourceBookmarks,
-    ) -> Result<(), anyhow::Error> {
+    pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
         let raw_source = self.source().clone();
         let source_path = &raw_source.path;
         let source_folders = &raw_source.folders;
@@ -203,7 +200,7 @@ impl SourceReader {
         Ok(())
     }
 
-    fn import_by_source<'a, P>(
+    fn import_by_source<P>(
         source_path: &Path,
         source_folders: &[String],
         source_bookmarks: &mut SourceBookmarks,
