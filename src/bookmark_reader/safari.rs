@@ -4,6 +4,8 @@ use log::debug;
 use plist::Value;
 use std::path::Path;
 
+pub type PlistBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = plist::Value>>;
+
 pub struct Safari;
 
 impl Safari {
@@ -23,6 +25,12 @@ impl Safari {
 /// A bookmark reader to read bookmarks in plist format from Safari.
 #[derive(Debug)]
 pub struct SafariBookmarkReader;
+
+impl SafariBookmarkReader {
+    pub fn new() -> Box<Self> {
+        Box::new(Self)
+    }
+}
 
 impl<'a> ReadBookmark<'a> for SafariBookmarkReader {
     type ParsedValue = plist::Value;

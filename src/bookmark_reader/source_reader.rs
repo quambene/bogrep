@@ -1,4 +1,9 @@
-use super::{ParsedBookmarks, ReadSource, SeekRead};
+use super::{
+    chromium::JsonBookmarkReader,
+    safari::PlistBookmarkReader,
+    simple::{LinesReader, TextBookmarkReader},
+    ParsedBookmarks, ReadSource, SeekRead,
+};
 use crate::{
     bookmarks::RawSource, utils, ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark,
     SafariBookmarkReader, SimpleBookmarkReader, Source, SourceBookmarks,
@@ -151,7 +156,10 @@ impl SourceReader {
         &self.source
     }
 
-    pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
+    pub fn import<'a>(
+        &'a mut self,
+        source_bookmarks: &mut SourceBookmarks,
+    ) -> Result<(), anyhow::Error> {
         let raw_source = self.source().clone();
         let source_path = &raw_source.path;
         let source_folders = &raw_source.folders;
@@ -159,20 +167,18 @@ impl SourceReader {
 
         match parsed_bookmarks {
             ParsedBookmarks::Text(parsed_bookmarks) => {
-                let simple_reader = SimpleBookmarkReader;
-
-                if let Some(source_type) =
-                    simple_reader.select_source(&source_path, &parsed_bookmarks)?
-                {
-                    let source = Source::new(source_type, &source_path, source_folders.clone());
-                    simple_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
-                }
+                let bookmark_readers: Vec<TextBookmarkReader> = vec![SimpleBookmarkReader::new()];
+                Self::import_by_source(
+                    source_path,
+                    source_folders,
+                    source_bookmarks,
+                    parsed_bookmarks,
+                    bookmark_readers,
+                )?;
             }
             ParsedBookmarks::Json(parsed_bookmarks) => {
-                let bookmark_readers: Vec<Box<dyn ReadBookmark<ParsedValue = serde_json::Value>>> = vec![
-                    Box::new(FirefoxBookmarkReader),
-                    Box::new(ChromiumBookmarkReader),
-                ];
+                let bookmark_readers: Vec<JsonBookmarkReader> =
+                    vec![FirefoxBookmarkReader::new(), ChromiumBookmarkReader::new()];
                 Self::import_by_source(
                     source_path,
                     source_folders,
@@ -182,8 +188,7 @@ impl SourceReader {
                 )?;
             }
             ParsedBookmarks::Plist(parsed_bookmarks) => {
-                let bookmark_readers: Vec<Box<dyn ReadBookmark<ParsedValue = plist::Value>>> =
-                    vec![Box::new(SafariBookmarkReader)];
+                let bookmark_readers: Vec<PlistBookmarkReader> = vec![SafariBookmarkReader::new()];
                 Self::import_by_source(
                     source_path,
                     source_folders,

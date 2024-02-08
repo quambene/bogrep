@@ -8,6 +8,8 @@ use log::{debug, trace};
 use serde_json::{Map, Value};
 use std::path::Path;
 
+pub type JsonBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = serde_json::Value>>;
+
 pub struct Chromium;
 
 impl Chromium {
@@ -96,6 +98,12 @@ impl Chromium {
 /// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
 #[derive(Debug)]
 pub struct ChromiumBookmarkReader;
+
+impl ChromiumBookmarkReader {
+    pub fn new() -> Box<Self> {
+        Box::new(Self)
+    }
+}
 
 impl<'a> ReadBookmark<'a> for ChromiumBookmarkReader {
     type ParsedValue = serde_json::Value;

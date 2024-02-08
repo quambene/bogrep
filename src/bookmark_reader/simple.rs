@@ -8,13 +8,22 @@ use std::{
     path::Path,
 };
 
+pub type LinesReader<'a> = Lines<BufReader<&'a mut dyn SeekRead>>;
+pub type TextBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = LinesReader<'a>>>;
+
 /// A bookmark reader to read bookmarks from a simple text file with one url per
 /// line.
 #[derive(Debug)]
 pub struct SimpleBookmarkReader;
 
+impl SimpleBookmarkReader {
+    pub fn new() -> Box<Self> {
+        Box::new(Self)
+    }
+}
+
 impl<'a> ReadBookmark<'a> for SimpleBookmarkReader {
-    type ParsedValue = Lines<BufReader<&'a mut dyn SeekRead>>;
+    type ParsedValue = LinesReader<'a>;
 
     fn name(&self) -> ReaderName {
         ReaderName::Simple
