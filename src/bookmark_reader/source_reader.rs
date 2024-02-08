@@ -117,19 +117,6 @@ impl SourceReader {
         }
     }
 
-    pub fn select(source_extension: Option<&str>) -> Result<Box<dyn ReadSource>, anyhow::Error> {
-        match source_extension {
-            Some("txt") => Ok(Box::new(TextReader)),
-            Some("json") => Ok(Box::new(JsonReader)),
-            Some("jsonlz4") => Ok(Box::new(CompressedJsonReader)),
-            Some("plist") => Ok(Box::new(PlistReader)),
-            Some(others) => Err(anyhow!(format!("File type {others} not supported"))),
-            // Chrome's bookmarks in json format are provided without file
-            // extension.
-            None => Ok(Box::new(JsonReader)),
-        }
-    }
-
     /// Select the source file if a source directory is given.
     pub fn init(source: &RawSource) -> Result<Self, anyhow::Error> {
         let bookmark_file = utils::open_file(&source.path)?;
@@ -213,12 +200,7 @@ impl SourceReader {
         Ok(())
     }
 
-    fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
-        let parsed_bookmarks = self.source_reader.read_and_parse(&mut self.reader)?;
-        Ok(parsed_bookmarks)
-    }
-
-    fn import_by_source<'a, P: 'a>(
+    fn import_by_source<'a, P>(
         source_path: &Path,
         source_folders: &[String],
         source_bookmarks: &mut SourceBookmarks,
@@ -236,6 +218,24 @@ impl SourceReader {
         }
 
         Ok(())
+    }
+
+    fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
+        let parsed_bookmarks = self.source_reader.read_and_parse(&mut self.reader)?;
+        Ok(parsed_bookmarks)
+    }
+
+    fn select(source_extension: Option<&str>) -> Result<Box<dyn ReadSource>, anyhow::Error> {
+        match source_extension {
+            Some("txt") => Ok(Box::new(TextReader)),
+            Some("json") => Ok(Box::new(JsonReader)),
+            Some("jsonlz4") => Ok(Box::new(CompressedJsonReader)),
+            Some("plist") => Ok(Box::new(PlistReader)),
+            Some(others) => Err(anyhow!(format!("File type {others} not supported"))),
+            // Chrome's bookmarks in json format are provided without file
+            // extension.
+            None => Ok(Box::new(JsonReader)),
+        }
     }
 }
 
