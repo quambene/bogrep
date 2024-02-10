@@ -100,7 +100,7 @@ impl FirefoxReader {
                 if let Some(Value::String(uri_value)) = obj.get("uri") {
                     if uri_value.contains("http") {
                         let source_bookmark = SourceBookmarkBuilder::new(uri_value)
-                            .add_source(&source.name)
+                            .add_source(&source.source_type)
                             .build();
                         bookmarks.insert(source_bookmark);
                     }
@@ -230,10 +230,24 @@ impl<'a> ReadBookmark<'a> for FirefoxReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{source_reader::JsonReader, SourceReader},
+        bookmark_reader::{source_reader::JsonReader, ParsedBookmarks, ReadSource, SourceReader},
         utils,
     };
+    use assert_matches::assert_matches;
     use std::collections::HashMap;
+
+    #[test]
+    fn test_read_and_parse() {
+        let source_path = Path::new("test_data/bookmarks_firefox.json");
+        let mut reader = utils::open_file(source_path).unwrap();
+        let source_reader = JsonReader;
+
+        let res = source_reader.read_and_parse(&mut reader);
+        assert!(res.is_ok());
+
+        let parsed_bookmarks = res.unwrap();
+        assert_matches!(parsed_bookmarks, ParsedBookmarks::Json(_));
+    }
 
     #[test]
     fn test_import_all() {
@@ -286,7 +300,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_folder() {
+    fn test_import_folder() {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
         let mut source_bookmarks = SourceBookmarks::default();

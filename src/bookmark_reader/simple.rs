@@ -55,7 +55,7 @@ impl<'a> ReadBookmark<'a> for SimpleReader {
 
             if !url.is_empty() {
                 let source_bookmark = SourceBookmarkBuilder::new(&url)
-                    .add_source(&source.name)
+                    .add_source(&source.source_type)
                     .build();
                 source_bookmarks.insert(source_bookmark);
             }
@@ -69,14 +69,28 @@ impl<'a> ReadBookmark<'a> for SimpleReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{source_reader::TextReader, SourceReader},
+        bookmark_reader::{source_reader::TextReader, ParsedBookmarks, ReadSource, SourceReader},
         bookmarks::SourceBookmarkBuilder,
         utils,
     };
+    use assert_matches::assert_matches;
     use std::{
         collections::HashMap,
         path::{Path, PathBuf},
     };
+
+    #[test]
+    fn test_read_and_parse() {
+        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let mut reader = utils::open_file(source_path).unwrap();
+        let source_reader = TextReader;
+
+        let res = source_reader.read_and_parse(&mut reader);
+        assert!(res.is_ok());
+
+        let parsed_bookmarks = res.unwrap();
+        assert_matches!(parsed_bookmarks, ParsedBookmarks::Text(_));
+    }
 
     #[test]
     fn test_import_txt() {

@@ -31,7 +31,7 @@ impl ChromiumReader {
                 if let Some(Value::String(url_value)) = obj.get("url") {
                     if url_value.contains("http") {
                         let source_bookmark = SourceBookmarkBuilder::new(url_value)
-                            .add_source(&source.name)
+                            .add_source(&source.source_type)
                             .build();
                         source_bookmarks.insert(source_bookmark);
                     }
@@ -161,13 +161,27 @@ impl<'a> ReadBookmark<'a> for ChromiumReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{source_reader::JsonReader, SourceReader},
+        bookmark_reader::{source_reader::JsonReader, ParsedBookmarks, ReadSource, SourceReader},
         utils,
     };
+    use assert_matches::assert_matches;
     use std::{
         collections::HashMap,
         path::{Path, PathBuf},
     };
+
+    #[test]
+    fn test_read_and_parse() {
+        let source_path = Path::new("test_data/bookmarks_chromium.json");
+        let mut reader = utils::open_file(source_path).unwrap();
+        let source_reader = JsonReader;
+
+        let res = source_reader.read_and_parse(&mut reader);
+        assert!(res.is_ok());
+
+        let parsed_bookmarks = res.unwrap();
+        assert_matches!(parsed_bookmarks, ParsedBookmarks::Json(_));
+    }
 
     #[test]
     fn test_import_all() {
@@ -221,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_folder() {
+    fn test_import_folder() {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
         assert!(source_path.exists());
 
