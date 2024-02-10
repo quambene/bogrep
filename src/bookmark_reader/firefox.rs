@@ -230,8 +230,11 @@ impl<'a> ReadBookmark<'a> for FirefoxReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{source_reader::JsonReader, ParsedBookmarks, ReadSource, SourceReader},
-        utils,
+        bookmark_reader::{
+            source_reader::{CompressedJsonReader, JsonReader},
+            ParsedBookmarks, ReadSource, SourceReader,
+        },
+        test_utils, utils,
     };
     use assert_matches::assert_matches;
     use std::collections::HashMap;
@@ -241,6 +244,20 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let mut reader = utils::open_file(source_path).unwrap();
         let source_reader = JsonReader;
+
+        let res = source_reader.read_and_parse(&mut reader);
+        assert!(res.is_ok());
+
+        let parsed_bookmarks = res.unwrap();
+        assert_matches!(parsed_bookmarks, ParsedBookmarks::Json(_));
+    }
+
+    #[test]
+    fn test_read_and_parse_compressed() {
+        let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
+        test_utils::create_compressed_bookmarks(source_path);
+        let mut reader = utils::open_file(source_path).unwrap();
+        let source_reader = CompressedJsonReader;
 
         let res = source_reader.read_and_parse(&mut reader);
         assert!(res.is_ok());
