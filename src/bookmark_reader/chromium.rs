@@ -200,25 +200,25 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::Chromium)
+                        .add_source(&SourceType::ChromiumFamily)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::Chromium)
+                        .add_source(&SourceType::ChromiumFamily)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source(&SourceType::Chromium)
+                        .add_source(&SourceType::ChromiumFamily)
                         .build()
                 ),
                 (
                     url4.to_owned(),
                     SourceBookmarkBuilder::new(url4)
-                        .add_source(&SourceType::Chromium)
+                        .add_source(&SourceType::ChromiumFamily)
                         .build()
                 )
             ])
@@ -248,13 +248,13 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::Chromium)
+                        .add_source(&SourceType::ChromiumFamily)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::Chromium)
+                        .add_source(&SourceType::ChromiumFamily)
                         .build()
                 ),
             ])
