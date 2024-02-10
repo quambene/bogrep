@@ -6,22 +6,6 @@ use std::path::Path;
 
 pub type PlistBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = plist::Value>>;
 
-pub struct Safari;
-
-impl Safari {
-    fn select_bookmark(source: &Source, obj: &Value, source_bookmarks: &mut SourceBookmarks) {
-        todo!()
-    }
-
-    fn traverse_json(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
-        todo!()
-    }
-
-    fn traverse_children(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
-        todo!()
-    }
-}
-
 /// A bookmark reader to read bookmarks in plist format from Safari.
 #[derive(Debug)]
 pub struct SafariBookmarkReader;
@@ -29,6 +13,18 @@ pub struct SafariBookmarkReader;
 impl SafariBookmarkReader {
     pub fn new() -> Box<Self> {
         Box::new(Self)
+    }
+
+    fn select_bookmark(source: &Source, obj: &Value, source_bookmarks: &mut SourceBookmarks) {
+        todo!()
+    }
+
+    fn traverse_plist(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
+        todo!()
+    }
+
+    fn traverse_children(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
+        todo!()
     }
 }
 
@@ -58,7 +54,7 @@ impl<'a> ReadBookmark<'a> for SafariBookmarkReader {
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Import bookmarks from {}", self.name());
-        Safari::traverse_json(source, &parsed_bookmarks, source_bookmarks);
+        Self::traverse_plist(source, &parsed_bookmarks, source_bookmarks);
         Ok(())
     }
 }

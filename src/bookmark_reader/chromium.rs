@@ -10,9 +10,15 @@ use std::path::Path;
 
 pub type JsonBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = serde_json::Value>>;
 
-pub struct Chromium;
+/// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
+#[derive(Debug)]
+pub struct ChromiumBookmarkReader;
 
-impl Chromium {
+impl ChromiumBookmarkReader {
+    pub fn new() -> Box<Self> {
+        Box::new(Self)
+    }
+
     fn select_bookmark(
         obj: &Map<String, Value>,
         source_bookmarks: &mut SourceBookmarks,
@@ -95,16 +101,6 @@ impl Chromium {
     }
 }
 
-/// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
-#[derive(Debug)]
-pub struct ChromiumBookmarkReader;
-
-impl ChromiumBookmarkReader {
-    pub fn new() -> Box<Self> {
-        Box::new(Self)
-    }
-}
-
 impl<'a> ReadBookmark<'a> for ChromiumBookmarkReader {
     type ParsedValue = serde_json::Value;
 
@@ -156,7 +152,7 @@ impl<'a> ReadBookmark<'a> for ChromiumBookmarkReader {
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Import bookmarks from {}", self.name());
-        Chromium::traverse_json(source, &parsed_bookmarks, source_bookmarks);
+        Self::traverse_json(source, &parsed_bookmarks, source_bookmarks);
         Ok(())
     }
 }

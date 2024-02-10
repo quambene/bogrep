@@ -9,9 +9,15 @@ use std::{
     time::SystemTime,
 };
 
-pub struct Firefox;
+/// A bookmark reader to read bookmarks in JSON format from Firefox.
+#[derive(Debug)]
+pub struct FirefoxBookmarkReader;
 
-impl Firefox {
+impl FirefoxBookmarkReader {
+    pub fn new() -> Box<Self> {
+        Box::new(Self)
+    }
+
     fn select_bookmark(obj: &Map<String, Value>, source: &Source, bookmarks: &mut SourceBookmarks) {
         trace!("json object: {obj:#?}");
 
@@ -127,16 +133,6 @@ impl Firefox {
     }
 }
 
-/// A bookmark reader to read bookmarks in JSON format from Firefox.
-#[derive(Debug)]
-pub struct FirefoxBookmarkReader;
-
-impl FirefoxBookmarkReader {
-    pub fn new() -> Box<Self> {
-        Box::new(Self)
-    }
-}
-
 impl<'a> ReadBookmark<'a> for FirefoxBookmarkReader {
     type ParsedValue = serde_json::Value;
 
@@ -188,7 +184,7 @@ impl<'a> ReadBookmark<'a> for FirefoxBookmarkReader {
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Import bookmarks from {}", self.name());
-        Firefox::traverse_json(&parsed_bookmarks, source, source_bookmarks);
+        Self::traverse_json(&parsed_bookmarks, source, source_bookmarks);
         Ok(())
     }
 
@@ -201,7 +197,7 @@ impl<'a> ReadBookmark<'a> for FirefoxBookmarkReader {
         // uppercase identifier is required.
         if path_str.contains("firefox") || path_str.contains("Firefox") {
             // The Firefox bookmarks directory contains multiple bookmark files.
-            let bookmark_path = Firefox::find_most_recent_file(source_dir)?;
+            let bookmark_path = Self::find_most_recent_file(source_dir)?;
             Ok(Some(bookmark_path))
         } else {
             Err(anyhow!(
