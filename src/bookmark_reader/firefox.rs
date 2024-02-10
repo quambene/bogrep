@@ -1,4 +1,4 @@
-use super::{ReadBookmark, SelectSource, SourceName};
+use super::{ReadBookmark, SelectSource};
 use crate::{bookmarks::SourceBookmarkBuilder, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
@@ -55,8 +55,8 @@ impl FirefoxSelector {
 }
 
 impl SelectSource for FirefoxSelector {
-    fn name(&self) -> SourceName {
-        SourceName::Firefox
+    fn name(&self) -> SourceType {
+        SourceType::Firefox
     }
 
     fn extension(&self) -> Option<&str> {
@@ -173,8 +173,8 @@ impl FirefoxReader {
 impl<'a> ReadBookmark<'a> for FirefoxReader {
     type ParsedValue = serde_json::Value;
 
-    fn name(&self) -> SourceName {
-        SourceName::Firefox
+    fn name(&self) -> SourceType {
+        SourceType::Firefox
     }
 
     fn extension(&self) -> Option<&str> {
@@ -220,7 +220,7 @@ impl<'a> ReadBookmark<'a> for FirefoxReader {
         parsed_bookmarks: Value,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        debug!("Import bookmarks from {}", self.name());
+        debug!("Import bookmarks from {:#?}", self.name());
         Self::traverse_json(&parsed_bookmarks, source, source_bookmarks);
         Ok(())
     }
@@ -231,7 +231,6 @@ mod tests {
     use super::*;
     use crate::{
         bookmark_reader::{source_reader::JsonReader, SourceReader},
-        bookmarks::RawSource,
         utils,
     };
     use std::collections::HashMap;
@@ -241,7 +240,7 @@ mod tests {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
+        let source = Source::new(SourceType::Firefox, &PathBuf::from("dummy_path"), vec![]);
         let bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
         let source_reader = Box::new(JsonReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
@@ -291,7 +290,11 @@ mod tests {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![String::from("dev")]);
+        let source = Source::new(
+            SourceType::Firefox,
+            &PathBuf::from("dummy_path"),
+            vec![String::from("dev")],
+        );
         let bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
         let source_reader = Box::new(JsonReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);

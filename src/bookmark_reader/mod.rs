@@ -27,16 +27,6 @@ pub use target_writer::WriteTarget;
 pub type SourceSelector = Box<dyn SelectSource>;
 pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 
-/// The supported file extensions for bookmark files.
-#[derive(Debug)]
-pub enum BookmarkExtension {
-    Json,
-    Html,
-    PlistBinary,
-    Text,
-    None,
-}
-
 /// The parsed bookmarks from a bookmarks file.
 #[derive(Debug)]
 pub enum ParsedBookmarks<'a> {
@@ -46,30 +36,10 @@ pub enum ParsedBookmarks<'a> {
     Text(Lines<BufReader<&'a mut dyn SeekRead>>),
 }
 
-#[derive(Debug, PartialEq)]
-pub enum SourceName {
-    Firefox,
-    Chromium,
-    Safari,
-    Simple,
-}
-
-impl fmt::Display for SourceName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let reader_name = match &self {
-            SourceName::Firefox => "Firefox",
-            SourceName::Chromium => "Chromium",
-            SourceName::Safari => "Safari",
-            SourceName::Simple => "Simple",
-        };
-        write!(f, "{}", reader_name)
-    }
-}
-
 /// A trait to find the bookmarks directory in the system's directories, and/or the
 /// bookmarks file within a given directory.
 pub trait SelectSource {
-    fn name(&self) -> SourceName;
+    fn name(&self) -> SourceType;
 
     fn extension(&self) -> Option<&str>;
 
@@ -104,7 +74,7 @@ pub trait ReadSource {
 pub trait ReadBookmark<'a>: fmt::Debug {
     type ParsedValue;
 
-    fn name(&self) -> SourceName;
+    fn name(&self) -> SourceType;
 
     fn extension(&self) -> Option<&str>;
 

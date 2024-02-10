@@ -1,8 +1,9 @@
-use super::{ReadBookmark, SeekRead, SourceName};
+use super::{ReadBookmark, SeekRead};
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
 };
+use log::debug;
 use std::{
     io::{BufReader, Lines},
     path::Path,
@@ -25,8 +26,8 @@ impl SimpleReader {
 impl<'a> ReadBookmark<'a> for SimpleReader {
     type ParsedValue = LinesReader<'a>;
 
-    fn name(&self) -> SourceName {
-        SourceName::Simple
+    fn name(&self) -> SourceType {
+        SourceType::Simple
     }
 
     fn extension(&self) -> Option<&str> {
@@ -47,6 +48,8 @@ impl<'a> ReadBookmark<'a> for SimpleReader {
         parsed_bookmarks: Self::ParsedValue,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
+        debug!("Import bookmarks from {:#?}", self.name());
+
         for line in parsed_bookmarks {
             let url = line?;
 
@@ -67,7 +70,7 @@ mod tests {
     use super::*;
     use crate::{
         bookmark_reader::{source_reader::TextReader, SourceReader},
-        bookmarks::{RawSource, SourceBookmarkBuilder},
+        bookmarks::SourceBookmarkBuilder,
         utils,
     };
     use std::{
@@ -81,7 +84,7 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
+        let source = Source::new(SourceType::Unknown, &PathBuf::from("dummy_path"), vec![]);
         let bookmark_file = utils::open_file(source_path).unwrap();
         let source_reader = Box::new(TextReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);

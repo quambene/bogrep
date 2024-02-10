@@ -1,4 +1,3 @@
-use super::SourceName;
 use crate::{ReadBookmark, Source, SourceBookmarks, SourceType};
 use log::debug;
 use plist::Value;
@@ -31,8 +30,8 @@ impl SafariReader {
 impl<'a> ReadBookmark<'a> for SafariReader {
     type ParsedValue = plist::Value;
 
-    fn name(&self) -> SourceName {
-        SourceName::Safari
+    fn name(&self) -> SourceType {
+        SourceType::Safari
     }
 
     fn extension(&self) -> Option<&str> {
@@ -53,7 +52,7 @@ impl<'a> ReadBookmark<'a> for SafariReader {
         parsed_bookmarks: Value,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        debug!("Import bookmarks from {}", self.name());
+        debug!("Import bookmarks from {:#?}", self.name());
         Self::traverse_plist(source, &parsed_bookmarks, source_bookmarks);
         Ok(())
     }

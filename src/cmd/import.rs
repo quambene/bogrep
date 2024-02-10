@@ -72,7 +72,7 @@ mod tests {
     use crate::{
         bookmark_reader::{ReadSource, TextReader},
         bookmarks::RawSource,
-        json, test_utils, JsonBookmarks,
+        json, test_utils, JsonBookmarks, Source, SourceType,
     };
     use std::{
         collections::HashSet,
@@ -116,7 +116,7 @@ mod tests {
 
     fn test_import_source_bookmarks(
         source_bookmarks: HashSet<String>,
-        source: &RawSource,
+        source: &Source,
         source_reader: Box<dyn ReadSource>,
         source_reader_writer: &mut Cursor<Vec<u8>>,
         target_reader: &mut Cursor<Vec<u8>>,
@@ -245,7 +245,7 @@ mod tests {
     fn test_import_bookmarks_simple_add_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = RawSource::new(source_path, source_folders);
+        let source = Source::new(SourceType::Unknown, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
@@ -292,7 +292,7 @@ mod tests {
     fn test_import_bookmarks_simple_delete_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = RawSource::new(source_path, source_folders);
+        let source = Source::new(SourceType::Unknown, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),

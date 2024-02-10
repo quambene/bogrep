@@ -3,7 +3,7 @@ use super::{
     simple::TextBookmarkReader, BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks,
     ReadSource, SafariReader, SeekRead, SimpleReader, SourceSelector,
 };
-use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks};
+use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::debug;
 use lz4::block;
@@ -104,14 +104,14 @@ impl ReadSource for PlistReader {
 /// A reader of source files to abstract the file system through the `Read`
 /// trait.
 pub struct SourceReader {
-    source: RawSource,
+    source: Source,
     reader: Box<dyn SeekRead>,
     source_reader: Box<dyn ReadSource>,
 }
 
 impl SourceReader {
     pub fn new(
-        source: RawSource,
+        source: Source,
         reader: Box<dyn SeekRead>,
         source_reader: Box<dyn ReadSource>,
     ) -> Self {
@@ -134,8 +134,11 @@ impl SourceReader {
             for source_selector in source_selectors {
                 if let Some(bookmarks_path) = source_selector.find_file(&source.path)? {
                     if bookmarks_path.is_file() && source_selector.extension() == source_extension {
-                        // Overwrite raw source
-                        let source = RawSource::new(&source.path, source.folders.clone());
+                        let source = Source::new(
+                            source_selector.name(),
+                            &source.path,
+                            source.folders.clone(),
+                        );
                         let reader = Box::new(bookmark_file);
                         let source_reader = Self::select(source_extension)?;
                         return Ok(Self::new(source, reader, source_reader));
@@ -143,6 +146,7 @@ impl SourceReader {
                 }
             }
         } else if source.path.is_file() {
+            let source = Source::new(SourceType::Unknown, &source.path, source.folders.clone());
             let reader = Box::new(bookmark_file);
             let source_reader = Self::select(source_extension)?;
             return Ok(Self::new(source.clone(), reader, source_reader));
@@ -154,7 +158,7 @@ impl SourceReader {
         ))
     }
 
-    pub fn source(&self) -> &RawSource {
+    pub fn source(&self) -> &Source {
         &self.source
     }
 

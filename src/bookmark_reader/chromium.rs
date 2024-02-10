@@ -1,4 +1,4 @@
-use super::{ReadBookmark, SourceName};
+use super::ReadBookmark;
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
@@ -104,8 +104,8 @@ impl ChromiumReader {
 impl<'a> ReadBookmark<'a> for ChromiumReader {
     type ParsedValue = serde_json::Value;
 
-    fn name(&self) -> SourceName {
-        SourceName::Chromium
+    fn name(&self) -> SourceType {
+        SourceType::Chromium
     }
 
     fn extension(&self) -> Option<&str> {
@@ -151,7 +151,7 @@ impl<'a> ReadBookmark<'a> for ChromiumReader {
         parsed_bookmarks: Value,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        debug!("Import bookmarks from {}", self.name());
+        debug!("Import bookmarks from {:#?}", self.name());
         Self::traverse_json(source, &parsed_bookmarks, source_bookmarks);
         Ok(())
     }
@@ -162,7 +162,6 @@ mod tests {
     use super::*;
     use crate::{
         bookmark_reader::{source_reader::JsonReader, SourceReader},
-        bookmarks::RawSource,
         utils,
     };
     use std::{
@@ -176,7 +175,7 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = RawSource::new(&PathBuf::from("dummy_path"), vec![]);
+        let source = Source::new(SourceType::Chromium, &PathBuf::from("dummy_path"), vec![]);
         let bookmark_file = utils::open_file(source_path).unwrap();
         let source_reader = Box::new(JsonReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
@@ -227,7 +226,11 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = RawSource::new(&PathBuf::from("dummy_path"), vec!["dev".to_owned()]);
+        let source = Source::new(
+            SourceType::Chromium,
+            &PathBuf::from("dummy_path"),
+            vec!["dev".to_owned()],
+        );
         let bookmark_file = utils::open_file(source_path).unwrap();
         let source_reader = Box::new(JsonReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);

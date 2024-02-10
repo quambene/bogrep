@@ -9,6 +9,7 @@ pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmark
 use std::{
     cmp::Ordering,
     collections::HashSet,
+    fmt,
     path::{Path, PathBuf},
     slice::Iter,
 };
@@ -26,6 +27,42 @@ pub const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &[
     "reddit.com",
     "www.reddit.com",
 ];
+
+/// The type used to identify a source.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SourceType {
+    Firefox,
+    ChromiumFamily,
+    Chromium,
+    Chrome,
+    Edge,
+    Safari,
+    Simple,
+    Underlying(String),
+    Internal,
+    External,
+    #[default]
+    Unknown,
+}
+
+impl fmt::Display for SourceType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let reader_name = match &self {
+            SourceType::Firefox => "Firefox",
+            SourceType::ChromiumFamily => "Chromium (family)",
+            SourceType::Chromium => "Chromium",
+            SourceType::Chrome => "Chrome",
+            SourceType::Edge => "Edge",
+            SourceType::Safari => "Safari",
+            SourceType::Simple => "Simple",
+            SourceType::Underlying(_) => "Underlying",
+            SourceType::Internal => "Internal",
+            SourceType::External => "External",
+            SourceType::Unknown => "Unknown",
+        };
+        write!(f, "{}", reader_name)
+    }
+}
 
 /// The action to be performed on the bookmark.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -63,22 +100,6 @@ impl From<&Url> for UnderlyingType {
             UnderlyingType::None
         }
     }
-}
-
-/// The type used to identify a source.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum SourceType {
-    Firefox,
-    ChromiumFamily,
-    Chromium,
-    Chrome,
-    Edge,
-    Simple,
-    Underlying(String),
-    Internal,
-    External,
-    #[default]
-    Others,
 }
 
 /// The source of bookmarks.
