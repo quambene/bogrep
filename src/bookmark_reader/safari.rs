@@ -1,4 +1,4 @@
-use super::ReaderName;
+use super::SourceName;
 use crate::{ReadBookmark, Source, SourceBookmarks, SourceType};
 use log::debug;
 use plist::Value;
@@ -8,9 +8,9 @@ pub type PlistBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = plist:
 
 /// A bookmark reader to read bookmarks in plist format from Safari.
 #[derive(Debug)]
-pub struct SafariBookmarkReader;
+pub struct SafariReader;
 
-impl SafariBookmarkReader {
+impl SafariReader {
     pub fn new() -> Box<Self> {
         Box::new(Self)
     }
@@ -28,11 +28,11 @@ impl SafariBookmarkReader {
     }
 }
 
-impl<'a> ReadBookmark<'a> for SafariBookmarkReader {
+impl<'a> ReadBookmark<'a> for SafariReader {
     type ParsedValue = plist::Value;
 
-    fn name(&self) -> ReaderName {
-        ReaderName::Safari
+    fn name(&self) -> SourceName {
+        SourceName::Safari
     }
 
     fn extension(&self) -> Option<&str> {

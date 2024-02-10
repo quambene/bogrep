@@ -1,4 +1,4 @@
-use super::{ReadBookmark, ReaderName};
+use super::{ReadBookmark, SourceName};
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
@@ -12,9 +12,9 @@ pub type JsonBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = serde_j
 
 /// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
 #[derive(Debug)]
-pub struct ChromiumBookmarkReader;
+pub struct ChromiumReader;
 
-impl ChromiumBookmarkReader {
+impl ChromiumReader {
     pub fn new() -> Box<Self> {
         Box::new(Self)
     }
@@ -101,11 +101,11 @@ impl ChromiumBookmarkReader {
     }
 }
 
-impl<'a> ReadBookmark<'a> for ChromiumBookmarkReader {
+impl<'a> ReadBookmark<'a> for ChromiumReader {
     type ParsedValue = serde_json::Value;
 
-    fn name(&self) -> ReaderName {
-        ReaderName::Chromium
+    fn name(&self) -> SourceName {
+        SourceName::Chromium
     }
 
     fn extension(&self) -> Option<&str> {

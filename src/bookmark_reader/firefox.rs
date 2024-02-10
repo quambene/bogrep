@@ -1,4 +1,4 @@
-use super::{ReadBookmark, ReaderName};
+use super::{ReadBookmark, SelectSource, SourceName};
 use crate::{bookmarks::SourceBookmarkBuilder, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
@@ -9,11 +9,85 @@ use std::{
     time::SystemTime,
 };
 
+pub struct FirefoxSelector;
+
+impl FirefoxSelector {
+    pub fn new() -> Box<Self> {
+        Box::new(FirefoxSelector)
+    }
+
+    /// Find the most recent bookmark file in the bookmark folder for Firefox.
+    fn find_most_recent_file(bookmark_path: &Path) -> Result<PathBuf, anyhow::Error> {
+        let entries = fs::read_dir(bookmark_path)?;
+
+        let mut most_recent_entry: Option<DirEntry> = None;
+        let mut most_recent_time: Option<SystemTime> = None;
+
+        for entry in entries {
+            let entry = entry?;
+            let metadata = entry.metadata()?;
+            let modified_time = metadata.modified()?;
+
+            if most_recent_time.is_none() || modified_time > most_recent_time.unwrap() {
+                most_recent_time = Some(modified_time);
+                most_recent_entry = Some(entry);
+            }
+        }
+
+        if let Some(most_recent_entry) = most_recent_entry {
+            let bookmark_path = most_recent_entry.path();
+
+            if bookmark_path.is_file() {
+                Ok(bookmark_path)
+            } else {
+                Err(anyhow!(
+                    "Unexpected format for bookmark file: {}",
+                    bookmark_path.display()
+                ))
+            }
+        } else {
+            Err(anyhow!(
+                "Unexpected format for bookmark file: {}",
+                bookmark_path.display()
+            ))
+        }
+    }
+}
+
+impl SelectSource for FirefoxSelector {
+    fn name(&self) -> SourceName {
+        SourceName::Firefox
+    }
+
+    fn extension(&self) -> Option<&str> {
+        Some("jsonlz4")
+    }
+
+    fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+        let path_str = source_dir
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
+        if path_str.contains("firefox") || path_str.contains("Firefox") {
+            // The Firefox bookmarks directory contains multiple bookmark files.
+            let bookmark_path = Self::find_most_recent_file(source_dir)?;
+            Ok(Some(bookmark_path))
+        } else {
+            Err(anyhow!(
+                "Unexpected format for source directory: {}",
+                source_dir.display()
+            ))
+        }
+    }
+}
+
 /// A bookmark reader to read bookmarks in JSON format from Firefox.
 #[derive(Debug)]
-pub struct FirefoxBookmarkReader;
+pub struct FirefoxReader;
 
-impl FirefoxBookmarkReader {
+impl FirefoxReader {
     pub fn new() -> Box<Self> {
         Box::new(Self)
     }
@@ -94,50 +168,13 @@ impl FirefoxBookmarkReader {
             Value::Null => (),
         }
     }
-
-    /// Find the most recent bookmark file in the bookmark folder for Firefox.
-    pub fn find_most_recent_file(bookmark_path: &Path) -> Result<PathBuf, anyhow::Error> {
-        let entries = fs::read_dir(bookmark_path)?;
-
-        let mut most_recent_entry: Option<DirEntry> = None;
-        let mut most_recent_time: Option<SystemTime> = None;
-
-        for entry in entries {
-            let entry = entry?;
-            let metadata = entry.metadata()?;
-            let modified_time = metadata.modified()?;
-
-            if most_recent_time.is_none() || modified_time > most_recent_time.unwrap() {
-                most_recent_time = Some(modified_time);
-                most_recent_entry = Some(entry);
-            }
-        }
-
-        if let Some(most_recent_entry) = most_recent_entry {
-            let bookmark_path = most_recent_entry.path();
-
-            if bookmark_path.is_file() {
-                Ok(bookmark_path)
-            } else {
-                Err(anyhow!(
-                    "Unexpected format for bookmark file: {}",
-                    bookmark_path.display()
-                ))
-            }
-        } else {
-            Err(anyhow!(
-                "Unexpected format for bookmark file: {}",
-                bookmark_path.display()
-            ))
-        }
-    }
 }
 
-impl<'a> ReadBookmark<'a> for FirefoxBookmarkReader {
+impl<'a> ReadBookmark<'a> for FirefoxReader {
     type ParsedValue = serde_json::Value;
 
-    fn name(&self) -> ReaderName {
-        ReaderName::Firefox
+    fn name(&self) -> SourceName {
+        SourceName::Firefox
     }
 
     fn extension(&self) -> Option<&str> {
@@ -186,25 +223,6 @@ impl<'a> ReadBookmark<'a> for FirefoxBookmarkReader {
         debug!("Import bookmarks from {}", self.name());
         Self::traverse_json(&parsed_bookmarks, source, source_bookmarks);
         Ok(())
-    }
-
-    fn select_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
-        let path_str = source_dir
-            .to_str()
-            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
-
-        // On Linux, the path contains the lowercase identifier; on macOS,
-        // uppercase identifier is required.
-        if path_str.contains("firefox") || path_str.contains("Firefox") {
-            // The Firefox bookmarks directory contains multiple bookmark files.
-            let bookmark_path = Self::find_most_recent_file(source_dir)?;
-            Ok(Some(bookmark_path))
-        } else {
-            Err(anyhow!(
-                "Unexpected format for source directory: {}",
-                source_dir.display()
-            ))
-        }
     }
 }
 

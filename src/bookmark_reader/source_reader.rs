@@ -1,11 +1,9 @@
 use super::{
-    chromium::JsonBookmarkReader, safari::PlistBookmarkReader, simple::TextBookmarkReader,
-    BookmarkReader, ParsedBookmarks, ReadSource, SeekRead,
+    chromium::JsonBookmarkReader, firefox::FirefoxSelector, safari::PlistBookmarkReader,
+    simple::TextBookmarkReader, BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks,
+    ReadSource, SafariReader, SeekRead, SimpleReader, SourceSelector,
 };
-use crate::{
-    bookmarks::RawSource, utils, ChromiumBookmarkReader, FirefoxBookmarkReader, ReadBookmark,
-    SafariBookmarkReader, SimpleBookmarkReader, Source, SourceBookmarks,
-};
+use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks};
 use anyhow::anyhow;
 use log::debug;
 use lz4::block;
@@ -131,15 +129,17 @@ impl SourceReader {
         let source_extension = source_path.extension().and_then(|path| path.to_str());
 
         if source.path.is_dir() {
-            let bookmark_reader = FirefoxBookmarkReader;
+            let source_selectors: Vec<SourceSelector> = vec![FirefoxSelector::new()];
 
-            if let Some(bookmarks_path) = bookmark_reader.select_file(&source.path)? {
-                if bookmarks_path.is_file() && bookmark_reader.extension() == source_extension {
-                    // Overwrite raw source
-                    let source = RawSource::new(&source.path, source.folders.clone());
-                    let reader = Box::new(bookmark_file);
-                    let source_reader = Self::select(source_extension)?;
-                    return Ok(Self::new(source, reader, source_reader));
+            for source_selector in source_selectors {
+                if let Some(bookmarks_path) = source_selector.find_file(&source.path)? {
+                    if bookmarks_path.is_file() && source_selector.extension() == source_extension {
+                        // Overwrite raw source
+                        let source = RawSource::new(&source.path, source.folders.clone());
+                        let reader = Box::new(bookmark_file);
+                        let source_reader = Self::select(source_extension)?;
+                        return Ok(Self::new(source, reader, source_reader));
+                    }
                 }
             }
         } else if source.path.is_file() {
@@ -166,7 +166,7 @@ impl SourceReader {
 
         match parsed_bookmarks {
             ParsedBookmarks::Text(parsed_bookmarks) => {
-                let bookmark_readers: Vec<TextBookmarkReader> = vec![SimpleBookmarkReader::new()];
+                let bookmark_readers: Vec<TextBookmarkReader> = vec![SimpleReader::new()];
                 Self::import_by_source(
                     source_path,
                     source_folders,
@@ -177,7 +177,7 @@ impl SourceReader {
             }
             ParsedBookmarks::Json(parsed_bookmarks) => {
                 let bookmark_readers: Vec<JsonBookmarkReader> =
-                    vec![FirefoxBookmarkReader::new(), ChromiumBookmarkReader::new()];
+                    vec![FirefoxReader::new(), ChromiumReader::new()];
                 Self::import_by_source(
                     source_path,
                     source_folders,
@@ -187,7 +187,7 @@ impl SourceReader {
                 )?;
             }
             ParsedBookmarks::Plist(parsed_bookmarks) => {
-                let bookmark_readers: Vec<PlistBookmarkReader> = vec![SafariBookmarkReader::new()];
+                let bookmark_readers: Vec<PlistBookmarkReader> = vec![SafariReader::new()];
                 Self::import_by_source(
                     source_path,
                     source_folders,

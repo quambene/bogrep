@@ -8,10 +8,10 @@ mod target_reader_writer;
 mod target_writer;
 
 use crate::{Source, SourceBookmarks, SourceType};
-pub use chromium::ChromiumBookmarkReader;
-pub use firefox::FirefoxBookmarkReader;
-pub use safari::SafariBookmarkReader;
-pub use simple::SimpleBookmarkReader;
+pub use chromium::ChromiumReader;
+pub use firefox::FirefoxReader;
+pub use safari::SafariReader;
+pub use simple::SimpleReader;
 pub use source_reader::SourceReader;
 #[cfg(test)]
 pub use source_reader::TextReader;
@@ -24,8 +24,20 @@ pub use target_reader::ReadTarget;
 pub use target_reader_writer::TargetReaderWriter;
 pub use target_writer::WriteTarget;
 
+pub type SourceSelector = Box<dyn SelectSource>;
 pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 
+/// The supported file extensions for bookmark files.
+#[derive(Debug)]
+pub enum BookmarkExtension {
+    Json,
+    Html,
+    PlistBinary,
+    Text,
+    None,
+}
+
+/// The parsed bookmarks from a bookmarks file.
 #[derive(Debug)]
 pub enum ParsedBookmarks<'a> {
     Json(serde_json::Value),
@@ -35,28 +47,47 @@ pub enum ParsedBookmarks<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ReaderName {
+pub enum SourceName {
     Firefox,
     Chromium,
     Safari,
     Simple,
 }
 
-impl fmt::Display for ReaderName {
+impl fmt::Display for SourceName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let reader_name = match &self {
-            ReaderName::Firefox => "Firefox",
-            ReaderName::Chromium => "Chromium",
-            ReaderName::Safari => "Safari",
-            ReaderName::Simple => "Simple",
+            SourceName::Firefox => "Firefox",
+            SourceName::Chromium => "Chromium",
+            SourceName::Safari => "Safari",
+            SourceName::Simple => "Simple",
         };
         write!(f, "{}", reader_name)
+    }
+}
+
+/// A trait to find the bookmarks directory in the system's directories, and/or the
+/// bookmarks file within a given directory.
+pub trait SelectSource {
+    fn name(&self) -> SourceName;
+
+    fn extension(&self) -> Option<&str>;
+
+    /// Find the bookmarks directory in the system's directories.
+    fn find_dir(&self) -> Result<Option<PathBuf>, anyhow::Error> {
+        Ok(None)
+    }
+
+    /// Select the bookmarks file if the source is given as a directory.
+    fn find_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+        Ok(None)
     }
 }
 
 pub trait SeekRead: Seek + Read + fmt::Debug {}
 impl<T> SeekRead for T where T: Seek + Read + fmt::Debug {}
 
+/// A trait to read and parse the content for different file extensions.
 pub trait ReadSource {
     fn extension(&self) -> Option<&str>;
 
@@ -73,7 +104,7 @@ pub trait ReadSource {
 pub trait ReadBookmark<'a>: fmt::Debug {
     type ParsedValue;
 
-    fn name(&self) -> ReaderName;
+    fn name(&self) -> SourceName;
 
     fn extension(&self) -> Option<&str>;
 

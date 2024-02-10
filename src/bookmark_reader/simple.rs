@@ -1,4 +1,4 @@
-use super::{ReadBookmark, ReaderName, SeekRead};
+use super::{ReadBookmark, SeekRead, SourceName};
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
@@ -14,19 +14,19 @@ pub type TextBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = LinesRe
 /// A bookmark reader to read bookmarks from a simple text file with one url per
 /// line.
 #[derive(Debug)]
-pub struct SimpleBookmarkReader;
+pub struct SimpleReader;
 
-impl SimpleBookmarkReader {
+impl SimpleReader {
     pub fn new() -> Box<Self> {
         Box::new(Self)
     }
 }
 
-impl<'a> ReadBookmark<'a> for SimpleBookmarkReader {
+impl<'a> ReadBookmark<'a> for SimpleReader {
     type ParsedValue = LinesReader<'a>;
 
-    fn name(&self) -> ReaderName {
-        ReaderName::Simple
+    fn name(&self) -> SourceName {
+        SourceName::Simple
     }
 
     fn extension(&self) -> Option<&str> {
