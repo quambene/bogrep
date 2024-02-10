@@ -61,7 +61,7 @@ fn test_import_firefox() {
 #[test]
 fn test_import_firefox_compressed() {
     let source = "./test_data/bookmarks_firefox.jsonlz4";
-    test_utils::create_compressed_bookmarks(Path::new(source));
+    test_utils::create_compressed_json_file(Path::new(source)).unwrap();
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -72,7 +72,7 @@ fn test_import_firefox_compressed() {
 #[test]
 fn test_import_firefox_bookmark_folder_ubuntu() {
     let source_path = "./test_data/bookmarks_firefox.jsonlz4";
-    test_utils::create_compressed_bookmarks(Path::new(source_path));
+    test_utils::create_compressed_json_file(Path::new(source_path)).unwrap();
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -89,7 +89,7 @@ fn test_import_firefox_bookmark_folder_ubuntu() {
 #[test]
 fn test_import_firefox_bookmark_folder_macos() {
     let source_path = "./test_data/bookmarks_firefox.jsonlz4";
-    test_utils::create_compressed_bookmarks(Path::new(source_path));
+    test_utils::create_compressed_json_file(Path::new(source_path)).unwrap();
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());

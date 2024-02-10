@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn test_read_and_parse_compressed() {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
-        test_utils::create_compressed_bookmarks(source_path);
+        test_utils::create_compressed_json_file(source_path).unwrap();
         let mut reader = utils::open_file(source_path).unwrap();
         let source_reader = CompressedJsonReader;
 

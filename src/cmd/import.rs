@@ -191,7 +191,7 @@ mod tests {
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
             String::from("https://doc.rust-lang.org/book/title-page.html")
         ]);
-        test_utils::create_compressed_bookmarks(source_path);
+        test_utils::create_compressed_json_file(source_path).unwrap();
 
         test_import_source(&source, expected_bookmarks);
     }

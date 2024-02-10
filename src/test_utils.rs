@@ -2,20 +2,38 @@ use crate::utils;
 use lz4::block;
 use std::{io::Write, path::Path};
 
-pub fn create_compressed_bookmarks(compressed_bookmark_path: &Path) {
+pub fn create_compressed_json_file(compressed_bookmark_path: &Path) -> Result<(), anyhow::Error> {
     if !compressed_bookmark_path.exists() {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
         assert!(decompressed_bookmark_path.exists());
 
-        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path).unwrap();
+        let decompressed_bookmarks = utils::read_file(decompressed_bookmark_path)?;
         let compressed_bookmarks = compress_bookmarks(&decompressed_bookmarks);
 
-        let mut file = utils::create_file(compressed_bookmark_path).unwrap();
-        file.write_all(&compressed_bookmarks).unwrap();
-        file.flush().unwrap();
+        let mut file = utils::create_file(compressed_bookmark_path)?;
+        file.write_all(&compressed_bookmarks)?;
+        file.flush()?;
 
         assert!(compressed_bookmark_path.exists());
     }
+
+    Ok(())
+}
+
+pub fn create_binary_plist_file(binary_bookmark_path: &Path) -> Result<(), anyhow::Error> {
+    if !binary_bookmark_path.exists() {
+        let bookmark_path = Path::new("test_data/bookmarks_safari_xml.plist");
+        let bookmark_file = utils::open_file(bookmark_path)?;
+        let parsed_bookmarks = plist::Value::from_reader_xml(&bookmark_file)?;
+
+        let mut file = utils::create_file(binary_bookmark_path)?;
+        plist::to_file_binary(binary_bookmark_path, &parsed_bookmarks)?;
+        file.flush().unwrap();
+
+        assert!(binary_bookmark_path.exists());
+    }
+
+    Ok(())
 }
 
 pub fn compress_bookmarks(decompressed_bookmarks: &[u8]) -> Vec<u8> {

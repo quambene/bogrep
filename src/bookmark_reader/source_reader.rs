@@ -8,7 +8,7 @@ use anyhow::anyhow;
 use log::debug;
 use lz4::block;
 use std::{
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Cursor},
     path::Path,
 };
 
@@ -116,9 +116,18 @@ impl ReadSource for PlistReader {
         debug!("Read file with extension: {:?}", self.extension());
 
         let mut bookmarks = Vec::new();
-        reader.read_to_end(&mut bookmarks).unwrap();
+        reader.read_to_end(&mut bookmarks)?;
 
-        let parsed_bookmarks = plist::Value::from_reader(reader).unwrap();
+        // Try to parse from a plist file in binary format first. If
+        // unsuccessful, try to parse from a plist file in xml format.
+        let parsed_bookmarks =
+            if let Ok(parsed_bookmarks) = plist::from_bytes::<plist::Value>(&bookmarks) {
+                parsed_bookmarks
+            } else {
+                let cursor = Cursor::new(bookmarks);
+                plist::Value::from_reader_xml(cursor)?
+            };
+
         Ok(ParsedBookmarks::Plist(parsed_bookmarks))
     }
 }
@@ -276,8 +285,22 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn test_init_safari() {
+    fn test_init_safari_binary() {
         let source_path = Path::new("test_data/bookmarks_safari_binary.plist");
+        test_utils::create_binary_plist_file(source_path).unwrap();
+        let source_folders = vec![];
+        let raw_source = RawSource::new(source_path, source_folders);
+        let source_reader = SourceReader::init(&raw_source).unwrap();
+        let source = source_reader.source();
+        assert_eq!(source.source_type, SourceType::Unknown);
+        assert!(source.path.is_file());
+        assert_eq!(source.path, source_path);
+        assert_eq!(source_reader.source_reader.extension(), Some("plist"));
+    }
+
+    #[test]
+    fn test_init_safari_xml() {
+        let source_path = Path::new("test_data/bookmarks_safari_xml.plist");
         let source_folders = vec![];
         let raw_source = RawSource::new(source_path, source_folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
@@ -304,7 +327,7 @@ mod tests {
     #[test]
     fn test_init_firefox_compressed() {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
-        test_utils::create_compressed_bookmarks(source_path);
+        test_utils::create_compressed_json_file(source_path).unwrap();
         let source_folders = vec![];
         let raw_source = RawSource::new(source_path, source_folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();

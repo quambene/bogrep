@@ -61,6 +61,38 @@ impl<'a> ReadBookmark<'a> for SafariReader {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{
+        bookmark_reader::{source_reader::PlistReader, ParsedBookmarks, ReadSource},
+        test_utils, utils,
+    };
+    use assert_matches::assert_matches;
+
+    #[test]
+    fn test_read_and_parse_xml() {
+        let source_path = Path::new("test_data/bookmarks_safari_xml.plist");
+        let mut reader = utils::open_file(source_path).unwrap();
+        let source_reader = PlistReader;
+
+        let res = source_reader.read_and_parse(&mut reader);
+        assert!(res.is_ok());
+
+        let parsed_bookmarks = res.unwrap();
+        assert_matches!(parsed_bookmarks, ParsedBookmarks::Plist(_));
+    }
+
+    #[test]
+    fn test_read_and_parse_binary() {
+        let source_path = Path::new("test_data/bookmarks_safari_binary.plist");
+        test_utils::create_binary_plist_file(source_path).unwrap();
+        let mut reader = utils::open_file(source_path).unwrap();
+        let source_reader = PlistReader;
+
+        let res = source_reader.read_and_parse(&mut reader);
+        assert!(res.is_ok());
+
+        let parsed_bookmarks = res.unwrap();
+        assert_matches!(parsed_bookmarks, ParsedBookmarks::Plist(_));
+    }
 
     #[test]
     fn test_import_all() {
