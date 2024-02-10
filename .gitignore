@@ -11,9 +11,16 @@
 .vscode
 
 # Test data
+**/*.txt
+**/*.json
 **/*.jsonlz4
 **/*.html
 **/*.plist
+test_data/*
+!test_data/bookmarks_simple.txt
+!test_data/bookmarks_chromium.json
+!test_data/bookmarks_chromium_no_extension
+!test_data/bookmarks_firefox.json
 
 # Testing
 /bogrep
