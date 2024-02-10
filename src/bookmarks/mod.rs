@@ -127,7 +127,7 @@ impl RawSource {
 #[derive(Debug, Clone)]
 pub struct Source {
     /// The name of the source.
-    pub name: SourceType,
+    pub source_type: SourceType,
     /// The path of the source file used for logging.
     pub path: PathBuf,
     /// The folders to be imported.
@@ -140,7 +140,7 @@ pub struct Source {
 impl Source {
     pub fn new(source_type: SourceType, path: &Path, folders: Vec<String>) -> Self {
         Self {
-            name: source_type,
+            source_type,
             path: path.to_owned(),
             folders,
         }
