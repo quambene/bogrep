@@ -56,7 +56,7 @@ impl ReadSource for JsonReader {
     }
 }
 
-/// Reader for compressed json files.
+/// Reader for compressed json files with a Firefox-specific, non-standard header.
 pub struct CompressedJsonReader;
 
 impl ReadSource for CompressedJsonReader {
