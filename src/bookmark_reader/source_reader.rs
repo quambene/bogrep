@@ -14,6 +14,7 @@ use std::{
     path::Path,
 };
 
+/// Reader for txt files.
 pub struct TextReader;
 
 impl ReadSource for TextReader {
@@ -33,6 +34,7 @@ impl ReadSource for TextReader {
     }
 }
 
+/// Reader for json files.
 pub struct JsonReader;
 
 impl ReadSource for JsonReader {
@@ -54,6 +56,7 @@ impl ReadSource for JsonReader {
     }
 }
 
+/// Reader for compressed json files.
 pub struct CompressedJsonReader;
 
 impl ReadSource for CompressedJsonReader {
@@ -78,6 +81,7 @@ impl ReadSource for CompressedJsonReader {
     }
 }
 
+/// Reader for plist files in binary format.
 pub struct PlistReader;
 
 impl ReadSource for PlistReader {
@@ -193,7 +197,7 @@ impl SourceReader {
                 )?;
             }
             ParsedBookmarks::Html(_parsed_bookmarks) => {
-                return Err(anyhow!("Format not supported for HTML files"));
+                return Err(anyhow!("Bookmarks in HTML format not supported"));
             }
         }
 
