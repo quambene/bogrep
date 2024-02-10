@@ -255,7 +255,7 @@ impl SourceReader {
             if let Some(source_type) =
                 bookmark_reader.select_source(source_path, &parsed_bookmarks)?
             {
-                let source = Source::new(source_type, &source_path, source_folders.to_vec());
+                let source = Source::new(source_type, source_path, source_folders.to_vec());
                 bookmark_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
                 break;
             }
