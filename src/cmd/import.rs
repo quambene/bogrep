@@ -15,7 +15,7 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         .settings
         .sources
         .iter()
-        .map(|source| SourceReader::init(source))
+        .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
     let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
@@ -61,7 +61,7 @@ fn import_source(
 
     target_writer.write(&target_bookmarks)?;
 
-    utils::log_import(&source_readers, &target_bookmarks);
+    utils::log_import(source_readers, &target_bookmarks);
 
     Ok(())
 }

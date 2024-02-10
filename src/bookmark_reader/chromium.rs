@@ -134,7 +134,7 @@ impl<'a> ReadBookmark<'a> for ChromiumReader {
                         } else if path_str.contains("edge") || path_str.contains("Edge") {
                             SourceType::Edge
                         } else {
-                            SourceType::ChromiumFamily
+                            SourceType::ChromiumDerivative
                         };
                     Ok(Some(source_type))
                 } else {
@@ -225,25 +225,25 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::ChromiumFamily)
+                        .add_source(&SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::ChromiumFamily)
+                        .add_source(&SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source(&SourceType::ChromiumFamily)
+                        .add_source(&SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url4.to_owned(),
                     SourceBookmarkBuilder::new(url4)
-                        .add_source(&SourceType::ChromiumFamily)
+                        .add_source(&SourceType::ChromiumDerivative)
                         .build()
                 )
             ])
@@ -277,13 +277,13 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::ChromiumFamily)
+                        .add_source(&SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::ChromiumFamily)
+                        .add_source(&SourceType::ChromiumDerivative)
                         .build()
                 ),
             ])

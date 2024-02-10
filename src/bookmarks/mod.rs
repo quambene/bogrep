@@ -32,7 +32,7 @@ pub const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &[
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SourceType {
     Firefox,
-    ChromiumFamily,
+    ChromiumDerivative,
     Chromium,
     Chrome,
     Edge,
@@ -49,7 +49,7 @@ impl fmt::Display for SourceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let reader_name = match &self {
             SourceType::Firefox => "Firefox",
-            SourceType::ChromiumFamily => "Chromium (family)",
+            SourceType::ChromiumDerivative => "Chromium (derivative)",
             SourceType::Chromium => "Chromium",
             SourceType::Chrome => "Chrome",
             SourceType::Edge => "Edge",

@@ -183,26 +183,14 @@ impl<'a> ReadBookmark<'a> for FirefoxReader {
 
     fn select_source(
         &self,
-        source_path: &Path,
+        _source_path: &Path,
         parsed_bookmarks: &Value,
     ) -> Result<Option<SourceType>, anyhow::Error> {
         match parsed_bookmarks {
             Value::Object(obj) => {
                 if let Some(Value::String(type_value)) = obj.get("type") {
                     if type_value == "text/x-moz-place-container" {
-                        let path_str = source_path
-                            .to_str()
-                            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
-
-                        // On Linux, the path contains the lowercase identifier; on macOS,
-                        // uppercase identifier is required.
-                        let source_type =
-                            if path_str.contains("firefox") || path_str.contains("Firefox") {
-                                SourceType::Firefox
-                            } else {
-                                SourceType::Firefox
-                            };
-                        Ok(Some(source_type))
+                        Ok(Some(SourceType::Firefox))
                     } else {
                         Ok(None)
                     }

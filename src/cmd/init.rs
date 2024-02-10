@@ -58,7 +58,7 @@ async fn init_bookmarks(
 
     target_bookmarks.set_action(&Action::FetchAndAdd);
 
-    utils::log_import(&source_readers, &target_bookmarks);
+    utils::log_import(source_readers, &target_bookmarks);
 
     let bookmark_processor =
         BookmarkProcessor::new(client.clone(), cache.clone(), settings.clone());
