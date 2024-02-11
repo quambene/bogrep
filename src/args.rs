@@ -18,7 +18,7 @@ pub struct Args {
     /// Print only URLs of bookmarks with selected lines.
     #[arg(short = 'l', long)]
     pub files_with_matches: bool,
-    /// Match only match whole words.
+    /// Match only whole words.
     #[arg(short = 'w', long)]
     pub word_regexp: bool,
     #[command(subcommand)]
