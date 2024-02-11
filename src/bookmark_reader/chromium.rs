@@ -180,7 +180,7 @@ mod tests {
         let source_reader = JsonReader;
 
         let res = source_reader.read_and_parse(&mut reader);
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let parsed_bookmarks = res.unwrap();
         assert_matches!(parsed_bookmarks, ParsedBookmarks::Json(_));
@@ -193,7 +193,7 @@ mod tests {
         let source_reader = JsonReaderNoExtension;
 
         let res = source_reader.read_and_parse(&mut reader);
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let parsed_bookmarks = res.unwrap();
         assert_matches!(parsed_bookmarks, ParsedBookmarks::Json(_));

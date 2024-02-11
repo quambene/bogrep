@@ -66,12 +66,28 @@ impl ReadSource for JsonReaderNoExtension {
         &self,
         reader: &'a mut dyn SeekRead,
     ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
         let mut raw_bookmarks = Vec::new();
         reader.read_to_end(&mut raw_bookmarks)?;
 
-        let parsed_bookmarks = serde_json::from_slice(&raw_bookmarks)?;
+        let file_type = infer::get(&raw_bookmarks);
+        let mime_type = file_type.map(|file_type| file_type.mime_type());
+
+        debug!("Parse file with mime type {:?}", mime_type);
+
+        let parsed_bookmarks = match mime_type {
+            Some("text/plain") | Some("application/json") => {
+                serde_json::from_slice(&raw_bookmarks)?
+            }
+            Some(other) => return Err(anyhow!("File type {other} not supported")),
+            None => {
+                if let Ok(parsed_bookmarks) = serde_json::from_slice(&raw_bookmarks) {
+                    parsed_bookmarks
+                } else {
+                    return Err(anyhow!("File type not supported: {file_type:?}"));
+                }
+            }
+        };
+
         Ok(ParsedBookmarks::Json(parsed_bookmarks))
     }
 }
@@ -115,18 +131,22 @@ impl ReadSource for PlistReader {
     ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
         debug!("Read file with extension: {:?}", self.extension());
 
-        let mut bookmarks = Vec::new();
-        reader.read_to_end(&mut bookmarks)?;
+        let mut raw_bookmarks = Vec::new();
+        reader.read_to_end(&mut raw_bookmarks)?;
 
-        // Try to parse from a plist file in binary format first. If
-        // unsuccessful, try to parse from a plist file in xml format.
-        let parsed_bookmarks =
-            if let Ok(parsed_bookmarks) = plist::from_bytes::<plist::Value>(&bookmarks) {
-                parsed_bookmarks
-            } else {
-                let cursor = Cursor::new(bookmarks);
+        let file_type = infer::get(&raw_bookmarks);
+        let mime_type = file_type.map(|file_type| file_type.mime_type());
+
+        debug!("Parse file with mime type {:?}", mime_type);
+
+        let parsed_bookmarks = match mime_type {
+            Some("text/xml") | Some("application/xml") => {
+                let cursor = Cursor::new(raw_bookmarks);
                 plist::Value::from_reader_xml(cursor)?
-            };
+            }
+            Some("application/octet-stream") | None => plist::from_bytes(&raw_bookmarks)?,
+            Some(other) => return Err(anyhow!("File type {other} not supported")),
+        };
 
         Ok(ParsedBookmarks::Plist(parsed_bookmarks))
     }

@@ -74,7 +74,7 @@ mod test {
         let source_reader = PlistReader;
 
         let res = source_reader.read_and_parse(&mut reader);
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let parsed_bookmarks = res.unwrap();
         assert_matches!(parsed_bookmarks, ParsedBookmarks::Plist(_));
@@ -88,7 +88,7 @@ mod test {
         let source_reader = PlistReader;
 
         let res = source_reader.read_and_parse(&mut reader);
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let parsed_bookmarks = res.unwrap();
         assert_matches!(parsed_bookmarks, ParsedBookmarks::Plist(_));
