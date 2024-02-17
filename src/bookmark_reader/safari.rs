@@ -134,14 +134,13 @@ impl<'a> ReadBookmark<'a> for SafariReader {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::HashMap, path::PathBuf};
-
     use super::*;
     use crate::{
         bookmark_reader::{source_reader::PlistReader, ParsedBookmarks, ReadSource, SourceReader},
         test_utils, utils,
     };
     use assert_matches::assert_matches;
+    use std::{collections::HashMap, path::PathBuf};
 
     #[test]
     fn test_read_and_parse_xml() {
