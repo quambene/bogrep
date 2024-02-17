@@ -4,30 +4,30 @@ use predicates::{prelude::PredicateBooleanExt, str};
 use std::{collections::HashSet, fs, io::Write, path::Path};
 use tempfile::tempdir;
 
-fn test_import(source: &str, temp_path: &Path) {
-    println!("Execute 'bogrep config --source {source}'");
+fn test_import(source_path: &str, home_path: &Path) {
+    println!("Execute 'bogrep -vv config --source {source_path}'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-    cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", source]);
+    cmd.env("BOGREP_HOME", home_path);
+    cmd.args(["-vv", "config", "--source", source_path]);
     cmd.output().unwrap();
 
-    println!("Execute 'bogrep import'");
+    println!("Execute 'bogrep -vv import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-    cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["import"]);
+    cmd.env("BOGREP_HOME", home_path);
+    cmd.args(["-vv", "import"]);
     // Info messages are logged to stderr.
     cmd.assert()
         .success()
         .stdout(str::contains("Imported 4 bookmarks from 1 source"));
 
-    let bookmarks_path = temp_path.join("bookmarks.json");
+    let bookmarks_path = home_path.join("bookmarks.json");
     assert!(
         bookmarks_path.exists(),
         "Missing path: {}",
         bookmarks_path.display()
     );
     // Lock file was cleaned up.
-    let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");
+    let bookmarks_lock_path = home_path.join("bookmarks-lock.json");
     assert!(!bookmarks_lock_path.exists());
 
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
@@ -40,33 +40,33 @@ fn test_import(source: &str, temp_path: &Path) {
 
 #[test]
 fn test_import_simple() {
-    let source = "./test_data/bookmarks_simple.txt";
+    let source_path = "./test_data/bookmarks_simple.txt";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    test_import(source, temp_path);
+    test_import(source_path, temp_path);
 }
 
 #[test]
 fn test_import_firefox() {
-    let source = "./test_data/bookmarks_firefox.json";
+    let source_path = "./test_data/bookmarks_firefox.json";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    test_import(source, temp_path);
+    test_import(source_path, temp_path);
 }
 
 #[test]
 fn test_import_firefox_compressed() {
-    let source = "./test_data/bookmarks_firefox.jsonlz4";
-    test_utils::create_compressed_json_file(Path::new(source)).unwrap();
+    let source_path = "./test_data/bookmarks_firefox.jsonlz4";
+    test_utils::create_compressed_json_file(Path::new(source_path)).unwrap();
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    test_import(source, temp_path);
+    test_import(source_path, temp_path);
 }
 
 #[test]
@@ -105,12 +105,12 @@ fn test_import_firefox_bookmark_folder_macos() {
 
 #[test]
 fn test_import_chrome() {
-    let source = "./test_data/bookmarks_chromium.json";
+    let source_path = "./test_data/bookmarks_chromium.json";
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-    test_import(source, temp_path);
+    test_import(source_path, temp_path);
 }
 
 // Test renaming of `bookmarks-lock.json` to `bookmarks.json`.
