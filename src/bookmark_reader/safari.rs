@@ -40,10 +40,11 @@ impl<'a> ReadBookmark<'a> for SafariReader {
 
     fn select_source(
         &self,
-        source_path: &Path,
-        parsed_bookmarks: &Value,
+        _source_path: &Path,
+        _parsed_bookmarks: &Value,
     ) -> Result<Option<SourceType>, anyhow::Error> {
-        todo!()
+        // Plist files are only supported by Safari
+        Ok(Some(SourceType::Safari))
     }
 
     fn import(
