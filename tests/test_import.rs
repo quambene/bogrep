@@ -75,15 +75,12 @@ fn test_import_firefox_bookmark_folder_ubuntu() {
     test_utils::create_compressed_json_file(Path::new(source_path)).unwrap();
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
+    let bookmark_dir = temp_path.join("firefox");
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
-    fs::create_dir_all(temp_path.join("firefox")).unwrap();
-    fs::copy(
-        source_path,
-        temp_path.join("firefox").join("bookmarks_firefox.jsonlz4"),
-    )
-    .unwrap();
+    fs::create_dir_all(&bookmark_dir).unwrap();
+    fs::copy(source_path, bookmark_dir.join("bookmarks_firefox.jsonlz4")).unwrap();
 
-    test_import(temp_path.join("firefox").to_str().unwrap(), temp_path);
+    test_import(bookmark_dir.to_str().unwrap(), temp_path);
 }
 
 #[test]
@@ -92,15 +89,12 @@ fn test_import_firefox_bookmark_folder_macos() {
     test_utils::create_compressed_json_file(Path::new(source_path)).unwrap();
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
+    let bookmark_dir = temp_path.join("Firefox");
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
-    fs::create_dir_all(temp_path.join("Firefox")).unwrap();
-    fs::copy(
-        source_path,
-        temp_path.join("Firefox").join("bookmarks_firefox.jsonlz4"),
-    )
-    .unwrap();
+    fs::create_dir_all(&bookmark_dir).unwrap();
+    fs::copy(source_path, bookmark_dir.join("bookmarks_firefox.jsonlz4")).unwrap();
 
-    test_import(temp_path.join("Firefox").to_str().unwrap(), temp_path);
+    test_import(bookmark_dir.to_str().unwrap(), temp_path);
 }
 
 #[test]
