@@ -174,30 +174,35 @@ impl SourceReader {
     }
 
     /// Select the source file if a source directory is given.
-    pub fn init(source: &RawSource) -> Result<Self, anyhow::Error> {
-        let bookmark_file = utils::open_file(&source.path)?;
-        let source_path = &source.path;
-        let source_extension = source_path.extension().and_then(|path| path.to_str());
+    pub fn init(raw_source: &RawSource) -> Result<Self, anyhow::Error> {
+        let source_path = &raw_source.path;
+        let source_folders = &raw_source.folders;
 
-        if source.path.is_dir() {
+        if source_path.is_dir() {
             let source_selectors: Vec<SourceSelector> = vec![FirefoxSelector::new()];
 
             for source_selector in source_selectors {
-                if let Some(bookmarks_path) = source_selector.find_file(&source.path)? {
+                if let Some(bookmarks_path) = source_selector.find_file(&source_path)? {
+                    let source_extension =
+                        bookmarks_path.extension().and_then(|path| path.to_str());
+
                     if bookmarks_path.is_file() && source_selector.extension() == source_extension {
                         let source = Source::new(
                             source_selector.name(),
-                            &source.path,
-                            source.folders.clone(),
+                            &bookmarks_path,
+                            source_folders.clone(),
                         );
+                        let bookmark_file = utils::open_file(&bookmarks_path)?;
                         let reader = Box::new(bookmark_file);
                         let source_reader = Self::select(source_extension)?;
                         return Ok(Self::new(source, reader, source_reader));
                     }
                 }
             }
-        } else if source.path.is_file() {
-            let source = Source::new(SourceType::Unknown, &source.path, source.folders.clone());
+        } else if source_path.is_file() {
+            let source_extension = source_path.extension().and_then(|path| path.to_str());
+            let source = Source::new(SourceType::Unknown, &source_path, source_folders.clone());
+            let bookmark_file = utils::open_file(&raw_source.path)?;
             let reader = Box::new(bookmark_file);
             let source_reader = Self::select(source_extension)?;
             return Ok(Self::new(source.clone(), reader, source_reader));
@@ -205,7 +210,7 @@ impl SourceReader {
 
         Err(anyhow!(
             "Format not supported for bookmark file '{}'",
-            source.path.display()
+            source_path.display()
         ))
     }
 
