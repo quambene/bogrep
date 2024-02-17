@@ -259,7 +259,7 @@ mod tests {
         let decompressed_bookmark_path = Path::new("test_data/bookmarks_firefox.json");
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(SourceType::Firefox, &PathBuf::from("dummy_path"), vec![]);
+        let source = Source::new(SourceType::Unknown, &PathBuf::from("dummy_path"), vec![]);
         let bookmark_file = utils::open_file(decompressed_bookmark_path).unwrap();
         let source_reader = Box::new(JsonReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
@@ -310,7 +310,7 @@ mod tests {
 
         let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(
-            SourceType::Firefox,
+            SourceType::Unknown,
             &PathBuf::from("dummy_path"),
             vec![String::from("dev")],
         );

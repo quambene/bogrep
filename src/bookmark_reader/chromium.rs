@@ -205,7 +205,7 @@ mod tests {
         assert!(source_path.exists());
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(SourceType::Chromium, &PathBuf::from("dummy_path"), vec![]);
+        let source = Source::new(SourceType::Unknown, &PathBuf::from("dummy_path"), vec![]);
         let bookmark_file = utils::open_file(source_path).unwrap();
         let source_reader = Box::new(JsonReader);
         let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
@@ -257,7 +257,7 @@ mod tests {
 
         let mut source_bookmarks = SourceBookmarks::default();
         let source = Source::new(
-            SourceType::Chromium,
+            SourceType::Unknown,
             &PathBuf::from("dummy_path"),
             vec!["dev".to_owned()],
         );
