@@ -182,7 +182,7 @@ impl SourceReader {
             let source_selectors: Vec<SourceSelector> = vec![FirefoxSelector::new()];
 
             for source_selector in source_selectors {
-                if let Some(bookmarks_path) = source_selector.find_file(&source_path)? {
+                if let Some(bookmarks_path) = source_selector.find_file(source_path)? {
                     let source_extension =
                         bookmarks_path.extension().and_then(|path| path.to_str());
 
@@ -201,7 +201,7 @@ impl SourceReader {
             }
         } else if source_path.is_file() {
             let source_extension = source_path.extension().and_then(|path| path.to_str());
-            let source = Source::new(SourceType::Unknown, &source_path, source_folders.clone());
+            let source = Source::new(SourceType::Unknown, source_path, source_folders.clone());
             let bookmark_file = utils::open_file(&raw_source.path)?;
             let reader = Box::new(bookmark_file);
             let source_reader = Self::select(source_extension)?;
