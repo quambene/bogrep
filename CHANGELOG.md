@@ -3,6 +3,12 @@
 ### Unreleased
 
 - added
+- changed
+- removed
+
+### v0.7.0
+
+- added
   - Add `action` to `TargetBookmark`
   - Add benchmarks for fetching
   - Take ignored urls into account in `bogrep import`
