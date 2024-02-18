@@ -25,6 +25,7 @@ bogrep -i "reed-solomon code"
   - [Chrome](#chrome)
   - [Chromium](#chromium)
   - [Edge](#edge)
+  - [Safari](#safari)
 - [Filter bookmark folders](#filter-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
 - [Fetch underlying urls](#fetch-underlying-urls)
@@ -113,7 +114,7 @@ bogrep fetch --help
 ## Import bookmarks
 
 Currently, bookmarks in JSON format for Firefox, Chrome, Chromium, and Edge are
-supported. Bookmark files in HTML format are not supported yet.
+supported as well as bookmarks in PLIST format for Safari. Bookmark files in HTML format are not supported yet.
 
 The path of bookmarks may be different for your operating system.
 
@@ -163,6 +164,14 @@ Configure Edge as source for bookmarks:
 ``` bash
 # Ubuntu
 bogrep config --source ~/.config/microsoft-edge/Default/Bookmarks
+```
+
+### Safari
+
+Configure Safari as source for bookmarks:
+
+``` bash
+bogrep config --source ~/Library/Safari/Bookmarks.plist
 ```
 
 ## Filter bookmark folders
