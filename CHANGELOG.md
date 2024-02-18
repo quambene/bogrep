@@ -8,6 +8,8 @@
   - Take ignored urls into account in `bogrep import`
   - Fetch underlying urls
   - Clean up lock file if `bogrep` is aborted
+  - Add `SelectSource` and `ReadSource` traits
+  - Add `PlistReader` and `SafariReader`
 - changed
   - Update to rust 1.75
   - Fix duplicate cache files for `bogrep fetch --urls`

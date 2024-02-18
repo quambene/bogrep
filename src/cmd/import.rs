@@ -1,9 +1,9 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
-    Action, Config, SourceBookmarks, TargetBookmarks,
+    utils, Config, SourceBookmarks, TargetBookmarks,
 };
-use log::{debug, trace};
+use log::debug;
 use url::Url;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
@@ -11,7 +11,7 @@ use url::Url;
 pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
-    let source_reader = config
+    let mut source_readers = config
         .settings
         .sources
         .iter()
@@ -29,7 +29,7 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         .collect::<Result<Vec<_>, _>>()?;
 
     import_source(
-        source_reader,
+        &mut source_readers,
         &mut target_reader_writer.reader(),
         &mut target_reader_writer.writer(),
         &ignored_urls,
@@ -41,15 +41,15 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
 }
 
 fn import_source(
-    mut source_reader: Vec<SourceReader>,
+    source_readers: &mut [SourceReader],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
     ignored_urls: &[Url],
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for reader in &mut source_reader {
-        reader.read_and_parse(&mut source_bookmarks)?;
+    for source_reader in source_readers.iter_mut() {
+        source_reader.import(&mut source_bookmarks)?;
     }
 
     let mut target_bookmarks = TargetBookmarks::default();
@@ -61,42 +61,18 @@ fn import_source(
 
     target_writer.write(&target_bookmarks)?;
 
-    log_import(&source_reader, &target_bookmarks);
+    utils::log_import(source_readers, &target_bookmarks);
 
     Ok(())
-}
-
-fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks) {
-    let source = if source_reader.len() == 1 {
-        "source"
-    } else {
-        "sources"
-    };
-
-    println!(
-        "Imported {} bookmarks from {} {source}: {}",
-        target_bookmarks
-            .values()
-            .filter(|bookmark| bookmark.action == Action::FetchAndReplace
-                || bookmark.action == Action::FetchAndAdd)
-            .collect::<Vec<_>>()
-            .len(),
-        source_reader.len(),
-        source_reader
-            .iter()
-            .map(|source_reader| source_reader.source().path.clone())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-    trace!("Imported bookmarks: {target_bookmarks:#?}");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        bookmarks::{RawSource, Source},
-        json, test_utils, JsonBookmarks, ReadBookmark, SimpleBookmarkReader, SourceType,
+        bookmark_reader::{ReadSource, TextReader},
+        bookmarks::RawSource,
+        json, test_utils, JsonBookmarks, Source, SourceType,
     };
     use std::{
         collections::HashSet,
@@ -117,7 +93,7 @@ mod tests {
 
         let source_reader = SourceReader::init(source).unwrap();
         let res = import_source(
-            vec![source_reader],
+            &mut [source_reader],
             &mut target_reader,
             &mut target_writer,
             &ignored_urls,
@@ -141,8 +117,8 @@ mod tests {
     fn test_import_source_bookmarks(
         source_bookmarks: HashSet<String>,
         source: &Source,
+        source_reader: Box<dyn ReadSource>,
         source_reader_writer: &mut Cursor<Vec<u8>>,
-        bookmark_reader: impl ReadBookmark + 'static,
         target_reader: &mut Cursor<Vec<u8>>,
         target_writer: &mut Cursor<Vec<u8>>,
     ) {
@@ -154,12 +130,12 @@ mod tests {
         let source_reader = SourceReader::new(
             source.clone(),
             Box::new(source_reader_writer.clone()),
-            Box::new(bookmark_reader),
+            source_reader,
         );
         let ignored_urls = vec![];
 
         let res = import_source(
-            vec![source_reader],
+            &mut [source_reader],
             target_reader,
             target_writer,
             &ignored_urls,
@@ -215,7 +191,7 @@ mod tests {
             String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
             String::from("https://doc.rust-lang.org/book/title-page.html")
         ]);
-        test_utils::create_compressed_bookmarks(source_path);
+        test_utils::create_compressed_json_file(source_path).unwrap();
 
         test_import_source(&source, expected_bookmarks);
     }
@@ -269,7 +245,7 @@ mod tests {
     fn test_import_bookmarks_simple_add_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(SourceType::Simple, source_path, source_folders);
+        let source = Source::new(SourceType::Unknown, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks =
             HashSet::from_iter(["https://doc.rust-lang.org/book/title-page.html".to_owned()]);
@@ -286,8 +262,8 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            Box::new(TextReader),
             &mut source_reader_writer,
-            SimpleBookmarkReader,
             &mut target_reader,
             &mut target_writer,
         );
@@ -305,8 +281,8 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            Box::new(TextReader),
             &mut source_reader_writer,
-            SimpleBookmarkReader,
             &mut target_reader,
             &mut target_writer,
         );
@@ -316,7 +292,7 @@ mod tests {
     fn test_import_bookmarks_simple_delete_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
-        let source = Source::new(SourceType::Simple, source_path, source_folders);
+        let source = Source::new(SourceType::Unknown, source_path, source_folders);
         let mut source_reader_writer = Cursor::new(Vec::new());
         let source_bookmarks = HashSet::from_iter([
             "https://www.deepl.com/translator".to_owned(),
@@ -338,8 +314,8 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            Box::new(TextReader),
             &mut source_reader_writer,
-            SimpleBookmarkReader,
             &mut target_reader,
             &mut target_writer,
         );
@@ -354,8 +330,8 @@ mod tests {
         test_import_source_bookmarks(
             source_bookmarks,
             &source,
+            Box::new(TextReader),
             &mut source_reader_writer,
-            SimpleBookmarkReader,
             &mut target_reader,
             &mut target_writer,
         );

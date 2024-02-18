@@ -41,6 +41,8 @@ readability = "0.2.0"
 async-trait = "0.1.73"
 scraper = "0.18.1"
 parking_lot = "0.12.1"
+plist = "1.6.0"
+infer = "0.15.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
@@ -49,3 +51,4 @@ tempfile = "3.8.0"
 wiremock = "0.5.19"
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "time", "test-util"] }
+assert_matches = "1.5.0"

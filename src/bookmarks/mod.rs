@@ -9,6 +9,7 @@ pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmark
 use std::{
     cmp::Ordering,
     collections::HashSet,
+    fmt,
     path::{Path, PathBuf},
     slice::Iter,
 };
@@ -26,6 +27,42 @@ pub const SUPPORTED_UNDERLYING_DOMAINS: &[&str] = &[
     "reddit.com",
     "www.reddit.com",
 ];
+
+/// The type used to identify a source.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SourceType {
+    Firefox,
+    ChromiumDerivative,
+    Chromium,
+    Chrome,
+    Edge,
+    Safari,
+    Simple,
+    Underlying(String),
+    Internal,
+    External,
+    #[default]
+    Unknown,
+}
+
+impl fmt::Display for SourceType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let reader_name = match &self {
+            SourceType::Firefox => "Firefox",
+            SourceType::ChromiumDerivative => "Chromium (derivative)",
+            SourceType::Chromium => "Chromium",
+            SourceType::Chrome => "Chrome",
+            SourceType::Edge => "Edge",
+            SourceType::Safari => "Safari",
+            SourceType::Simple => "Simple",
+            SourceType::Underlying(_) => "Underlying",
+            SourceType::Internal => "Internal",
+            SourceType::External => "External",
+            SourceType::Unknown => "Unknown",
+        };
+        write!(f, "{}", reader_name)
+    }
+}
 
 /// The action to be performed on the bookmark.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -65,21 +102,6 @@ impl From<&Url> for UnderlyingType {
     }
 }
 
-/// The type used to identify a source.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum SourceType {
-    Firefox,
-    Chromium,
-    Chrome,
-    Edge,
-    Simple,
-    Underlying(String),
-    Internal,
-    External,
-    #[default]
-    Others,
-}
-
 /// The source of bookmarks.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct RawSource {
@@ -105,9 +127,9 @@ impl RawSource {
 #[derive(Debug, Clone)]
 pub struct Source {
     /// The name of the source.
-    pub name: SourceType,
-    /// The path of the source file used for displaying.
-    pub path: String,
+    pub source_type: SourceType,
+    /// The path of the source file used for logging.
+    pub path: PathBuf,
     /// The folders to be imported.
     ///
     /// If no folders are selected, all bookmarks in the source file will be
@@ -116,10 +138,10 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new(name: SourceType, path: &Path, folders: Vec<String>) -> Self {
+    pub fn new(source_type: SourceType, path: &Path, folders: Vec<String>) -> Self {
         Self {
-            name,
-            path: path.to_string_lossy().to_string(),
+            source_type,
+            path: path.to_owned(),
             folders,
         }
     }

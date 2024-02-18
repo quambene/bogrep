@@ -2,7 +2,7 @@ use crate::{
     bookmark_reader::{SourceReader, TargetReaderWriter},
     bookmarks::BookmarkProcessor,
     cache::CacheMode,
-    Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
+    utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
     TargetBookmarks,
 };
 use log::debug;
@@ -12,7 +12,7 @@ use log::debug;
 pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
-    let mut source_reader = config
+    let mut source_readers = config
         .settings
         .sources
         .iter()
@@ -34,7 +34,7 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         let client = Client::new(config)?;
 
         let target_bookmarks =
-            init_bookmarks(&client, &cache, source_reader.as_mut(), &config.settings).await?;
+            init_bookmarks(&client, &cache, source_readers.as_mut(), &config.settings).await?;
         target_reader_writer.write(&target_bookmarks)?;
         target_reader_writer.close()?;
     }
@@ -45,29 +45,20 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
 async fn init_bookmarks(
     client: &impl Fetch,
     cache: &impl Caching,
-    source_reader: &mut [SourceReader],
+    source_readers: &mut [SourceReader],
     settings: &Settings,
 ) -> Result<TargetBookmarks, anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
-    for reader in source_reader.iter_mut() {
-        reader.read_and_parse(&mut source_bookmarks)?;
+    for source_reader in source_readers.iter_mut() {
+        source_reader.import(&mut source_bookmarks)?;
     }
 
     let mut target_bookmarks = TargetBookmarks::try_from(source_bookmarks)?;
 
     target_bookmarks.set_action(&Action::FetchAndAdd);
 
-    println!(
-        "Imported {} bookmarks from {} sources: {}",
-        target_bookmarks.len(),
-        source_reader.len(),
-        source_reader
-            .iter()
-            .map(|reader| reader.source().path.to_owned())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    utils::log_import(source_readers, &target_bookmarks);
 
     let bookmark_processor =
         BookmarkProcessor::new(client.clone(), cache.clone(), settings.clone());

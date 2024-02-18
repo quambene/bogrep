@@ -1,5 +1,5 @@
-use crate::errors::BogrepError;
-use log::debug;
+use crate::{bookmark_reader::SourceReader, errors::BogrepError, Action, TargetBookmarks};
+use log::{debug, trace};
 use std::{
     fs::{self, File, OpenOptions},
     io::{Read, Write},
@@ -189,4 +189,29 @@ pub fn close_and_rename(from: (File, &Path), to: (File, &Path)) -> Result<(), Bo
     })?;
 
     Ok(())
+}
+
+pub fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookmarks) {
+    let source = if source_reader.len() == 1 {
+        "source"
+    } else {
+        "sources"
+    };
+
+    println!(
+        "Imported {} bookmarks from {} {source}: {}",
+        target_bookmarks
+            .values()
+            .filter(|bookmark| bookmark.action == Action::FetchAndReplace
+                || bookmark.action == Action::FetchAndAdd)
+            .collect::<Vec<_>>()
+            .len(),
+        source_reader.len(),
+        source_reader
+            .iter()
+            .map(|source_reader| source_reader.source().path.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    trace!("Imported bookmarks: {target_bookmarks:#?}");
 }

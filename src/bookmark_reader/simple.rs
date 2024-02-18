@@ -1,45 +1,61 @@
-use super::{ReadBookmark, ReaderName};
+use super::{ReadBookmark, SeekRead};
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
 };
+use log::debug;
 use std::{
-    io::{BufRead, BufReader, Read},
+    io::{BufReader, Lines},
     path::Path,
 };
+
+pub type LinesReader<'a> = Lines<BufReader<&'a mut dyn SeekRead>>;
+pub type TextBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = LinesReader<'a>>>;
 
 /// A bookmark reader to read bookmarks from a simple text file with one url per
 /// line.
 #[derive(Debug)]
-pub struct SimpleBookmarkReader;
+pub struct SimpleReader;
 
-impl ReadBookmark for SimpleBookmarkReader {
-    fn name(&self) -> ReaderName {
-        ReaderName::Simple
+impl SimpleReader {
+    pub fn new() -> Box<Self> {
+        Box::new(Self)
+    }
+}
+
+impl<'a> ReadBookmark<'a> for SimpleReader {
+    type ParsedValue = LinesReader<'a>;
+
+    fn name(&self) -> SourceType {
+        SourceType::Simple
     }
 
     fn extension(&self) -> Option<&str> {
         Some("txt")
     }
 
-    fn select_source(&self, _source_path: &Path) -> Result<Option<SourceType>, anyhow::Error> {
+    fn select_source(
+        &self,
+        _source_path: &Path,
+        _parsed_bookmarks: &Self::ParsedValue,
+    ) -> Result<Option<SourceType>, anyhow::Error> {
         Ok(Some(SourceType::Simple))
     }
 
-    fn read_and_parse(
+    fn import(
         &self,
-        reader: &mut dyn Read,
         source: &Source,
+        parsed_bookmarks: Self::ParsedValue,
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
-        let buf_reader = BufReader::new(reader);
+        debug!("Import bookmarks from {:#?}", self.name());
 
-        for line in buf_reader.lines() {
+        for line in parsed_bookmarks {
             let url = line?;
 
             if !url.is_empty() {
                 let source_bookmark = SourceBookmarkBuilder::new(&url)
-                    .add_source(&source.name)
+                    .add_source(&source.source_type)
                     .build();
                 source_bookmarks.insert(source_bookmark);
             }
@@ -52,24 +68,42 @@ impl ReadBookmark for SimpleBookmarkReader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::SourceBookmarkBuilder, utils};
-    use std::{collections::HashMap, path::Path};
+    use crate::{
+        bookmark_reader::{source_reader::TextReader, ParsedBookmarks, ReadSource, SourceReader},
+        bookmarks::SourceBookmarkBuilder,
+        utils,
+    };
+    use assert_matches::assert_matches;
+    use std::{
+        collections::HashMap,
+        path::{Path, PathBuf},
+    };
 
     #[test]
-    fn test_read_txt() {
+    fn test_read_and_parse() {
+        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let mut reader = utils::open_file(source_path).unwrap();
+        let source_reader = TextReader;
+
+        let res = source_reader.read_and_parse(&mut reader);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let parsed_bookmarks = res.unwrap();
+        assert_matches!(parsed_bookmarks, ParsedBookmarks::Text(_));
+    }
+
+    #[test]
+    fn test_import_txt() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         assert!(source_path.exists());
-        let mut source_bookmark_file = utils::open_file(source_path).unwrap();
 
         let mut source_bookmarks = SourceBookmarks::default();
-        let source = Source::new(SourceType::Simple, source_path, vec![]);
-        let bookmark_reader = SimpleBookmarkReader;
+        let source = Source::new(SourceType::Unknown, &PathBuf::from("dummy_path"), vec![]);
+        let bookmark_file = utils::open_file(source_path).unwrap();
+        let source_reader = Box::new(TextReader);
+        let mut source_reader = SourceReader::new(source, Box::new(bookmark_file), source_reader);
 
-        let res = bookmark_reader.read_and_parse(
-            &mut source_bookmark_file,
-            &source,
-            &mut source_bookmarks,
-        );
+        let res = source_reader.import(&mut source_bookmarks);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let url1 = "https://www.deepl.com/translator";

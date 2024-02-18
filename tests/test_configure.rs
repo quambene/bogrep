@@ -46,7 +46,6 @@ fn test_configure_source(temp_path: &Path, source: &str, folder: Option<&str>) {
     assert!(res.is_ok());
 
     let settings = res.unwrap();
-    dbg!(&settings);
     assert!(!settings.sources.is_empty());
 
     if folder.is_some() {
