@@ -30,8 +30,8 @@ impl SelectSource for ChromeSelector {
     fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut bookmark_dirs = vec![];
 
-        let chrome_path = home_dir.join(".config/google-chrome");
-        let bookmark_dir = chrome_path.join("Default");
+        let chrome_dir = home_dir.join(".config/google-chrome");
+        let bookmark_dir = chrome_dir.join("Default");
 
         if bookmark_dir.is_dir() {
             bookmark_dirs.push(bookmark_dir)
@@ -39,7 +39,7 @@ impl SelectSource for ChromeSelector {
 
         // Sane people will have less than 100 profiles in Chrome.
         for i in 1..=100 {
-            let bookmark_dir = chrome_path.join(format!("Profile {i}"));
+            let bookmark_dir = chrome_dir.join(format!("Profile {i}"));
 
             if bookmark_dir.is_dir() {
                 bookmark_dirs.push(bookmark_dir)
@@ -242,7 +242,7 @@ mod tests {
 
         let selector = ChromeSelector;
         let res = selector.find_dir(temp_path);
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
         assert_eq!(bookmark_dirs.len(), 2);
