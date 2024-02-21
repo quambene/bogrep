@@ -38,6 +38,15 @@ impl SelectSource for ChromeSelector {
             bookmark_dirs.push(bookmark_dir)
         }
 
+        // Sane people will have less than 100 profiles in Chrome.
+        for i in 1..=100 {
+            let bookmark_dir = chrome_path.join(format!("Profile {i}"));
+
+            if bookmark_dir.is_dir() {
+                bookmark_dirs.push(bookmark_dir)
+            }
+        }
+
         Ok(bookmark_dirs)
     }
 
@@ -46,10 +55,7 @@ impl SelectSource for ChromeSelector {
             .to_str()
             .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
 
-        // On Linux, the path contains the lowercase identifier; on macOS,
-        // uppercase identifier is required.
         if path_str.contains("google-chrome") {
-            // The Chrome bookmarks directory contains multiple bookmark files.
             let bookmark_path = source_dir.join("Bookmarks");
             Ok(Some(bookmark_path))
         } else {
@@ -233,15 +239,21 @@ mod tests {
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
         fs::create_dir_all(temp_path.join(".config/google-chrome/Default")).unwrap();
+        fs::create_dir_all(temp_path.join(".config/google-chrome/Profile 1")).unwrap();
 
         let selector = ChromeSelector;
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok());
 
-        let bookmark_dir = res.unwrap();
+        let bookmark_dirs = res.unwrap();
+        assert_eq!(bookmark_dirs.len(), 2);
         assert_eq!(
-            bookmark_dir[0],
+            bookmark_dirs[0],
             temp_path.join(".config/google-chrome/Default")
+        );
+        assert_eq!(
+            bookmark_dirs[1],
+            temp_path.join(".config/google-chrome/Profile 1")
         );
     }
 
