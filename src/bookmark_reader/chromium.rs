@@ -27,6 +27,7 @@ impl SelectSource for ChromeSelector {
         Some("json")
     }
 
+    // TODO: Implement find dir for snap package
     fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut bookmark_dirs = vec![];
 

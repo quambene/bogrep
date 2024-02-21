@@ -64,6 +64,7 @@ impl SelectSource for FirefoxSelector {
         Some("jsonlz4")
     }
 
+    // TODO: Implement find dir for apt package
     fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut bookmark_dirs = vec![];
 
