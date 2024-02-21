@@ -44,8 +44,8 @@ pub trait SelectSource {
     fn extension(&self) -> Option<&str>;
 
     /// Find the bookmarks directory in the system's directories.
-    fn find_dir(&self) -> Result<Option<PathBuf>, anyhow::Error> {
-        Ok(None)
+    fn find_dir(&self, _home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        Ok(Vec::new())
     }
 
     /// Select the bookmarks file if the source is given as a directory.

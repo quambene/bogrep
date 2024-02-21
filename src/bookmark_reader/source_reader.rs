@@ -1,7 +1,10 @@
 use super::{
-    chromium::JsonBookmarkReader, firefox::FirefoxSelector, safari::PlistBookmarkReader,
-    simple::TextBookmarkReader, BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks,
-    ReadSource, SafariReader, SeekRead, SimpleReader, SourceSelector,
+    chromium::{ChromeSelector, JsonBookmarkReader},
+    firefox::FirefoxSelector,
+    safari::PlistBookmarkReader,
+    simple::TextBookmarkReader,
+    BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks, ReadSource, SafariReader,
+    SeekRead, SimpleReader, SourceSelector,
 };
 use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
@@ -179,7 +182,8 @@ impl SourceReader {
         let source_folders = &raw_source.folders;
 
         if source_path.is_dir() {
-            let source_selectors: Vec<SourceSelector> = vec![FirefoxSelector::new()];
+            let source_selectors: Vec<SourceSelector> =
+                vec![FirefoxSelector::new(), ChromeSelector::new()];
 
             for source_selector in source_selectors {
                 if let Some(bookmarks_path) = source_selector.find_file(source_path)? {

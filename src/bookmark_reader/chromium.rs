@@ -1,4 +1,4 @@
-use super::ReadBookmark;
+use super::{ReadBookmark, SelectSource};
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
@@ -6,9 +6,60 @@ use crate::{
 use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub type JsonBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = serde_json::Value>>;
+
+pub struct ChromeSelector;
+
+impl ChromeSelector {
+    pub fn new() -> Box<Self> {
+        Box::new(ChromeSelector)
+    }
+}
+
+impl SelectSource for ChromeSelector {
+    fn name(&self) -> SourceType {
+        SourceType::Chromium
+    }
+
+    fn extension(&self) -> Option<&str> {
+        Some("json")
+    }
+
+    // TODO: find bookmark directories for all browser profiles
+    fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        let mut bookmark_dirs = vec![];
+
+        let chrome_path = home_dir.join(".config/google-chrome");
+        let bookmark_dir = chrome_path.join("Default");
+
+        if bookmark_dir.is_dir() {
+            bookmark_dirs.push(bookmark_dir)
+        }
+
+        Ok(bookmark_dirs)
+    }
+
+    fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+        let path_str = source_dir
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+        // On Linux, the path contains the lowercase identifier; on macOS,
+        // uppercase identifier is required.
+        if path_str.contains("google-chrome") {
+            // The Chrome bookmarks directory contains multiple bookmark files.
+            let bookmark_path = source_dir.join("Bookmarks");
+            Ok(Some(bookmark_path))
+        } else {
+            Err(anyhow!(
+                "Unexpected format for source directory: {}",
+                source_dir.display()
+            ))
+        }
+    }
+}
 
 /// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
 #[derive(Debug)]
@@ -170,8 +221,29 @@ mod tests {
     use assert_matches::assert_matches;
     use std::{
         collections::HashMap,
+        fs::{self},
         path::{Path, PathBuf},
     };
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_find_dir() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        fs::create_dir_all(temp_path.join(".config/google-chrome/Default")).unwrap();
+
+        let selector = ChromeSelector;
+        let res = selector.find_dir(temp_path);
+        assert!(res.is_ok());
+
+        let bookmark_dir = res.unwrap();
+        assert_eq!(
+            bookmark_dir[0],
+            temp_path.join(".config/google-chrome/Default")
+        );
+    }
 
     #[test]
     fn test_read_and_parse() {

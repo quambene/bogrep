@@ -63,6 +63,10 @@ impl SelectSource for FirefoxSelector {
         Some("jsonlz4")
     }
 
+    fn find_dir(&self, _home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        Ok(vec![])
+    }
+
     fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         let path_str = source_dir
             .to_str()
