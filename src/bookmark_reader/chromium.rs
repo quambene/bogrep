@@ -70,7 +70,7 @@ impl SelectSource for ChromiumSelector {
             .to_str()
             .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
 
-        if path_str.contains("google-chrome") {
+        if path_str.contains("chromium") {
             let bookmark_path = source_dir.join("Bookmarks");
             Ok(Some(bookmark_path))
         } else {

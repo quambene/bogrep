@@ -1,5 +1,7 @@
 use super::{
-    chromium::{ChromeSelector, JsonBookmarkReader},
+    chrome::ChromeSelector,
+    chromium::{ChromiumSelector, JsonBookmarkReader},
+    edge::EdgeSelector,
     firefox::FirefoxSelector,
     safari::PlistBookmarkReader,
     simple::TextBookmarkReader,
@@ -14,6 +16,19 @@ use std::{
     io::{BufRead, BufReader, Cursor},
     path::Path,
 };
+
+pub struct SourceSelectors([SourceSelector; 4]);
+
+impl SourceSelectors {
+    pub fn new() -> Self {
+        Self([
+            FirefoxSelector::new(),
+            ChromiumSelector::new(),
+            ChromeSelector::new(),
+            EdgeSelector::new(),
+        ])
+    }
+}
 
 /// Reader for txt files.
 pub struct TextReader;
@@ -182,10 +197,9 @@ impl SourceReader {
         let source_folders = &raw_source.folders;
 
         if source_path.is_dir() {
-            let source_selectors: Vec<SourceSelector> =
-                vec![FirefoxSelector::new(), ChromeSelector::new()];
+            let source_selectors = SourceSelectors::new();
 
-            for source_selector in source_selectors {
+            for source_selector in source_selectors.0 {
                 if let Some(bookmarks_path) = source_selector.find_file(source_path)? {
                     let source_extension =
                         bookmarks_path.extension().and_then(|path| path.to_str());
