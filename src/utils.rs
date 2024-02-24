@@ -198,6 +198,20 @@ pub fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookm
         "sources"
     };
 
+    if source_reader.len() == 0 {
+        println!(
+            "Imported {} bookmarks from {} {source}. Configure sources by running `bogrep config`",
+            target_bookmarks
+                .values()
+                .filter(|bookmark| bookmark.action == Action::FetchAndReplace
+                    || bookmark.action == Action::FetchAndAdd)
+                .collect::<Vec<_>>()
+                .len(),
+            source_reader.len()
+        );
+        return;
+    }
+
     println!(
         "Imported {} bookmarks from {} {source}: {}",
         target_bookmarks
