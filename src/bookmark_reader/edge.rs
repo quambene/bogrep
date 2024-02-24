@@ -55,7 +55,7 @@ impl SelectSource for EdgeSelector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use crate::test_utils::tests;
     use tempfile::tempdir;
 
     #[test]
@@ -64,8 +64,7 @@ mod tests {
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        fs::create_dir_all(temp_path.join(".config/microsoft-edge/Default")).unwrap();
-        fs::create_dir_all(temp_path.join(".config/microsoft-edge/Profile 1")).unwrap();
+        tests::create_test_dirs(temp_path);
 
         let selector = EdgeSelector;
         let res = selector.find_dir(temp_path);

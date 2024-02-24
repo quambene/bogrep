@@ -47,3 +47,18 @@ pub fn compress_bookmarks(decompressed_bookmarks: &[u8]) -> Vec<u8> {
 
     compressed_data_with_header
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use std::fs;
+
+    pub fn create_test_dirs(temp_path: &Path) {
+        fs::create_dir_all(temp_path.join("snap/chromium/common/chromium/Default")).unwrap();
+        fs::create_dir_all(temp_path.join("snap/chromium/common/chromium/Profile 1")).unwrap();
+        fs::create_dir_all(temp_path.join(".config/google-chrome/Default")).unwrap();
+        fs::create_dir_all(temp_path.join(".config/google-chrome/Profile 1")).unwrap();
+        fs::create_dir_all(temp_path.join(".config/microsoft-edge/Default")).unwrap();
+        fs::create_dir_all(temp_path.join(".config/microsoft-edge/Profile 1")).unwrap();
+    }
+}

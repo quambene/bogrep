@@ -237,12 +237,12 @@ mod tests {
             source_reader::{JsonReader, JsonReaderNoExtension},
             ParsedBookmarks, ReadSource, SourceReader,
         },
+        test_utils::tests,
         utils,
     };
     use assert_matches::assert_matches;
     use std::{
         collections::HashMap,
-        fs::{self},
         path::{Path, PathBuf},
     };
     use tempfile::tempdir;
@@ -253,8 +253,7 @@ mod tests {
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        fs::create_dir_all(temp_path.join("snap/chromium/common/chromium/Default")).unwrap();
-        fs::create_dir_all(temp_path.join("snap/chromium/common/chromium/Profile 1")).unwrap();
+        tests::create_test_dirs(temp_path);
 
         let selector = ChromiumSelector;
         let res = selector.find_dir(temp_path);
