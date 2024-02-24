@@ -1,15 +1,30 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
-    utils, Config, SourceBookmarks, TargetBookmarks,
+    json, utils, Config, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
+use std::io::Write;
 use url::Url;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
-pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
+pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
+
+    let mut config = config;
+
+    if config.settings.sources.is_empty() {
+        let sources = SourceReader::select_sources();
+
+        for source in sources {
+            config.settings.sources.push(source);
+        }
+
+        let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
+        let settings_json = json::serialize(config.settings.clone())?;
+        settings_file.write_all(&settings_json)?;
+    }
 
     let mut source_readers = config
         .settings

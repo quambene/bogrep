@@ -198,9 +198,9 @@ pub fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookm
         "sources"
     };
 
-    if source_reader.len() == 0 {
+    if source_reader.is_empty() {
         println!(
-            "Imported {} bookmarks from {} {source}. Configure sources by running `bogrep config`",
+            "Imported {} bookmarks from {} {source}",
             target_bookmarks
                 .values()
                 .filter(|bookmark| bookmark.action == Action::FetchAndReplace

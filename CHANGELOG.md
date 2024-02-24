@@ -4,7 +4,7 @@
 
 - added
 - changed
-  - Implement `bogrep config`
+  - Select sources for `bogrep import` if no sources are configured
 - removed
 
 ### v0.7.0

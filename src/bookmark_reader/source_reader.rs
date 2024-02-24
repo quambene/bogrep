@@ -192,6 +192,10 @@ impl SourceReader {
         }
     }
 
+    pub fn select_sources() -> Vec<RawSource> {
+        todo!()
+    }
+
     /// Select the source file if a source directory is given.
     pub fn init(raw_source: &RawSource) -> Result<Self, anyhow::Error> {
         let source_path = &raw_source.path;
