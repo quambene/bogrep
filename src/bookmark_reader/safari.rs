@@ -1,9 +1,55 @@
+use super::{SelectSource, SourceOs};
 use crate::{bookmarks::SourceBookmarkBuilder, ReadBookmark, Source, SourceBookmarks, SourceType};
+use anyhow::anyhow;
 use log::{debug, trace};
 use plist::{Dictionary, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub type PlistBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = plist::Value>>;
+
+pub struct SafariSelector;
+
+impl SafariSelector {
+    pub fn new() -> Box<Self> {
+        Box::new(SafariSelector)
+    }
+}
+
+impl SelectSource for SafariSelector {
+    fn name(&self) -> SourceType {
+        SourceType::Safari
+    }
+
+    fn source_os(&self) -> SourceOs {
+        SourceOs::Macos
+    }
+
+    fn extension(&self) -> Option<&str> {
+        Some("plist")
+    }
+
+    fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        let browser_dirs = [home_dir.join("Library/Safari")];
+
+        Ok(browser_dirs.to_vec())
+    }
+
+    fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+        let path_str = source_dir
+            .to_str()
+            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
+
+        if path_str.contains("Safari") {
+            let bookmark_path = source_dir.join("Bookmarks.plist");
+            Ok(Some(bookmark_path))
+        } else {
+            Err(anyhow!(
+                "Unexpected format for source directory: {}",
+                source_dir.display()
+            ))
+        }
+    }
+}
 
 /// A bookmark reader to read bookmarks in plist format from Safari.
 #[derive(Debug)]
@@ -137,10 +183,29 @@ mod test {
     use super::*;
     use crate::{
         bookmark_reader::{source_reader::PlistReader, ParsedBookmarks, ReadSource, SourceReader},
-        test_utils, utils,
+        test_utils::{self, tests},
+        utils,
     };
     use assert_matches::assert_matches;
     use std::{collections::HashMap, path::PathBuf};
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_find_dir() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_dirs(temp_path);
+
+        let selector = SafariSelector;
+        let res = selector.find_dir(temp_path);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert_eq!(bookmark_dirs.len(), 1);
+        assert!(bookmark_dirs.contains(&temp_path.join("Library/Safari")));
+    }
 
     #[test]
     fn test_read_and_parse_xml() {

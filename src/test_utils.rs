@@ -60,5 +60,6 @@ pub mod tests {
         fs::create_dir_all(temp_path.join(".config/google-chrome/Profile 1")).unwrap();
         fs::create_dir_all(temp_path.join(".config/microsoft-edge/Default")).unwrap();
         fs::create_dir_all(temp_path.join(".config/microsoft-edge/Profile 1")).unwrap();
+        fs::create_dir_all(temp_path.join("Library/Safari")).unwrap();
     }
 }

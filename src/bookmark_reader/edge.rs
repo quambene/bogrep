@@ -13,7 +13,7 @@ impl EdgeSelector {
 
 impl SelectSource for EdgeSelector {
     fn name(&self) -> SourceType {
-        SourceType::Chrome
+        SourceType::Edge
     }
 
     fn source_os(&self) -> SourceOs {

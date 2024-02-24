@@ -3,7 +3,7 @@ use super::{
     chromium::{ChromiumSelector, JsonBookmarkReader},
     edge::EdgeSelector,
     firefox::FirefoxSelector,
-    safari::PlistBookmarkReader,
+    safari::{PlistBookmarkReader, SafariSelector},
     simple::TextBookmarkReader,
     BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks, ReadSource, SafariReader,
     SeekRead, SimpleReader, SourceSelector,
@@ -17,7 +17,7 @@ use std::{
     path::Path,
 };
 
-pub struct SourceSelectors([SourceSelector; 4]);
+pub struct SourceSelectors([SourceSelector; 5]);
 
 impl SourceSelectors {
     pub fn new() -> Self {
@@ -26,6 +26,7 @@ impl SourceSelectors {
             ChromiumSelector::new(),
             ChromeSelector::new(),
             EdgeSelector::new(),
+            SafariSelector::new(),
         ])
     }
 }
