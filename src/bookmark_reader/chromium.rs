@@ -243,9 +243,16 @@ mod tests {
     use assert_matches::assert_matches;
     use std::{
         collections::HashMap,
+        fs,
         path::{Path, PathBuf},
     };
     use tempfile::tempdir;
+
+    #[test]
+    fn test_selector_name() {
+        let selector = ChromiumSelector;
+        assert_eq!(selector.name(), SourceType::Chromium);
+    }
 
     #[test]
     fn test_find_dir() {
@@ -256,8 +263,6 @@ mod tests {
         tests::create_test_dirs(temp_path);
 
         let selector = ChromiumSelector;
-        assert_eq!(selector.name(), SourceType::Chromium);
-
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
@@ -265,6 +270,27 @@ mod tests {
         assert_eq!(bookmark_dirs.len(), 2);
         assert!(bookmark_dirs.contains(&temp_path.join("snap/chromium/common/chromium/Default")));
         assert!(bookmark_dirs.contains(&temp_path.join("snap/chromium/common/chromium/Profile 1")));
+    }
+
+    #[test]
+    fn test_find_file() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let bookmark_dir = temp_path.join("snap/chromium/common/chromium/Default");
+        fs::create_dir_all(&bookmark_dir).unwrap();
+        utils::create_file(&bookmark_dir.join("Bookmarks")).unwrap();
+
+        let selector = ChromiumSelector;
+        let res = selector.find_file(&bookmark_dir);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_file = res.unwrap();
+        assert_eq!(
+            bookmark_file.unwrap(),
+            temp_path.join("snap/chromium/common/chromium/Default/Bookmarks")
+        );
     }
 
     #[test]

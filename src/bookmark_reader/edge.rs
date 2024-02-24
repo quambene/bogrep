@@ -55,8 +55,15 @@ impl SelectSource for EdgeSelector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::tests;
+    use crate::{test_utils::tests, utils};
+    use std::fs;
     use tempfile::tempdir;
+
+    #[test]
+    fn test_selector_name() {
+        let selector = EdgeSelector;
+        assert_eq!(selector.name(), SourceType::Edge);
+    }
 
     #[test]
     fn test_find_dir() {
@@ -76,5 +83,26 @@ mod tests {
         assert_eq!(bookmark_dirs.len(), 2);
         assert!(bookmark_dirs.contains(&temp_path.join(".config/microsoft-edge/Default")));
         assert!(bookmark_dirs.contains(&temp_path.join(".config/microsoft-edge/Profile 1")));
+    }
+
+    #[test]
+    fn test_find_file() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let bookmark_dir = temp_path.join(".config/microsoft-edge/Default");
+        fs::create_dir_all(&bookmark_dir).unwrap();
+        utils::create_file(&bookmark_dir.join("Bookmarks")).unwrap();
+
+        let selector = EdgeSelector;
+        let res = selector.find_file(&bookmark_dir);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_file = res.unwrap();
+        assert_eq!(
+            bookmark_file.unwrap(),
+            temp_path.join(".config/microsoft-edge/Default/Bookmarks")
+        );
     }
 }

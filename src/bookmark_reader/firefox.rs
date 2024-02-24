@@ -269,6 +269,12 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    fn test_selector_name() {
+        let selector = FirefoxSelector;
+        assert_eq!(selector.name(), SourceType::Firefox);
+    }
+
+    #[test]
     fn test_find_dir() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
@@ -313,8 +319,6 @@ mod tests {
         file.flush().unwrap();
 
         let selector = FirefoxSelector;
-        assert_eq!(selector.name(), SourceType::Firefox);
-
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
@@ -326,6 +330,30 @@ mod tests {
             .contains(&temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default")));
         assert!(bookmark_dirs.contains(&temp_path.join(".mozilla/firefox/profile2.username")));
         assert!(bookmark_dirs.contains(&temp_path.join(".mozilla/firefox/profile2.username")));
+    }
+
+    #[test]
+    fn test_find_file() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let bookmark_dir =
+            temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups");
+        fs::create_dir_all(&bookmark_dir).unwrap();
+        utils::create_file(&bookmark_dir.join("bookmarks1.jsonlz4")).unwrap();
+        utils::create_file(&bookmark_dir.join("bookmarks2.jsonlz4")).unwrap();
+
+        let selector = FirefoxSelector;
+        let res = selector.find_file(&bookmark_dir);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_file = res.unwrap();
+        assert_eq!(
+            bookmark_file.unwrap(),
+            // We are expecting the file which was created more recently.
+            temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups/bookmarks2.jsonlz4")
+        );
     }
 
     #[test]

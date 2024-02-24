@@ -55,8 +55,15 @@ impl SelectSource for ChromeSelector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::tests;
+    use crate::{test_utils::tests, utils};
+    use std::fs;
     use tempfile::tempdir;
+
+    #[test]
+    fn test_selector_name() {
+        let selector = ChromeSelector;
+        assert_eq!(selector.name(), SourceType::Chrome);
+    }
 
     #[test]
     fn test_find_dir() {
@@ -67,8 +74,6 @@ mod tests {
         tests::create_test_dirs(temp_path);
 
         let selector = ChromeSelector;
-        assert_eq!(selector.name(), SourceType::Chrome);
-
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
@@ -76,5 +81,26 @@ mod tests {
         assert_eq!(bookmark_dirs.len(), 2);
         assert!(bookmark_dirs.contains(&temp_path.join(".config/google-chrome/Default")));
         assert!(bookmark_dirs.contains(&temp_path.join(".config/google-chrome/Profile 1")));
+    }
+
+    #[test]
+    fn test_find_file() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let bookmark_dir = temp_path.join(".config/google-chrome/Default");
+        fs::create_dir_all(&bookmark_dir).unwrap();
+        utils::create_file(&bookmark_dir.join("Bookmarks")).unwrap();
+
+        let selector = ChromeSelector;
+        let res = selector.find_file(&bookmark_dir);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_file = res.unwrap();
+        assert_eq!(
+            bookmark_file.unwrap(),
+            temp_path.join(".config/google-chrome/Default/Bookmarks")
+        );
     }
 }

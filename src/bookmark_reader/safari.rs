@@ -187,8 +187,14 @@ mod test {
         utils,
     };
     use assert_matches::assert_matches;
-    use std::{collections::HashMap, path::PathBuf};
+    use std::{collections::HashMap, fs, path::PathBuf};
     use tempfile::tempdir;
+
+    #[test]
+    fn test_selector_name() {
+        let selector = SafariSelector;
+        assert_eq!(selector.name(), SourceType::Safari);
+    }
 
     #[test]
     fn test_find_dir() {
@@ -199,14 +205,33 @@ mod test {
         tests::create_test_dirs(temp_path);
 
         let selector = SafariSelector;
-        assert_eq!(selector.name(), SourceType::Safari);
-
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
         assert_eq!(bookmark_dirs.len(), 1);
         assert!(bookmark_dirs.contains(&temp_path.join("Library/Safari")));
+    }
+
+    #[test]
+    fn test_find_file() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let bookmark_dir = temp_path.join("Library/Safari");
+        fs::create_dir_all(&bookmark_dir).unwrap();
+        utils::create_file(&bookmark_dir.join("Bookmarks.plist")).unwrap();
+
+        let selector = SafariSelector;
+        let res = selector.find_file(&bookmark_dir);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_file = res.unwrap();
+        assert_eq!(
+            bookmark_file.unwrap(),
+            temp_path.join("Library/Safari/Bookmarks.plist")
+        );
     }
 
     #[test]
