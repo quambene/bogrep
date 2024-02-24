@@ -1,4 +1,4 @@
-use super::{ReadBookmark, SelectSource};
+use super::{ReadBookmark, SelectSource, SourceOs};
 use crate::{bookmarks::SourceBookmarkBuilder, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
@@ -60,34 +60,44 @@ impl SelectSource for FirefoxSelector {
         SourceType::Firefox
     }
 
+    fn source_os(&self) -> SourceOs {
+        SourceOs::Linux
+    }
+
     fn extension(&self) -> Option<&str> {
         Some("jsonlz4")
     }
 
-    // TODO: Implement find dir for apt package
     fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut bookmark_dirs = vec![];
 
-        let firefox_dir = home_dir.join("snap/firefox/common/.mozilla/firefox");
+        let browser_dirs = [
+            // apt package
+            home_dir.join(".mozilla/firefox"),
+            // snap package
+            home_dir.join("snap/firefox/common/.mozilla/firefox"),
+        ];
 
-        let profiles_file = utils::open_file(&firefox_dir.join("profiles.ini"))?;
-        let buf_reader = BufReader::new(profiles_file);
-        let lines = buf_reader.lines();
+        for browser_dir in browser_dirs {
+            let profiles_file = utils::open_file(&browser_dir.join("profiles.ini"))?;
+            let buf_reader = BufReader::new(profiles_file);
+            let lines = buf_reader.lines();
 
-        let mut profiles = vec![];
+            let mut profiles = vec![];
 
-        for line in lines {
-            let line = line?;
+            for line in lines {
+                let line = line?;
 
-            if let Some(path_index) = line.find("Path=") {
-                let profile = &line[(path_index + 5)..];
-                profiles.push(profile.to_owned());
+                if let Some(path_index) = line.find("Path=") {
+                    let profile = &line[(path_index + 5)..];
+                    profiles.push(profile.to_owned());
+                }
             }
-        }
 
-        for profile in profiles {
-            let bookmark_dir = firefox_dir.join(profile);
-            bookmark_dirs.push(bookmark_dir);
+            for profile in profiles {
+                let bookmark_dir = browser_dir.join(profile);
+                bookmark_dirs.push(bookmark_dir);
+            }
         }
 
         Ok(bookmark_dirs)
@@ -264,21 +274,40 @@ mod tests {
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        let firefox_dir = temp_path.join("snap/firefox/common/.mozilla/firefox");
-        fs::create_dir_all(firefox_dir.join("profile.default")).unwrap();
-        fs::create_dir_all(firefox_dir.join("profile.username")).unwrap();
-        let mut file = File::create(firefox_dir.join("profiles.ini")).unwrap();
+        let browser_dir = temp_path.join("snap/firefox/common/.mozilla/firefox");
+        fs::create_dir_all(browser_dir.join("profile.default")).unwrap();
+        fs::create_dir_all(browser_dir.join("profile.username")).unwrap();
+        let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
         let content = r#"
             [Profile1]
             Name=bene
             IsRelative=1
-            Path=profile.username
+            Path=profile1.username
             Default=1
             
             [Profile0]
             Name=default
             IsRelative=1
-            Path=profile.default
+            Path=profile1.default
+        "#;
+        file.write_all(content.as_bytes()).unwrap();
+        file.flush().unwrap();
+
+        let browser_dir = temp_path.join(".mozilla/firefox");
+        fs::create_dir_all(browser_dir.join("profile.default")).unwrap();
+        fs::create_dir_all(browser_dir.join("profile.username")).unwrap();
+        let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
+        let content = r#"
+            [Profile1]
+            Name=bene
+            IsRelative=1
+            Path=profile2.username
+            Default=1
+            
+            [Profile0]
+            Name=default
+            IsRelative=1
+            Path=profile2.default
         "#;
         file.write_all(content.as_bytes()).unwrap();
         file.flush().unwrap();
@@ -288,15 +317,13 @@ mod tests {
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
-        assert_eq!(bookmark_dirs.len(), 2);
-        assert_eq!(
-            bookmark_dirs[0],
-            temp_path.join("snap/firefox/common/.mozilla/firefox/profile.username")
-        );
-        assert_eq!(
-            bookmark_dirs[1],
-            temp_path.join("snap/firefox/common/.mozilla/firefox/profile.default")
-        );
+        assert_eq!(bookmark_dirs.len(), 4);
+        assert!(bookmark_dirs
+            .contains(&temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.username")));
+        assert!(bookmark_dirs
+            .contains(&temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default")));
+        assert!(bookmark_dirs.contains(&temp_path.join(".mozilla/firefox/profile2.username")));
+        assert!(bookmark_dirs.contains(&temp_path.join(".mozilla/firefox/profile2.username")));
     }
 
     #[test]

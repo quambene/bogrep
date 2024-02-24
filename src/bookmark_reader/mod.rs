@@ -27,6 +27,13 @@ pub use target_writer::WriteTarget;
 pub type SourceSelector = Box<dyn SelectSource>;
 pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 
+/// The supported operating system.
+pub enum SourceOs {
+    Linux,
+    Macos,
+    Windows,
+}
+
 /// The parsed bookmarks from a bookmarks file.
 #[derive(Debug)]
 pub enum ParsedBookmarks<'a> {
@@ -36,10 +43,12 @@ pub enum ParsedBookmarks<'a> {
     Text(Lines<BufReader<&'a mut dyn SeekRead>>),
 }
 
-/// A trait to find the bookmarks directory in the system's directories, and/or the
-/// bookmarks file within a given directory.
+/// A trait to find the bookmarks directory in the system's directories, and/or
+/// the bookmarks file within a given directory.
 pub trait SelectSource {
     fn name(&self) -> SourceType;
+
+    fn source_os(&self) -> SourceOs;
 
     fn extension(&self) -> Option<&str>;
 
