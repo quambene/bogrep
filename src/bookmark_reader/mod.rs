@@ -1,4 +1,6 @@
+mod chrome;
 mod chromium;
+mod edge;
 mod firefox;
 mod safari;
 mod simple;
@@ -28,6 +30,7 @@ pub type SourceSelector = Box<dyn SelectSource>;
 pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 
 /// The supported operating system.
+#[non_exhaustive]
 pub enum SourceOs {
     Linux,
     Macos,

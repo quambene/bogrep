@@ -1,4 +1,4 @@
-use super::{ReadBookmark, SelectSource};
+use super::{ReadBookmark, SelectSource, SourceOs};
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
@@ -10,42 +10,57 @@ use std::path::{Path, PathBuf};
 
 pub type JsonBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = serde_json::Value>>;
 
-pub struct ChromeSelector;
+pub struct ChromiumSelector;
 
-impl ChromeSelector {
+impl ChromiumSelector {
     pub fn new() -> Box<Self> {
-        Box::new(ChromeSelector)
+        Box::new(ChromiumSelector)
+    }
+
+    pub fn find_profile_dirs(browser_dirs: &[PathBuf]) -> Vec<PathBuf> {
+        let mut bookmark_dirs = vec![];
+
+        for browser_dir in browser_dirs {
+            let bookmark_dir = browser_dir.join("Default");
+
+            if bookmark_dir.is_dir() {
+                bookmark_dirs.push(bookmark_dir);
+            }
+
+            // Sane people will have less than 100 profiles.
+            for i in 1..=100 {
+                let bookmark_dir = browser_dir.join(format!("Profile {i}"));
+
+                if bookmark_dir.is_dir() {
+                    bookmark_dirs.push(bookmark_dir);
+                }
+            }
+        }
+
+        bookmark_dirs
     }
 }
 
-impl SelectSource for ChromeSelector {
+impl SelectSource for ChromiumSelector {
     fn name(&self) -> SourceType {
         SourceType::Chromium
+    }
+
+    fn source_os(&self) -> super::SourceOs {
+        SourceOs::Linux
     }
 
     fn extension(&self) -> Option<&str> {
         Some("json")
     }
 
-    // TODO: Implement find dir for snap package
     fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
-        let mut bookmark_dirs = vec![];
+        let browser_dirs = [
+            // snap package
+            home_dir.join("snap/chromium/common/chromium"),
+        ];
 
-        let chrome_dir = home_dir.join(".config/google-chrome");
-        let bookmark_dir = chrome_dir.join("Default");
-
-        if bookmark_dir.is_dir() {
-            bookmark_dirs.push(bookmark_dir)
-        }
-
-        // Sane people will have less than 100 profiles in Chrome.
-        for i in 1..=100 {
-            let bookmark_dir = chrome_dir.join(format!("Profile {i}"));
-
-            if bookmark_dir.is_dir() {
-                bookmark_dirs.push(bookmark_dir)
-            }
-        }
+        let bookmark_dirs = ChromiumSelector::find_profile_dirs(&browser_dirs);
 
         Ok(bookmark_dirs)
     }
@@ -238,23 +253,17 @@ mod tests {
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        fs::create_dir_all(temp_path.join(".config/google-chrome/Default")).unwrap();
-        fs::create_dir_all(temp_path.join(".config/google-chrome/Profile 1")).unwrap();
+        fs::create_dir_all(temp_path.join("snap/chromium/common/chromium/Default")).unwrap();
+        fs::create_dir_all(temp_path.join("snap/chromium/common/chromium/Profile 1")).unwrap();
 
-        let selector = ChromeSelector;
+        let selector = ChromiumSelector;
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
         assert_eq!(bookmark_dirs.len(), 2);
-        assert_eq!(
-            bookmark_dirs[0],
-            temp_path.join(".config/google-chrome/Default")
-        );
-        assert_eq!(
-            bookmark_dirs[1],
-            temp_path.join(".config/google-chrome/Profile 1")
-        );
+        assert!(bookmark_dirs.contains(&temp_path.join("snap/chromium/common/chromium/Default")));
+        assert!(bookmark_dirs.contains(&temp_path.join("snap/chromium/common/chromium/Profile 1")));
     }
 
     #[test]
