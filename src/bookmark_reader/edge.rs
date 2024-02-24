@@ -67,6 +67,8 @@ mod tests {
         tests::create_test_dirs(temp_path);
 
         let selector = EdgeSelector;
+        assert_eq!(selector.name(), SourceType::Edge);
+
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 

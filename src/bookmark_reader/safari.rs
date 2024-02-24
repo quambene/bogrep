@@ -199,6 +199,8 @@ mod test {
         tests::create_test_dirs(temp_path);
 
         let selector = SafariSelector;
+        assert_eq!(selector.name(), SourceType::Safari);
+
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 

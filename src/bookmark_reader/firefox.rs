@@ -313,6 +313,8 @@ mod tests {
         file.flush().unwrap();
 
         let selector = FirefoxSelector;
+        assert_eq!(selector.name(), SourceType::Firefox);
+
         let res = selector.find_dir(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
