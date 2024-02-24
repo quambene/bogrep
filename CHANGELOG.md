@@ -4,6 +4,7 @@
 
 - added
 - changed
+  - Implement `bogrep config`
 - removed
 
 ### v0.7.0
