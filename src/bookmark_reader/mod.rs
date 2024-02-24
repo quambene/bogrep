@@ -34,7 +34,6 @@ pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 pub enum SourceOs {
     Linux,
     Macos,
-    Windows,
 }
 
 /// The parsed bookmarks from a bookmarks file.

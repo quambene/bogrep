@@ -1,10 +1,12 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
+    bookmarks::RawSource,
     json, utils, Config, SourceBookmarks, TargetBookmarks,
 };
+use anyhow::anyhow;
 use log::debug;
-use std::io::Write;
+use std::io::{self, Write};
 use url::Url;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
@@ -15,7 +17,31 @@ pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     let mut config = config;
 
     if config.settings.sources.is_empty() {
-        let sources = SourceReader::select_sources();
+        let home_dir = dirs::home_dir().ok_or(anyhow!("Missing home dir"))?;
+        let sources = SourceReader::select_sources(&home_dir)?;
+
+        log_sources(&sources);
+
+        println!("Select sources: yes (y) or no (n)");
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_lowercase();
+
+        if input == "n" {
+            println!("Aborting ...");
+            return Ok(());
+        } else if input == "y" {
+            println!(
+                "Selected sources: {}",
+                (1..=sources.len())
+                    .map(|num| num.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            );
+        } else {
+            println!("Aborting ...");
+            return Ok(());
+        }
 
         for source in sources {
             config.settings.sources.push(source);
@@ -79,6 +105,14 @@ fn import_source(
     utils::log_import(source_readers, &target_bookmarks);
 
     Ok(())
+}
+
+fn log_sources(sources: &[RawSource]) {
+    println!("Found sources:");
+
+    for (index, source) in sources.iter().enumerate() {
+        println!("{}: {}", index + 1, source.path.display());
+    }
 }
 
 #[cfg(test)]

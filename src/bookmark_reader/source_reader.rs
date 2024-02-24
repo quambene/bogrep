@@ -192,8 +192,21 @@ impl SourceReader {
         }
     }
 
-    pub fn select_sources() -> Vec<RawSource> {
-        todo!()
+    pub fn select_sources(home_dir: &Path) -> Result<Vec<RawSource>, anyhow::Error> {
+        let mut source_dirs = vec![];
+        let source_selectors = SourceSelectors::new();
+
+        for source_selector in source_selectors.0 {
+            let source_dirs_by_selector = source_selector.find_dir(home_dir)?;
+            source_dirs.extend(source_dirs_by_selector);
+        }
+
+        let raw_sources = source_dirs
+            .into_iter()
+            .map(|source_dir| RawSource::new(source_dir, vec![]))
+            .collect();
+
+        Ok(raw_sources)
     }
 
     /// Select the source file if a source directory is given.
