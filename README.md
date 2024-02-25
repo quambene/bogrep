@@ -21,11 +21,6 @@ bogrep -i "reed-solomon code"
   - [Search](#search)
 - [Getting help](#getting-help)
 - [Import bookmarks](#import-bookmarks)
-  - [Firefox](#firefox)
-  - [Chrome](#chrome)
-  - [Chromium](#chromium)
-  - [Edge](#edge)
-  - [Safari](#safari)
 - [Filter bookmark folders](#filter-bookmark-folders)
 - [Ignore URLs](#ignore-urls)
 - [Fetch underlying urls](#fetch-underlying-urls)
@@ -67,10 +62,7 @@ been run for the first time. The configuration path depends on your operating
 system (see [Supported operating systems](#supported-operating-systems)).
 
 ``` bash
-# Configure the path to the bookmarks file (e.g. of your browser)
-bogrep config --source "my/path/to/bookmarks_file.json"
-
-# Import bookmarks
+# Import bookmarks from selected sources
 bogrep import
 
 # Fetch and cache bookmarks
@@ -79,6 +71,8 @@ bogrep fetch
 # Search your bookmarks in full-text search
 bogrep <pattern>
 ```
+
+To simulate the import of bookmarks, use `bogrep import --dry-run`.
 
 ### Search
 
@@ -113,65 +107,19 @@ bogrep fetch --help
 
 ## Import bookmarks
 
-Currently, bookmarks in JSON format for Firefox, Chrome, Chromium, and Edge are
-supported as well as bookmarks in PLIST format for Safari. Bookmark files in HTML format are not supported yet.
+Import of bookmarks is supported from the following browsers:
 
-The path of bookmarks may be different for your operating system.
+- Firefox (in `.json` and `.jsonlz4` format)
+- Chromium (in `.json` format)
+- Chrome (in `.json` format)
+- Edge (in `.json` format)
+- Safari (in `.plist` format)
 
-### Firefox
-
-Configure Firefox as source for bookmarks, where `<my_profile>` is your Firefox profile:
-
-``` bash
-# Ubuntu (snap package)
-bogrep config --source ~/snap/firefox/common/.mozilla/firefox/<my_profile>/bookmarkbackups
-
-# Ubuntu (apt package)
-bogrep config --source ~/.mozilla/firefox/<my_profile>/bookmarkbackups
-
-# macOS
-bogrep config --source "~/Library/Application Support/Firefox/Profiles/<my_profile>/bookmarkbackups"
-```
-
-Directory `bookmarkbackups` contains multiple compressed backup files (in
-format `.jsonlz4`), and `bogrep` will choose the most recent bookmarks file.
-
-### Chrome
-
-Configure Chrome as source for bookmarks:
+If bookmark files are not detected by `bogrep import`, you can configure them
+manually using:
 
 ``` bash
-# Ubuntu
-bogrep config --source ~/.config/google-chrome/Default/Bookmarks
-
-# macOS
-bogrep config --source "~/Library/Application Support/Google/Chrome/Default/Bookmarks"
-```
-
-### Chromium
-
-Configure Chromium as source for bookmarks:
-
-``` bash
-# Ubuntu (snap package)
-bogrep config --source ~/snap/chromium/common/chromium/Default/Bookmarks
-```
-
-### Edge
-
-Configure Edge as source for bookmarks:
-
-``` bash
-# Ubuntu
-bogrep config --source ~/.config/microsoft-edge/Default/Bookmarks
-```
-
-### Safari
-
-Configure Safari as source for bookmarks:
-
-``` bash
-bogrep config --source ~/Library/Safari/Bookmarks.plist
+bogrep config --source ~/path/to/bookmarks/file
 ```
 
 ## Filter bookmark folders
