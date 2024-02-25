@@ -52,15 +52,14 @@ pub trait SelectSource {
 
     fn source_os(&self) -> SourceOs;
 
+    /// The extension of the bookmarks file.
     fn extension(&self) -> Option<&str>;
 
-    /// Find the bookmarks directory in the system's directories.
-    fn find_dir(&self, _home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
-        Ok(Vec::new())
-    }
+    /// Find the source files for a given browser and file format.
+    fn find_sources(&self, _home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error>;
 
     /// Select the bookmarks file if the source is given as a directory.
-    fn find_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+    fn find_source_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         Ok(None)
     }
 }

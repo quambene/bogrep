@@ -197,7 +197,7 @@ impl SourceReader {
         let source_selectors = SourceSelectors::new();
 
         for source_selector in source_selectors.0 {
-            let source_dirs_by_selector = source_selector.find_dir(home_dir)?;
+            let source_dirs_by_selector = source_selector.find_sources(home_dir)?;
             source_dirs.extend(source_dirs_by_selector);
         }
 
@@ -218,7 +218,7 @@ impl SourceReader {
             let source_selectors = SourceSelectors::new();
 
             for source_selector in source_selectors.0 {
-                if let Some(bookmarks_path) = source_selector.find_file(source_path)? {
+                if let Some(bookmarks_path) = source_selector.find_source_file(source_path)? {
                     let source_extension =
                         bookmarks_path.extension().and_then(|path| path.to_str());
 

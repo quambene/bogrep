@@ -1,6 +1,5 @@
 use super::{SelectSource, SourceOs};
 use crate::{bookmarks::SourceBookmarkBuilder, ReadBookmark, Source, SourceBookmarks, SourceType};
-use anyhow::anyhow;
 use log::{debug, trace};
 use plist::{Dictionary, Value};
 use std::path::{Path, PathBuf};
@@ -28,26 +27,22 @@ impl SelectSource for SafariSelector {
         Some("plist")
     }
 
-    fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let browser_dirs = [home_dir.join("Library/Safari")];
+        let bookmark_files = browser_dirs
+            .into_iter()
+            .filter_map(|bookmark_dir| {
+                let bookmark_file = bookmark_dir.join("Bookmarks.plist");
 
-        Ok(browser_dirs.to_vec())
-    }
+                if bookmark_file.is_file() {
+                    Some(bookmark_file)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
-    fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
-        let path_str = source_dir
-            .to_str()
-            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
-
-        if path_str.contains("Safari") {
-            let bookmark_path = source_dir.join("Bookmarks.plist");
-            Ok(Some(bookmark_path))
-        } else {
-            Err(anyhow!(
-                "Unexpected format for source directory: {}",
-                source_dir.display()
-            ))
-        }
+        Ok(bookmark_files.to_vec())
     }
 }
 
@@ -187,7 +182,7 @@ mod test {
         utils,
     };
     use assert_matches::assert_matches;
-    use std::{collections::HashMap, fs, path::PathBuf};
+    use std::{collections::HashMap, path::PathBuf};
     use tempfile::tempdir;
 
     #[test]
@@ -197,41 +192,20 @@ mod test {
     }
 
     #[test]
-    fn test_find_dir() {
+    fn test_find_sources() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        tests::create_test_dirs(temp_path);
+        tests::create_test_files(temp_path);
 
         let selector = SafariSelector;
-        let res = selector.find_dir(temp_path);
+        let res = selector.find_sources(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
         assert_eq!(bookmark_dirs.len(), 1);
-        assert!(bookmark_dirs.contains(&temp_path.join("Library/Safari")));
-    }
-
-    #[test]
-    fn test_find_file() {
-        let temp_dir = tempdir().unwrap();
-        let temp_path = temp_dir.path();
-        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
-
-        let bookmark_dir = temp_path.join("Library/Safari");
-        fs::create_dir_all(&bookmark_dir).unwrap();
-        utils::create_file(&bookmark_dir.join("Bookmarks.plist")).unwrap();
-
-        let selector = SafariSelector;
-        let res = selector.find_file(&bookmark_dir);
-        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
-
-        let bookmark_file = res.unwrap();
-        assert_eq!(
-            bookmark_file.unwrap(),
-            temp_path.join("Library/Safari/Bookmarks.plist")
-        );
+        assert!(bookmark_dirs.contains(&temp_path.join("Library/Safari/Bookmarks.plist")));
     }
 
     #[test]

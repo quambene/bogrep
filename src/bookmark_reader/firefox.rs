@@ -68,7 +68,7 @@ impl SelectSource for FirefoxSelector {
         Some("jsonlz4")
     }
 
-    fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut bookmark_dirs = vec![];
 
         let browser_dirs = [
@@ -103,7 +103,7 @@ impl SelectSource for FirefoxSelector {
         Ok(bookmark_dirs)
     }
 
-    fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+    fn find_source_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         let path_str = source_dir
             .to_str()
             .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
@@ -275,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_dir() {
+    fn test_find_sources() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -319,7 +319,7 @@ mod tests {
         file.flush().unwrap();
 
         let selector = FirefoxSelector;
-        let res = selector.find_dir(temp_path);
+        let res = selector.find_sources(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
@@ -333,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_file() {
+    fn test_find_source_file() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -345,7 +345,7 @@ mod tests {
         utils::create_file(&bookmark_dir.join("bookmarks2.jsonlz4")).unwrap();
 
         let selector = FirefoxSelector;
-        let res = selector.find_file(&bookmark_dir);
+        let res = selector.find_source_file(&bookmark_dir);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_file = res.unwrap();

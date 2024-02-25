@@ -1,6 +1,5 @@
 use super::{chromium::ChromiumSelector, SelectSource, SourceOs};
 use crate::SourceType;
-use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 
 pub struct EdgeSelector;
@@ -24,39 +23,33 @@ impl SelectSource for EdgeSelector {
         Some("json")
     }
 
-    fn find_dir(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let browser_dirs = [
             // apt package
             home_dir.join(".config/microsoft-edge"),
         ];
-
         let bookmark_dirs = ChromiumSelector::find_profile_dirs(&browser_dirs);
+        let bookmark_files = bookmark_dirs
+            .into_iter()
+            .filter_map(|bookmark_dir| {
+                let bookmark_file = bookmark_dir.join("Bookmarks");
 
-        Ok(bookmark_dirs)
-    }
+                if bookmark_file.is_file() {
+                    Some(bookmark_file)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
-    fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
-        let path_str = source_dir
-            .to_str()
-            .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
-
-        if path_str.contains("microsoft-edge") {
-            let bookmark_path = source_dir.join("Bookmarks");
-            Ok(Some(bookmark_path))
-        } else {
-            Err(anyhow!(
-                "Unexpected format for source directory: {}",
-                source_dir.display()
-            ))
-        }
+        Ok(bookmark_files)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_utils::tests, utils};
-    use std::fs;
+    use crate::test_utils::tests;
     use tempfile::tempdir;
 
     #[test]
@@ -66,43 +59,24 @@ mod tests {
     }
 
     #[test]
-    fn test_find_dir() {
+    fn test_find_sources() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        tests::create_test_dirs(temp_path);
+        tests::create_test_files(temp_path);
 
         let selector = EdgeSelector;
         assert_eq!(selector.name(), SourceType::Edge);
 
-        let res = selector.find_dir(temp_path);
+        let res = selector.find_sources(temp_path);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
         assert_eq!(bookmark_dirs.len(), 2);
-        assert!(bookmark_dirs.contains(&temp_path.join(".config/microsoft-edge/Default")));
-        assert!(bookmark_dirs.contains(&temp_path.join(".config/microsoft-edge/Profile 1")));
-    }
-
-    #[test]
-    fn test_find_file() {
-        let temp_dir = tempdir().unwrap();
-        let temp_path = temp_dir.path();
-        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
-
-        let bookmark_dir = temp_path.join(".config/microsoft-edge/Default");
-        fs::create_dir_all(&bookmark_dir).unwrap();
-        utils::create_file(&bookmark_dir.join("Bookmarks")).unwrap();
-
-        let selector = EdgeSelector;
-        let res = selector.find_file(&bookmark_dir);
-        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
-
-        let bookmark_file = res.unwrap();
-        assert_eq!(
-            bookmark_file.unwrap(),
-            temp_path.join(".config/microsoft-edge/Default/Bookmarks")
+        assert!(bookmark_dirs.contains(&temp_path.join(".config/microsoft-edge/Default/Bookmarks")));
+        assert!(
+            bookmark_dirs.contains(&temp_path.join(".config/microsoft-edge/Profile 1/Bookmarks"))
         );
     }
 }
