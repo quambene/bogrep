@@ -79,24 +79,28 @@ impl SelectSource for FirefoxSelector {
         ];
 
         for browser_dir in browser_dirs {
-            let profiles_file = utils::open_file(&browser_dir.join("profiles.ini"))?;
-            let buf_reader = BufReader::new(profiles_file);
-            let lines = buf_reader.lines();
+            let profiles_path = &browser_dir.join("profiles.ini");
 
-            let mut profiles = vec![];
+            if profiles_path.is_file() {
+                let profiles_file = utils::open_file(&browser_dir.join("profiles.ini"))?;
+                let buf_reader = BufReader::new(profiles_file);
+                let lines = buf_reader.lines();
 
-            for line in lines {
-                let line = line?;
+                let mut profiles = vec![];
 
-                if let Some(path_index) = line.find("Path=") {
-                    let profile = &line[(path_index + 5)..];
-                    profiles.push(profile.to_owned());
+                for line in lines {
+                    let line = line?;
+
+                    if let Some(path_index) = line.find("Path=") {
+                        let profile = &line[(path_index + 5)..];
+                        profiles.push(profile.to_owned());
+                    }
                 }
-            }
 
-            for profile in profiles {
-                let bookmark_dir = browser_dir.join(profile);
-                bookmark_dirs.push(bookmark_dir);
+                for profile in profiles {
+                    let bookmark_dir = browser_dir.join(profile).join("bookmarkbackups");
+                    bookmark_dirs.push(bookmark_dir);
+                }
             }
         }
 
@@ -275,6 +279,20 @@ mod tests {
     }
 
     #[test]
+    fn test_find_sources_empty() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let selector = FirefoxSelector;
+        let res = selector.find_sources(temp_path);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[test]
     fn test_find_sources() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
@@ -320,16 +338,24 @@ mod tests {
 
         let selector = FirefoxSelector;
         let res = selector.find_sources(temp_path);
-        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+        assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        let bookmark_dirs = res.unwrap();
-        assert_eq!(bookmark_dirs.len(), 4);
-        assert!(bookmark_dirs
-            .contains(&temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.username")));
-        assert!(bookmark_dirs
-            .contains(&temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default")));
-        assert!(bookmark_dirs.contains(&temp_path.join(".mozilla/firefox/profile2.username")));
-        assert!(bookmark_dirs.contains(&temp_path.join(".mozilla/firefox/profile2.username")));
+        let sources = res.unwrap();
+        assert_eq!(sources.len(), 4);
+        assert!(sources.contains(
+            &temp_path
+                .join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups")
+        ));
+        assert!(sources.contains(
+            &temp_path
+                .join("snap/firefox/common/.mozilla/firefox/profile1.username/bookmarkbackups")
+        ));
+        assert!(
+            sources.contains(&temp_path.join(".mozilla/firefox/profile2.default/bookmarkbackups"))
+        );
+        assert!(
+            sources.contains(&temp_path.join(".mozilla/firefox/profile2.username/bookmarkbackups"))
+        );
     }
 
     #[test]

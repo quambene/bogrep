@@ -344,6 +344,29 @@ mod tests {
     use super::*;
     use crate::test_utils;
     use std::path::Path;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_select_sources_empty() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let sources = SourceReader::select_sources(&temp_path).unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[test]
+    fn test_select_sources() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        test_utils::tests::create_test_files(temp_path);
+
+        let sources = SourceReader::select_sources(&temp_path).unwrap();
+        assert_eq!(sources.len(), 7);
+    }
 
     #[test]
     fn test_init_safari_binary() {

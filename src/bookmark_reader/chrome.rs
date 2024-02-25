@@ -59,6 +59,20 @@ mod tests {
     }
 
     #[test]
+    fn test_find_sources_empty() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let selector = ChromeSelector;
+        let res = selector.find_sources(temp_path);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[test]
     fn test_find_sources() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
