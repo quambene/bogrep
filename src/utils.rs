@@ -136,14 +136,14 @@ pub async fn create_file_async(path: &Path) -> Result<tokio::fs::File, BogrepErr
 /// Helper function to append a file that logs the path of the file in case of an error.
 pub fn append_file(path: &Path) -> Result<File, BogrepError> {
     debug!("Append file at {}", path.display());
-    let file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(path)
-        .map_err(|err| BogrepError::AppendFile {
-            path: path.to_string_lossy().to_string(),
-            err,
-        })?;
+    let file =
+        OpenOptions::new()
+            .append(true)
+            .open(path)
+            .map_err(|err| BogrepError::AppendFile {
+                path: path.to_string_lossy().to_string(),
+                err,
+            })?;
     Ok(file)
 }
 

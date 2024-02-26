@@ -76,6 +76,6 @@ pub mod tests {
         let safari_dir = home_dir.join("Library/Safari");
         fs::create_dir_all(&safari_dir).unwrap();
         let safari_file = safari_dir.join("Bookmarks.plist");
-        File::create(&safari_file).unwrap();
+        utils::create_file(&safari_file).unwrap();
     }
 }

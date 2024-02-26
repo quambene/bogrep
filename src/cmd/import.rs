@@ -96,7 +96,7 @@ fn import_source(
 }
 
 fn configure_sources(config: &mut Config, home_dir: &Path) -> Result<(), anyhow::Error> {
-    let sources = SourceReader::select_sources(&home_dir)?;
+    let sources = SourceReader::select_sources(home_dir)?;
 
     log_sources(&sources);
 
@@ -165,7 +165,7 @@ mod tests {
         let mut target_writer = Cursor::new(Vec::new());
         let ignored_urls = vec![];
         let mut source_readers = sources
-            .into_iter()
+            .iter()
             .map(|source| SourceReader::init(source).unwrap())
             .collect::<Vec<_>>();
 

@@ -353,7 +353,7 @@ mod tests {
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        let sources = SourceReader::select_sources(&temp_path).unwrap();
+        let sources = SourceReader::select_sources(temp_path).unwrap();
         assert!(sources.is_empty());
     }
 
@@ -365,7 +365,7 @@ mod tests {
 
         test_utils::tests::create_test_files(temp_path);
 
-        let sources = SourceReader::select_sources(&temp_path).unwrap();
+        let sources = SourceReader::select_sources(temp_path).unwrap();
         assert_eq!(sources.len(), 7);
     }
 
