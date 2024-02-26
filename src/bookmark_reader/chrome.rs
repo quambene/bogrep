@@ -1,5 +1,6 @@
 use super::{chromium::ChromiumSelector, SelectSource, SourceOs};
 use crate::SourceType;
+use log::debug;
 use std::path::{Path, PathBuf};
 
 pub struct ChromeSelector;
@@ -24,6 +25,7 @@ impl SelectSource for ChromeSelector {
     }
 
     fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        debug!("Find sources for {}", self.name());
         let browser_dirs = [
             // apt package
             home_dir.join(".config/google-chrome"),

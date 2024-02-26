@@ -55,6 +55,7 @@ impl SelectSource for ChromiumSelector {
     }
 
     fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        debug!("Find sources for {}", self.name());
         let browser_dirs = [
             // snap package
             home_dir.join("snap/chromium/common/chromium"),

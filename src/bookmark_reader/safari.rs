@@ -28,6 +28,7 @@ impl SelectSource for SafariSelector {
     }
 
     fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        debug!("Find sources for {}", self.name());
         let browser_dirs = [home_dir.join("Library/Safari")];
         let bookmark_files = browser_dirs
             .into_iter()

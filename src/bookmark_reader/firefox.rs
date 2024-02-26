@@ -69,6 +69,7 @@ impl SelectSource for FirefoxSelector {
     }
 
     fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        debug!("Find sources for {}", self.name());
         let mut bookmark_dirs = vec![];
 
         let browser_dirs = [
@@ -99,7 +100,14 @@ impl SelectSource for FirefoxSelector {
 
                 for profile in profiles {
                     let bookmark_dir = browser_dir.join(profile).join("bookmarkbackups");
-                    bookmark_dirs.push(bookmark_dir);
+
+                    if bookmark_dir.is_dir() {
+                        let mut entries = fs::read_dir(&bookmark_dir)?;
+
+                        if entries.next().is_some() {
+                            bookmark_dirs.push(bookmark_dir);
+                        }
+                    }
                 }
             }
         }
@@ -117,6 +125,11 @@ impl SelectSource for FirefoxSelector {
         if path_str.contains("firefox") || path_str.contains("Firefox") {
             // The Firefox bookmarks directory contains multiple bookmark files.
             let bookmark_path = Self::find_most_recent_file(source_dir)?;
+            debug!(
+                "Find source file {} for {}",
+                bookmark_path.display(),
+                self.name()
+            );
             Ok(Some(bookmark_path))
         } else {
             Err(anyhow!(
@@ -299,10 +312,19 @@ mod tests {
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
         let browser_dir = temp_path.join("snap/firefox/common/.mozilla/firefox");
-        fs::create_dir_all(browser_dir.join("profile.default")).unwrap();
-        fs::create_dir_all(browser_dir.join("profile.username")).unwrap();
-        let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
+        let profile_dir1 = browser_dir.join("profile1.default/bookmarkbackups");
+        let profile_dir2 = browser_dir.join("profile1.username/bookmarkbackups");
+        fs::create_dir_all(&profile_dir1).unwrap();
+        fs::create_dir_all(&profile_dir2).unwrap();
+        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
+        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
+        let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
         let content = r#"
+            [Profile2]
+            Name=bene
+            IsRelative=1
+            Path=profile3.username
+
             [Profile1]
             Name=bene
             IsRelative=1
@@ -318,8 +340,12 @@ mod tests {
         file.flush().unwrap();
 
         let browser_dir = temp_path.join(".mozilla/firefox");
-        fs::create_dir_all(browser_dir.join("profile.default")).unwrap();
-        fs::create_dir_all(browser_dir.join("profile.username")).unwrap();
+        let profile_dir1 = browser_dir.join("profile2.default/bookmarkbackups");
+        let profile_dir2 = browser_dir.join("profile2.username/bookmarkbackups");
+        fs::create_dir_all(&profile_dir1).unwrap();
+        fs::create_dir_all(&profile_dir2).unwrap();
+        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
+        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
         let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
         let content = r#"
             [Profile1]

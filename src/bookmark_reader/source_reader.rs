@@ -211,6 +211,7 @@ impl SourceReader {
 
     /// Select the source file if a source directory is given.
     pub fn init(raw_source: &RawSource) -> Result<Self, anyhow::Error> {
+        debug!("Init source: {raw_source:?}");
         let source_path = &raw_source.path;
         let source_folders = &raw_source.folders;
 
