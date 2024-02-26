@@ -26,9 +26,7 @@ pub fn create_binary_plist_file(binary_bookmark_path: &Path) -> Result<(), anyho
         let bookmark_file = utils::open_file(bookmark_path)?;
         let parsed_bookmarks = plist::Value::from_reader_xml(&bookmark_file)?;
 
-        let mut file = utils::create_file(binary_bookmark_path)?;
         plist::to_file_binary(binary_bookmark_path, &parsed_bookmarks)?;
-        file.flush().unwrap();
 
         assert!(binary_bookmark_path.exists());
     }
