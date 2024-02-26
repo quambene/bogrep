@@ -56,9 +56,16 @@ pub trait SelectSource {
     fn extension(&self) -> Option<&str>;
 
     /// Find the source files for a given browser and file format.
+    ///
+    /// `home_dir` is provided as e.g.
+    ///     /home/alice on Linux
+    ///     /Users/Alice on macOS
+    ///     C:\Users\Alice on Windows
     fn find_sources(&self, _home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error>;
 
     /// Select the bookmarks file if the source is given as a directory.
+    ///
+    /// `source_dir` is the directory which contains the bookmarks file.
     fn find_source_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         Ok(None)
     }
