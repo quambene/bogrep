@@ -26,9 +26,7 @@ pub fn create_binary_plist_file(binary_bookmark_path: &Path) -> Result<(), anyho
         let bookmark_file = utils::open_file(bookmark_path)?;
         let parsed_bookmarks = plist::Value::from_reader_xml(&bookmark_file)?;
 
-        let mut file = utils::create_file(binary_bookmark_path)?;
         plist::to_file_binary(binary_bookmark_path, &parsed_bookmarks)?;
-        file.flush().unwrap();
 
         assert!(binary_bookmark_path.exists());
     }
@@ -46,4 +44,36 @@ pub fn compress_bookmarks(decompressed_bookmarks: &[u8]) -> Vec<u8> {
     compressed_data_with_header.extend_from_slice(&compressed_data);
 
     compressed_data_with_header
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use std::fs::{self, File};
+
+    pub fn create_test_files(home_dir: &Path) {
+        let chromium_dir = home_dir.join("snap/chromium/common/chromium");
+        let chrome_dir = home_dir.join(".config/google-chrome");
+        let edge_dir = home_dir.join(".config/microsoft-edge");
+
+        let browser_dirs = [chromium_dir, chrome_dir, edge_dir];
+
+        for browser_dir in browser_dirs {
+            let default_profile_dir = browser_dir.join("Default");
+            let profile_dir = browser_dir.join("Profile 1");
+
+            fs::create_dir_all(&default_profile_dir).unwrap();
+            fs::create_dir_all(&profile_dir).unwrap();
+
+            let default_profile_file = default_profile_dir.join("Bookmarks");
+            let profile_file = profile_dir.join("Bookmarks");
+            File::create(&default_profile_file).unwrap();
+            File::create(&profile_file).unwrap();
+        }
+
+        let safari_dir = home_dir.join("Library/Safari");
+        fs::create_dir_all(&safari_dir).unwrap();
+        let safari_file = safari_dir.join("Bookmarks.plist");
+        utils::create_file(&safari_file).unwrap();
+    }
 }

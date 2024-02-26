@@ -1,4 +1,6 @@
+mod chrome;
 mod chromium;
+mod edge;
 mod firefox;
 mod safari;
 mod simple;
@@ -27,6 +29,13 @@ pub use target_writer::WriteTarget;
 pub type SourceSelector = Box<dyn SelectSource>;
 pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 
+/// The supported operating system.
+#[non_exhaustive]
+pub enum SourceOs {
+    Linux,
+    Macos,
+}
+
 /// The parsed bookmarks from a bookmarks file.
 #[derive(Debug)]
 pub enum ParsedBookmarks<'a> {
@@ -36,20 +45,21 @@ pub enum ParsedBookmarks<'a> {
     Text(Lines<BufReader<&'a mut dyn SeekRead>>),
 }
 
-/// A trait to find the bookmarks directory in the system's directories, and/or the
-/// bookmarks file within a given directory.
+/// A trait to find the bookmarks directory in the system's directories, and/or
+/// the bookmarks file within a given directory.
 pub trait SelectSource {
     fn name(&self) -> SourceType;
 
+    fn source_os(&self) -> SourceOs;
+
+    /// The extension of the bookmarks file.
     fn extension(&self) -> Option<&str>;
 
-    /// Find the bookmarks directory in the system's directories.
-    fn find_dir(&self) -> Result<Option<PathBuf>, anyhow::Error> {
-        Ok(None)
-    }
+    /// Find the source files for a given browser and file format.
+    fn find_sources(&self, _home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error>;
 
     /// Select the bookmarks file if the source is given as a directory.
-    fn find_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+    fn find_source_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         Ok(None)
     }
 }

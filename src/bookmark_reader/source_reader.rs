@@ -1,7 +1,12 @@
 use super::{
-    chromium::JsonBookmarkReader, firefox::FirefoxSelector, safari::PlistBookmarkReader,
-    simple::TextBookmarkReader, BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks,
-    ReadSource, SafariReader, SeekRead, SimpleReader, SourceSelector,
+    chrome::ChromeSelector,
+    chromium::{ChromiumSelector, JsonBookmarkReader},
+    edge::EdgeSelector,
+    firefox::FirefoxSelector,
+    safari::{PlistBookmarkReader, SafariSelector},
+    simple::TextBookmarkReader,
+    BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks, ReadSource, SafariReader,
+    SeekRead, SimpleReader, SourceSelector,
 };
 use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
@@ -11,6 +16,20 @@ use std::{
     io::{BufRead, BufReader, Cursor},
     path::Path,
 };
+
+pub struct SourceSelectors([SourceSelector; 5]);
+
+impl SourceSelectors {
+    pub fn new() -> Self {
+        Self([
+            FirefoxSelector::new(),
+            ChromiumSelector::new(),
+            ChromeSelector::new(),
+            EdgeSelector::new(),
+            SafariSelector::new(),
+        ])
+    }
+}
 
 /// Reader for txt files.
 pub struct TextReader;
@@ -173,16 +192,34 @@ impl SourceReader {
         }
     }
 
+    pub fn select_sources(home_dir: &Path) -> Result<Vec<RawSource>, anyhow::Error> {
+        let mut source_dirs = vec![];
+        let source_selectors = SourceSelectors::new();
+
+        for source_selector in source_selectors.0 {
+            let source_dirs_by_selector = source_selector.find_sources(home_dir)?;
+            source_dirs.extend(source_dirs_by_selector);
+        }
+
+        let raw_sources = source_dirs
+            .into_iter()
+            .map(|source_dir| RawSource::new(source_dir, vec![]))
+            .collect();
+
+        Ok(raw_sources)
+    }
+
     /// Select the source file if a source directory is given.
     pub fn init(raw_source: &RawSource) -> Result<Self, anyhow::Error> {
+        debug!("Init source: {raw_source:?}");
         let source_path = &raw_source.path;
         let source_folders = &raw_source.folders;
 
         if source_path.is_dir() {
-            let source_selectors: Vec<SourceSelector> = vec![FirefoxSelector::new()];
+            let source_selectors = SourceSelectors::new();
 
-            for source_selector in source_selectors {
-                if let Some(bookmarks_path) = source_selector.find_file(source_path)? {
+            for source_selector in source_selectors.0 {
+                if let Some(bookmarks_path) = source_selector.find_source_file(source_path)? {
                     let source_extension =
                         bookmarks_path.extension().and_then(|path| path.to_str());
 
@@ -308,6 +345,29 @@ mod tests {
     use super::*;
     use crate::test_utils;
     use std::path::Path;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_select_sources_empty() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let sources = SourceReader::select_sources(temp_path).unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[test]
+    fn test_select_sources() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        test_utils::tests::create_test_files(temp_path);
+
+        let sources = SourceReader::select_sources(temp_path).unwrap();
+        assert_eq!(sources.len(), 7);
+    }
 
     #[test]
     fn test_init_safari_binary() {

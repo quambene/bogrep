@@ -3,7 +3,7 @@ use crate::{
     ConfigArgs, Settings,
 };
 use anyhow::Context;
-use log::debug;
+use log::{debug, warn};
 use std::{fs, io::Write};
 
 /// Configure the source files to import the bookmarks, the cache mode, or the
@@ -55,11 +55,15 @@ fn configure_settings(
     settings.set_cache_mode(cache_mode);
 
     for ignored_url in ignored_urls {
-        settings.add_ignored_url(ignored_url)?;
+        if let Err(err) = settings.add_ignored_url(ignored_url) {
+            warn!("{err}");
+        }
     }
 
     for underlying_url in underlying_urls {
-        settings.add_underlying_url(underlying_url)?;
+        if let Err(err) = settings.add_underlying_url(underlying_url) {
+            warn!("{err}");
+        };
     }
 
     let settings_json = json::serialize(settings)?;
@@ -186,5 +190,36 @@ mod tests {
     "idle_connections_timeout": 5000
 }"#;
         assert_eq!(actual_settings, expected_settings);
+    }
+
+    #[test]
+    fn test_configure_urls_twice() {
+        let mut cursor = Cursor::new(Vec::new());
+        let mut settings = Settings::default();
+        let ignored_urls = vec![
+            "https://url1.com".to_string(),
+            "https://url2.com".to_string(),
+        ];
+        let underlying_urls = vec!["https://news.ycombinator.com".to_string()];
+
+        let res = configure_settings(
+            &mut settings,
+            None,
+            None,
+            &ignored_urls,
+            &underlying_urls,
+            &mut cursor,
+        );
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let res = configure_settings(
+            &mut settings,
+            None,
+            None,
+            &ignored_urls,
+            &underlying_urls,
+            &mut cursor,
+        );
+        assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 }

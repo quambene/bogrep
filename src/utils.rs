@@ -136,14 +136,14 @@ pub async fn create_file_async(path: &Path) -> Result<tokio::fs::File, BogrepErr
 /// Helper function to append a file that logs the path of the file in case of an error.
 pub fn append_file(path: &Path) -> Result<File, BogrepError> {
     debug!("Append file at {}", path.display());
-    let file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(path)
-        .map_err(|err| BogrepError::AppendFile {
-            path: path.to_string_lossy().to_string(),
-            err,
-        })?;
+    let file =
+        OpenOptions::new()
+            .append(true)
+            .open(path)
+            .map_err(|err| BogrepError::AppendFile {
+                path: path.to_string_lossy().to_string(),
+                err,
+            })?;
     Ok(file)
 }
 
@@ -197,6 +197,20 @@ pub fn log_import(source_reader: &[SourceReader], target_bookmarks: &TargetBookm
     } else {
         "sources"
     };
+
+    if source_reader.is_empty() {
+        println!(
+            "Imported {} bookmarks from {} {source}",
+            target_bookmarks
+                .values()
+                .filter(|bookmark| bookmark.action == Action::FetchAndReplace
+                    || bookmark.action == Action::FetchAndAdd)
+                .collect::<Vec<_>>()
+                .len(),
+            source_reader.len()
+        );
+        return;
+    }
 
     println!(
         "Imported {} bookmarks from {} {source}: {}",

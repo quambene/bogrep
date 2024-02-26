@@ -1,10 +1,11 @@
-use super::{ReadBookmark, SelectSource};
-use crate::{bookmarks::SourceBookmarkBuilder, Source, SourceBookmarks, SourceType};
+use super::{ReadBookmark, SelectSource, SourceOs};
+use crate::{bookmarks::SourceBookmarkBuilder, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
 use std::{
     fs::{self, DirEntry},
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
     time::SystemTime,
 };
@@ -59,11 +60,62 @@ impl SelectSource for FirefoxSelector {
         SourceType::Firefox
     }
 
+    fn source_os(&self) -> SourceOs {
+        SourceOs::Linux
+    }
+
     fn extension(&self) -> Option<&str> {
         Some("jsonlz4")
     }
 
-    fn find_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        debug!("Find sources for {}", self.name());
+        let mut bookmark_dirs = vec![];
+
+        let browser_dirs = [
+            // apt package
+            home_dir.join(".mozilla/firefox"),
+            // snap package
+            home_dir.join("snap/firefox/common/.mozilla/firefox"),
+        ];
+
+        for browser_dir in browser_dirs {
+            let profiles_path = &browser_dir.join("profiles.ini");
+
+            if profiles_path.is_file() {
+                let profiles_file = utils::open_file(&browser_dir.join("profiles.ini"))?;
+                let buf_reader = BufReader::new(profiles_file);
+                let lines = buf_reader.lines();
+
+                let mut profiles = vec![];
+
+                for line in lines {
+                    let line = line?;
+
+                    if let Some(path_index) = line.find("Path=") {
+                        let profile = &line[(path_index + 5)..];
+                        profiles.push(profile.to_owned());
+                    }
+                }
+
+                for profile in profiles {
+                    let bookmark_dir = browser_dir.join(profile).join("bookmarkbackups");
+
+                    if bookmark_dir.is_dir() {
+                        let mut entries = fs::read_dir(&bookmark_dir)?;
+
+                        if entries.next().is_some() {
+                            bookmark_dirs.push(bookmark_dir);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(bookmark_dirs)
+    }
+
+    fn find_source_file(&self, source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         let path_str = source_dir
             .to_str()
             .ok_or(anyhow!("Invalid path: source path contains invalid UTF-8"))?;
@@ -73,6 +125,11 @@ impl SelectSource for FirefoxSelector {
         if path_str.contains("firefox") || path_str.contains("Firefox") {
             // The Firefox bookmarks directory contains multiple bookmark files.
             let bookmark_path = Self::find_most_recent_file(source_dir)?;
+            debug!(
+                "Find source file {} for {}",
+                bookmark_path.display(),
+                self.name()
+            );
             Ok(Some(bookmark_path))
         } else {
             Err(anyhow!(
@@ -225,7 +282,131 @@ mod tests {
         test_utils, utils,
     };
     use assert_matches::assert_matches;
-    use std::collections::HashMap;
+    use std::{collections::HashMap, fs::File, io::Write};
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_selector_name() {
+        let selector = FirefoxSelector;
+        assert_eq!(selector.name(), SourceType::Firefox);
+    }
+
+    #[test]
+    fn test_find_sources_empty() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let selector = FirefoxSelector;
+        let res = selector.find_sources(temp_path);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[test]
+    fn test_find_sources() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let browser_dir = temp_path.join("snap/firefox/common/.mozilla/firefox");
+        let profile_dir1 = browser_dir.join("profile1.default/bookmarkbackups");
+        let profile_dir2 = browser_dir.join("profile1.username/bookmarkbackups");
+        fs::create_dir_all(&profile_dir1).unwrap();
+        fs::create_dir_all(&profile_dir2).unwrap();
+        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
+        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
+        let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
+        let content = r#"
+            [Profile2]
+            Name=bene
+            IsRelative=1
+            Path=profile3.username
+
+            [Profile1]
+            Name=bene
+            IsRelative=1
+            Path=profile1.username
+            Default=1
+            
+            [Profile0]
+            Name=default
+            IsRelative=1
+            Path=profile1.default
+        "#;
+        file.write_all(content.as_bytes()).unwrap();
+        file.flush().unwrap();
+
+        let browser_dir = temp_path.join(".mozilla/firefox");
+        let profile_dir1 = browser_dir.join("profile2.default/bookmarkbackups");
+        let profile_dir2 = browser_dir.join("profile2.username/bookmarkbackups");
+        fs::create_dir_all(&profile_dir1).unwrap();
+        fs::create_dir_all(&profile_dir2).unwrap();
+        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
+        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
+        let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
+        let content = r#"
+            [Profile1]
+            Name=bene
+            IsRelative=1
+            Path=profile2.username
+            Default=1
+            
+            [Profile0]
+            Name=default
+            IsRelative=1
+            Path=profile2.default
+        "#;
+        file.write_all(content.as_bytes()).unwrap();
+        file.flush().unwrap();
+
+        let selector = FirefoxSelector;
+        let res = selector.find_sources(temp_path);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let sources = res.unwrap();
+        assert_eq!(sources.len(), 4);
+        assert!(sources.contains(
+            &temp_path
+                .join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups")
+        ));
+        assert!(sources.contains(
+            &temp_path
+                .join("snap/firefox/common/.mozilla/firefox/profile1.username/bookmarkbackups")
+        ));
+        assert!(
+            sources.contains(&temp_path.join(".mozilla/firefox/profile2.default/bookmarkbackups"))
+        );
+        assert!(
+            sources.contains(&temp_path.join(".mozilla/firefox/profile2.username/bookmarkbackups"))
+        );
+    }
+
+    #[test]
+    fn test_find_source_file() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let bookmark_dir =
+            temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups");
+        fs::create_dir_all(&bookmark_dir).unwrap();
+        utils::create_file(&bookmark_dir.join("bookmarks1.jsonlz4")).unwrap();
+        utils::create_file(&bookmark_dir.join("bookmarks2.jsonlz4")).unwrap();
+
+        let selector = FirefoxSelector;
+        let res = selector.find_source_file(&bookmark_dir);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_file = res.unwrap();
+        assert_eq!(
+            bookmark_file.unwrap(),
+            // We are expecting the file which was created more recently.
+            temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups/bookmarks2.jsonlz4")
+        );
+    }
 
     #[test]
     fn test_read_and_parse() {

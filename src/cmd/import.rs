@@ -1,15 +1,38 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
-    utils, Config, SourceBookmarks, TargetBookmarks,
+    bookmarks::RawSource,
+    json, utils, Config, SourceBookmarks, TargetBookmarks,
 };
+use anyhow::anyhow;
 use log::debug;
+use std::{
+    io::{self, Write},
+    path::Path,
+};
 use url::Url;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
-pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
+pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
+
+    let mut config = config;
+    let home_dir = dirs::home_dir().ok_or(anyhow!("Missing home dir"))?;
+
+    if args.dry_run {
+        println!("Running in dry mode ...")
+    }
+
+    if config.settings.sources.is_empty() {
+        configure_sources(&mut config, &home_dir)?;
+
+        if !args.dry_run {
+            let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
+            let settings_json = json::serialize(config.settings.clone())?;
+            settings_file.write_all(&settings_json)?;
+        }
+    }
 
     let mut source_readers = config
         .settings
@@ -33,6 +56,7 @@ pub fn import(config: &Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         &mut target_reader_writer.reader(),
         &mut target_reader_writer.writer(),
         &ignored_urls,
+        args.dry_run,
     )?;
 
     target_reader_writer.close()?;
@@ -45,6 +69,7 @@ fn import_source(
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
     ignored_urls: &[Url],
+    dry_run: bool,
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
@@ -59,11 +84,56 @@ fn import_source(
     target_bookmarks.ignore_urls(ignored_urls);
     target_bookmarks.clean_up();
 
-    target_writer.write(&target_bookmarks)?;
+    if !dry_run {
+        target_writer.write(&target_bookmarks)?;
+    } else {
+        target_writer.write(&TargetBookmarks::default())?;
+    }
 
     utils::log_import(source_readers, &target_bookmarks);
 
     Ok(())
+}
+
+fn configure_sources(config: &mut Config, home_dir: &Path) -> Result<(), anyhow::Error> {
+    let sources = SourceReader::select_sources(home_dir)?;
+
+    log_sources(&sources);
+
+    println!("Select sources: yes (y) or no (n)");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim().to_lowercase();
+
+    if input == "n" {
+        println!("Aborting ...");
+        return Ok(());
+    } else if input == "y" {
+        println!(
+            "Selected sources: {}",
+            (1..=sources.len())
+                .map(|num| num.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
+    } else {
+        println!("Aborting ...");
+        return Ok(());
+    }
+
+    for source in sources {
+        config.settings.sources.push(source);
+    }
+
+    Ok(())
+}
+
+fn log_sources(sources: &[RawSource]) {
+    println!("Found sources:");
+
+    for (index, source) in sources.iter().enumerate() {
+        println!("{}: {}", index + 1, source.path.display());
+    }
 }
 
 #[cfg(test)]
@@ -80,7 +150,11 @@ mod tests {
         path::Path,
     };
 
-    fn test_import_source(source: &RawSource, expected_bookmarks: HashSet<String>) {
+    fn test_import_source(
+        sources: &[RawSource],
+        expected_bookmarks: HashSet<String>,
+        dry_run: bool,
+    ) {
         let bookmarks_json = JsonBookmarks::default();
         let buf = json::serialize(&bookmarks_json).unwrap();
 
@@ -90,13 +164,17 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
         let ignored_urls = vec![];
+        let mut source_readers = sources
+            .iter()
+            .map(|source| SourceReader::init(source).unwrap())
+            .collect::<Vec<_>>();
 
-        let source_reader = SourceReader::init(source).unwrap();
         let res = import_source(
-            &mut [source_reader],
+            &mut source_readers,
             &mut target_reader,
             &mut target_writer,
             &ignored_urls,
+            dry_run,
         );
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
@@ -133,12 +211,14 @@ mod tests {
             source_reader,
         );
         let ignored_urls = vec![];
+        let dry_run = false;
 
         let res = import_source(
             &mut [source_reader],
             target_reader,
             target_writer,
             &ignored_urls,
+            dry_run,
         );
 
         let actual = target_writer.get_ref();
@@ -166,6 +246,21 @@ mod tests {
     }
 
     #[test]
+    fn test_import_source_empty() {
+        let source_path = Path::new("test_data/bookmarks_firefox.json");
+        let source_folders = vec![];
+        let source = RawSource::new(source_path, source_folders);
+        let expected_bookmarks = HashSet::from_iter([
+            String::from("https://www.mozilla.org/en-US/firefox/central/"),
+            String::from("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/"),
+            String::from("https://en.wikipedia.org/wiki/Design_Patterns"),
+            String::from("https://doc.rust-lang.org/book/title-page.html")
+        ]);
+
+        test_import_source(&[source], expected_bookmarks, false);
+    }
+
+    #[test]
     fn test_import_source_firefox() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
@@ -177,7 +272,7 @@ mod tests {
             String::from("https://doc.rust-lang.org/book/title-page.html")
         ]);
 
-        test_import_source(&source, expected_bookmarks);
+        test_import_source(&[source], expected_bookmarks, false);
     }
 
     #[test]
@@ -193,7 +288,7 @@ mod tests {
         ]);
         test_utils::create_compressed_json_file(source_path).unwrap();
 
-        test_import_source(&source, expected_bookmarks);
+        test_import_source(&[source], expected_bookmarks, false);
     }
 
     #[test]
@@ -208,7 +303,7 @@ mod tests {
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
 
-        test_import_source(&source, expected_bookmarks);
+        test_import_source(&[source], expected_bookmarks, false);
     }
 
     #[test]
@@ -223,7 +318,7 @@ mod tests {
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
 
-        test_import_source(&source, expected_bookmarks);
+        test_import_source(&[source], expected_bookmarks, false);
     }
 
     #[test]
@@ -238,7 +333,17 @@ mod tests {
             "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
             "https://doc.rust-lang.org/book/title-page.html".to_owned(),
         ]);
-        test_import_source(&source, expected_bookmarks);
+        test_import_source(&[source], expected_bookmarks, false);
+    }
+
+    #[test]
+    fn test_import_source_simple_dry_run() {
+        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let source_folders = vec![];
+        let source = RawSource::new(source_path, source_folders);
+        // We are expecting no bookmarks in a dry run.
+        let expected_bookmarks = HashSet::new();
+        test_import_source(&[source], expected_bookmarks, true);
     }
 
     #[test]

@@ -3,7 +3,12 @@
 ### Unreleased
 
 - added
+  - Implement dry mode for import: `bogrep import --dry-run`
 - changed
+  - Select sources for `bogrep import` if no sources are configured
+  - Update rust toolchain to 1.76
+  - Fix `settings.json` for `bogrep config --ignore` and `bogrep config --underlying` if run
+    multiple times
 - removed
 
 ### v0.7.0

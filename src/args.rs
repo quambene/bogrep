@@ -97,7 +97,11 @@ pub struct SetUnderlyingUrls {
 
 /// Describes the arguments for the `import` subcommand.
 #[derive(ClapArgs, Debug)]
-pub struct ImportArgs;
+pub struct ImportArgs {
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
+}
 
 /// Describes the arguments for the `fetch` subcommand.
 #[derive(ClapArgs, Debug)]

@@ -1,4 +1,4 @@
-use super::ReadBookmark;
+use super::{ReadBookmark, SelectSource, SourceOs};
 use crate::{
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
@@ -6,9 +6,77 @@ use crate::{
 use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub type JsonBookmarkReader<'a> = Box<dyn ReadBookmark<'a, ParsedValue = serde_json::Value>>;
+
+pub struct ChromiumSelector;
+
+impl ChromiumSelector {
+    pub fn new() -> Box<Self> {
+        Box::new(ChromiumSelector)
+    }
+
+    pub fn find_profile_dirs(browser_dirs: &[PathBuf]) -> Vec<PathBuf> {
+        let mut bookmark_dirs = vec![];
+
+        for browser_dir in browser_dirs {
+            let bookmark_dir = browser_dir.join("Default");
+
+            if bookmark_dir.is_dir() {
+                bookmark_dirs.push(bookmark_dir);
+            }
+
+            // Sane people will have less than 100 profiles.
+            for i in 1..=100 {
+                let bookmark_dir = browser_dir.join(format!("Profile {i}"));
+
+                if bookmark_dir.is_dir() {
+                    bookmark_dirs.push(bookmark_dir);
+                }
+            }
+        }
+
+        bookmark_dirs
+    }
+}
+
+impl SelectSource for ChromiumSelector {
+    fn name(&self) -> SourceType {
+        SourceType::Chromium
+    }
+
+    fn source_os(&self) -> super::SourceOs {
+        SourceOs::Linux
+    }
+
+    fn extension(&self) -> Option<&str> {
+        Some("json")
+    }
+
+    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        debug!("Find sources for {}", self.name());
+        let browser_dirs = [
+            // snap package
+            home_dir.join("snap/chromium/common/chromium"),
+        ];
+        let bookmark_dirs = ChromiumSelector::find_profile_dirs(&browser_dirs);
+        let bookmark_files = bookmark_dirs
+            .into_iter()
+            .filter_map(|bookmark_dir| {
+                let bookmark_file = bookmark_dir.join("Bookmarks");
+
+                if bookmark_file.is_file() {
+                    Some(bookmark_file)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok(bookmark_files)
+    }
+}
 
 /// A bookmark reader to read bookmarks in JSON format from Chromium or Chrome.
 #[derive(Debug)]
@@ -165,6 +233,7 @@ mod tests {
             source_reader::{JsonReader, JsonReaderNoExtension},
             ParsedBookmarks, ReadSource, SourceReader,
         },
+        test_utils::tests,
         utils,
     };
     use assert_matches::assert_matches;
@@ -172,6 +241,47 @@ mod tests {
         collections::HashMap,
         path::{Path, PathBuf},
     };
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_selector_name() {
+        let selector = ChromiumSelector;
+        assert_eq!(selector.name(), SourceType::Chromium);
+    }
+
+    #[test]
+    fn test_find_sources_empty() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let selector = ChromiumSelector;
+        let res = selector.find_sources(temp_path);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[test]
+    fn test_find_sources() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_files(temp_path);
+
+        let selector = ChromiumSelector;
+        let res = selector.find_sources(temp_path);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert_eq!(bookmark_dirs.len(), 2);
+        assert!(bookmark_dirs
+            .contains(&temp_path.join("snap/chromium/common/chromium/Default/Bookmarks")));
+        assert!(bookmark_dirs
+            .contains(&temp_path.join("snap/chromium/common/chromium/Profile 1/Bookmarks")));
+    }
 
     #[test]
     fn test_read_and_parse() {
