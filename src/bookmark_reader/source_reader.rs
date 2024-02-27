@@ -350,6 +350,7 @@ mod tests {
     use std::path::Path;
     use tempfile::tempdir;
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_select_sources_linux() {
         let source_os = SourceOs::Linux;
@@ -363,6 +364,7 @@ mod tests {
         assert_eq!(sources.len(), 10);
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_select_sources_macos() {
         let source_os = SourceOs::Macos;
@@ -376,6 +378,7 @@ mod tests {
         assert_eq!(sources.len(), 1);
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn test_select_sources_windows() {
         let source_os = SourceOs::Windows;

@@ -221,6 +221,7 @@ mod test {
         assert!(sources.is_empty());
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_sources_macos() {
         let source_os = SourceOs::Macos;
@@ -239,6 +240,7 @@ mod test {
         assert!(bookmark_dirs.contains(&temp_path.join("Library/Safari/Bookmarks.plist")));
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_sources_linux() {
         let source_os = SourceOs::Linux;
@@ -256,6 +258,7 @@ mod test {
         assert!(bookmark_dirs.is_empty());
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn test_find_sources_windows() {
         let source_os = SourceOs::Windows;

@@ -319,6 +319,7 @@ mod tests {
         assert!(sources.is_empty());
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_sources_linux() {
         let source_os = SourceOs::Linux;
@@ -350,6 +351,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_sources_macos() {
         let source_os = SourceOs::Macos;
@@ -367,6 +369,7 @@ mod tests {
         assert!(sources.is_empty());
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn test_find_sources_windows() {
         let source_os = SourceOs::Windows;

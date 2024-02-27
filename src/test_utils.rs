@@ -76,7 +76,7 @@ pub mod tests {
     }
 
     fn create_chrome_dirs_windows(home_dir: &Path) {
-        let browser_dir = home_dir.join("AppData/Local/Google/Chrome/User Data");
+        let browser_dir = home_dir.join("AppData\\Local\\Google\\Chrome\\User Data");
         create_browser_dirs(&browser_dir);
     }
 
@@ -86,7 +86,7 @@ pub mod tests {
     }
 
     fn create_edge_dirs_windows(home_dir: &Path) {
-        let browser_dir = home_dir.join("AppData/Local/Microsoft/Edge/User Data");
+        let browser_dir = home_dir.join("AppData\\Local\\Microsoft\\Edge\\User Data");
         create_browser_dirs(&browser_dir);
     }
 

@@ -32,7 +32,7 @@ impl SelectSource for ChromeSelector {
                 // apt package
                 home_dir.join(".config/google-chrome"),
             ],
-            SourceOs::Windows => vec![home_dir.join("AppData/Local/Google/Chrome/User Data")],
+            SourceOs::Windows => vec![home_dir.join("AppData\\Local\\Google\\Chrome\\User Data")],
             SourceOs::Macos => vec![],
         };
         let bookmark_dirs = ChromiumSelector::find_profile_dirs(&browser_dirs);
@@ -89,6 +89,7 @@ mod tests {
         assert!(sources.is_empty());
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_sources_linux() {
         let source_os = SourceOs::Linux;
@@ -110,6 +111,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_sources_macos() {
         let source_os = SourceOs::Macos;
@@ -127,6 +129,7 @@ mod tests {
         assert!(bookmark_dirs.is_empty());
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn test_find_sources_windows() {
         let source_os = SourceOs::Windows;
@@ -142,10 +145,11 @@ mod tests {
 
         let bookmark_dirs = res.unwrap();
         assert_eq!(bookmark_dirs.len(), 2);
-        assert!(bookmark_dirs
-            .contains(&temp_path.join("AppData/Local/Google/Chrome/User Data/Default/Bookmarks")));
         assert!(bookmark_dirs.contains(
-            &temp_path.join("AppData/Local/Google/Chrome/User Data/Profile 1/Bookmarks")
+            &temp_path.join("AppData\\Local\\Google\\Chrome\\User Data\\Default\\Bookmarks")
+        ));
+        assert!(bookmark_dirs.contains(
+            &temp_path.join("AppData\\Local\\Google\\Chrome\\User Data\\Profile 1\\Bookmarks")
         ));
     }
 }
