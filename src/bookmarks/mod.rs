@@ -311,7 +311,9 @@ impl ImportReport {
         let import_count = target_bookmarks
             .values()
             .filter(|bookmark| {
-                bookmark.action == Action::FetchAndReplace || bookmark.action == Action::FetchAndAdd
+                bookmark.action == Action::FetchAndReplace
+                    || bookmark.action == Action::FetchAndAdd
+                    || bookmark.action == Action::DryRun
             })
             .collect::<Vec<_>>()
             .len();
