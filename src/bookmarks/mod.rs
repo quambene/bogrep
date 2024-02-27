@@ -75,6 +75,8 @@ pub enum Action {
     Remove,
     /// No actions to be performed.
     None,
+    /// Skip fetching and caching.
+    DryRun,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -251,6 +253,7 @@ impl From<&TargetBookmarks> for JsonBookmarks {
     fn from(target_bookmarks: &TargetBookmarks) -> Self {
         let mut bookmarks = target_bookmarks
             .values()
+            .filter(|bookmark| bookmark.action != Action::DryRun)
             .map(JsonBookmark::from)
             .collect::<Vec<_>>();
         bookmarks.sort_by(Self::compare);
@@ -287,5 +290,93 @@ impl<'a> Iterator for JsonBookmarksIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.bookmarks_iter.next()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ProcessReport {
+    total: usize,
+    processed: i32,
+    cached: i32,
+    failed_response: i32,
+    binary_response: i32,
+    empty_response: i32,
+    dry_run: bool,
+}
+
+impl ProcessReport {
+    pub fn new(
+        total: usize,
+        processed: i32,
+        cached: i32,
+        failed_response: i32,
+        binary_response: i32,
+        empty_response: i32,
+        dry_run: bool,
+    ) -> Self {
+        Self {
+            total,
+            processed,
+            cached,
+            failed_response,
+            binary_response,
+            empty_response,
+            dry_run,
+        }
+    }
+
+    pub fn init(dry_run: bool) -> Self {
+        Self::new(0, 0, 0, 0, 0, 0, dry_run)
+    }
+
+    pub fn print_report(&self) {
+        print!("Processing bookmarks ({}/{})\r", self.processed, self.total);
+    }
+
+    pub fn print_summary(&self) {
+        if self.total == 0 {
+            println!("Processing bookmarks (0/0)");
+        } else {
+            println!();
+        }
+
+        if self.dry_run {
+            println!(
+                "Processed {} bookmarks, {} cached, {} ignored, {} failed (dry run)",
+                self.total, 0, 0, 0
+            );
+        } else {
+            println!(
+                "Processed {} bookmarks, {} cached, {} ignored, {} failed",
+                self.total,
+                self.cached,
+                self.failed_response,
+                self.binary_response + self.empty_response
+            );
+        }
+    }
+
+    pub fn set_total(&mut self, total: usize) {
+        self.total = total;
+    }
+
+    pub fn increment_processed(&mut self) {
+        self.processed += 1;
+    }
+
+    pub fn increment_cached(&mut self) {
+        self.cached += 1;
+    }
+
+    pub fn increment_failed_response(&mut self) {
+        self.failed_response += 1;
+    }
+
+    pub fn increment_binary_response(&mut self) {
+        self.binary_response += 1;
+    }
+
+    pub fn increment_empty_response(&mut self) {
+        self.empty_response += 1;
     }
 }

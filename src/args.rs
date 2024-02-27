@@ -128,6 +128,9 @@ pub struct FetchArgs {
     /// If an URL is missing in the bookmarks, it will be imported.
     #[arg(long, num_args = 0.., value_delimiter = ' ')]
     pub urls: Vec<String>,
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
 }
 
 /// Describes the arguments for the `init` subcommand.
@@ -136,6 +139,9 @@ pub struct InitArgs {
     /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
 }
 
 /// Describes the arguments for the `update` subcommand.
@@ -144,6 +150,9 @@ pub struct UpdateArgs {
     /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
 }
 
 /// Describes the arguments for the `clean` subcommand.

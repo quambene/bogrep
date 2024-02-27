@@ -1,6 +1,6 @@
 use crate::{
     bookmark_reader::{SourceReader, TargetReaderWriter},
-    bookmarks::BookmarkProcessor,
+    bookmarks::{BookmarkProcessor, ProcessReport},
     cache::CacheMode,
     utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
     TargetBookmarks,
@@ -11,6 +11,10 @@ use log::debug;
 /// cache if bookmarks were not imported yet.
 pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
+
+    if args.dry_run {
+        println!("Running in dry mode ...")
+    }
 
     let mut source_readers = config
         .settings
@@ -33,8 +37,14 @@ pub async fn init(config: &Config, args: &InitArgs) -> Result<(), anyhow::Error>
         let cache = Cache::new(&config.cache_path, cache_mode);
         let client = Client::new(config)?;
 
-        let target_bookmarks =
-            init_bookmarks(&client, &cache, source_readers.as_mut(), &config.settings).await?;
+        let target_bookmarks = init_bookmarks(
+            &client,
+            &cache,
+            source_readers.as_mut(),
+            &config.settings,
+            args.dry_run,
+        )
+        .await?;
         target_reader_writer.write(&target_bookmarks)?;
         target_reader_writer.close()?;
     }
@@ -47,6 +57,7 @@ async fn init_bookmarks(
     cache: &impl Caching,
     source_readers: &mut [SourceReader],
     settings: &Settings,
+    dry_run: bool,
 ) -> Result<TargetBookmarks, anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
@@ -60,8 +71,16 @@ async fn init_bookmarks(
 
     utils::log_import(source_readers, &target_bookmarks);
 
-    let bookmark_processor =
-        BookmarkProcessor::new(client.clone(), cache.clone(), settings.clone());
+    if dry_run {
+        target_bookmarks.set_action(&Action::DryRun);
+    }
+
+    let bookmark_processor = BookmarkProcessor::new(
+        client.clone(),
+        cache.clone(),
+        settings.clone(),
+        ProcessReport::init(dry_run),
+    );
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
@@ -106,7 +125,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = init_bookmarks(&client, &cache, &mut [source_reader], &settings).await;
+        let res = init_bookmarks(&client, &cache, &mut [source_reader], &settings, false).await;
         assert!(res.is_ok());
 
         let target_bookmarks = res.unwrap();
@@ -158,7 +177,7 @@ mod tests {
                 .unwrap();
         }
 
-        let res = init_bookmarks(&client, &cache, &mut [source_reader], &settings).await;
+        let res = init_bookmarks(&client, &cache, &mut [source_reader], &settings, false).await;
         assert!(res.is_ok());
 
         let target_bookmarks = res.unwrap();

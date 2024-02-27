@@ -2,7 +2,7 @@ use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
     bookmarks::RawSource,
-    json, utils, Config, SourceBookmarks, TargetBookmarks,
+    json, utils, Action, Config, SourceBookmarks, TargetBookmarks,
 };
 use anyhow::anyhow;
 use log::debug;
@@ -84,11 +84,11 @@ fn import_source(
     target_bookmarks.ignore_urls(ignored_urls);
     target_bookmarks.clean_up();
 
-    if !dry_run {
-        target_writer.write(&target_bookmarks)?;
-    } else {
-        target_writer.write(&TargetBookmarks::default())?;
+    if dry_run {
+        target_bookmarks.set_action(&Action::DryRun);
     }
+
+    target_writer.write(&target_bookmarks)?;
 
     utils::log_import(source_readers, &target_bookmarks);
 
