@@ -46,20 +46,25 @@ impl SelectSource for ChromiumSelector {
         SourceType::Chromium
     }
 
-    fn source_os(&self) -> super::SourceOs {
-        SourceOs::Linux
-    }
-
     fn extension(&self) -> Option<&str> {
         Some("json")
     }
 
-    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    fn find_sources(
+        &self,
+        home_dir: &Path,
+        source_os: &SourceOs,
+    ) -> Result<Vec<PathBuf>, anyhow::Error> {
         debug!("Find sources for {}", self.name());
-        let browser_dirs = [
-            // snap package
-            home_dir.join("snap/chromium/common/chromium"),
-        ];
+
+        let browser_dirs = match source_os {
+            SourceOs::Linux => vec![
+                // snap package
+                home_dir.join("snap/chromium/common/chromium"),
+            ],
+            SourceOs::Windows => vec![],
+            SourceOs::Macos => vec![],
+        };
         let bookmark_dirs = ChromiumSelector::find_profile_dirs(&browser_dirs);
         let bookmark_files = bookmark_dirs
             .into_iter()
@@ -256,23 +261,34 @@ mod tests {
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
         let selector = ChromiumSelector;
-        let res = selector.find_sources(temp_path);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
 
+        let res = selector.find_sources(temp_path, &SourceOs::Linux);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Macos);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Windows);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
         let sources = res.unwrap();
         assert!(sources.is_empty());
     }
 
     #[test]
-    fn test_find_sources() {
+    fn test_find_sources_linux() {
+        let source_os = SourceOs::Linux;
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        tests::create_test_files(temp_path);
+        tests::create_test_files(temp_path, &source_os);
 
         let selector = ChromiumSelector;
-        let res = selector.find_sources(temp_path);
+        let res = selector.find_sources(temp_path, &source_os);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
@@ -281,6 +297,40 @@ mod tests {
             .contains(&temp_path.join("snap/chromium/common/chromium/Default/Bookmarks")));
         assert!(bookmark_dirs
             .contains(&temp_path.join("snap/chromium/common/chromium/Profile 1/Bookmarks")));
+    }
+
+    #[test]
+    fn test_find_sources_macos() {
+        let source_os = SourceOs::Macos;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_files(temp_path, &source_os);
+
+        let selector = ChromiumSelector;
+        let res = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert!(bookmark_dirs.is_empty());
+    }
+
+    #[test]
+    fn test_find_sources_windows() {
+        let source_os = SourceOs::Windows;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_files(temp_path, &source_os);
+
+        let selector = ChromiumSelector;
+        let res = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert!(bookmark_dirs.is_empty());
     }
 
     #[test]

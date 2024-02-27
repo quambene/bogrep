@@ -16,20 +16,25 @@ impl SelectSource for ChromeSelector {
         SourceType::Chrome
     }
 
-    fn source_os(&self) -> SourceOs {
-        SourceOs::Linux
-    }
-
     fn extension(&self) -> Option<&str> {
         Some("json")
     }
 
-    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    fn find_sources(
+        &self,
+        home_dir: &Path,
+        source_os: &SourceOs,
+    ) -> Result<Vec<PathBuf>, anyhow::Error> {
         debug!("Find sources for {}", self.name());
-        let browser_dirs = [
-            // apt package
-            home_dir.join(".config/google-chrome"),
-        ];
+
+        let browser_dirs = match source_os {
+            SourceOs::Linux => vec![
+                // apt package
+                home_dir.join(".config/google-chrome"),
+            ],
+            SourceOs::Windows => vec![home_dir.join("AppData/Local/Google/Chrome/User Data")],
+            SourceOs::Macos => vec![],
+        };
         let bookmark_dirs = ChromiumSelector::find_profile_dirs(&browser_dirs);
         let bookmark_files = bookmark_dirs
             .into_iter()
@@ -67,23 +72,34 @@ mod tests {
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
         let selector = ChromeSelector;
-        let res = selector.find_sources(temp_path);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
 
+        let res = selector.find_sources(temp_path, &SourceOs::Linux);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Macos);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Windows);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
         let sources = res.unwrap();
         assert!(sources.is_empty());
     }
 
     #[test]
-    fn test_find_sources() {
+    fn test_find_sources_linux() {
+        let source_os = SourceOs::Linux;
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        tests::create_test_files(temp_path);
+        tests::create_test_files(temp_path, &source_os);
 
         let selector = ChromeSelector;
-        let res: Result<Vec<PathBuf>, anyhow::Error> = selector.find_sources(temp_path);
+        let res: Result<Vec<PathBuf>, anyhow::Error> = selector.find_sources(temp_path, &source_os);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
@@ -92,5 +108,44 @@ mod tests {
         assert!(
             bookmark_dirs.contains(&temp_path.join(".config/google-chrome/Profile 1/Bookmarks"))
         );
+    }
+
+    #[test]
+    fn test_find_sources_macos() {
+        let source_os = SourceOs::Macos;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_files(temp_path, &source_os);
+
+        let selector = ChromeSelector;
+        let res: Result<Vec<PathBuf>, anyhow::Error> = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert!(bookmark_dirs.is_empty());
+    }
+
+    #[test]
+    fn test_find_sources_windows() {
+        let source_os = SourceOs::Windows;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_files(temp_path, &source_os);
+
+        let selector = ChromeSelector;
+        let res: Result<Vec<PathBuf>, anyhow::Error> = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert_eq!(bookmark_dirs.len(), 2);
+        assert!(bookmark_dirs
+            .contains(&temp_path.join("AppData/Local/Google/Chrome/User Data/Default/Bookmarks")));
+        assert!(bookmark_dirs.contains(
+            &temp_path.join("AppData/Local/Google/Chrome/User Data/Profile 1/Bookmarks")
+        ));
     }
 }
