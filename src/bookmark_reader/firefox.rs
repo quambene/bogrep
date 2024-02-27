@@ -387,8 +387,9 @@ mod tests {
         assert!(sources.is_empty());
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
-    fn test_find_source_file() {
+    fn test_find_source_file_linux() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
