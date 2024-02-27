@@ -1,7 +1,7 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
-    bookmarks::RawSource,
+    bookmarks::{ImportReport, RawSource},
     json, utils, Action, Config, SourceBookmarks, TargetBookmarks,
 };
 use anyhow::anyhow;
@@ -99,7 +99,8 @@ fn import_source(
 
     target_writer.write(&target_bookmarks)?;
 
-    utils::log_import(source_readers, &target_bookmarks);
+    let report = ImportReport::new(source_readers, &target_bookmarks, dry_run);
+    report.print();
 
     Ok(())
 }
