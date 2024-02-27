@@ -6,7 +6,7 @@ use super::{
     safari::{PlistBookmarkReader, SafariSelector},
     simple::TextBookmarkReader,
     BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks, ReadSource, SafariReader,
-    SeekRead, SimpleReader, SourceSelector,
+    SeekRead, SimpleReader, SourceOs, SourceSelector,
 };
 use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
@@ -192,12 +192,15 @@ impl SourceReader {
         }
     }
 
-    pub fn select_sources(home_dir: &Path) -> Result<Vec<RawSource>, anyhow::Error> {
+    pub fn select_sources(
+        home_dir: &Path,
+        source_os: &SourceOs,
+    ) -> Result<Vec<RawSource>, anyhow::Error> {
         let mut source_dirs = vec![];
         let source_selectors = SourceSelectors::new();
 
         for source_selector in source_selectors.0 {
-            let source_dirs_by_selector = source_selector.find_sources(home_dir)?;
+            let source_dirs_by_selector = source_selector.find_sources(home_dir, source_os)?;
             source_dirs.extend(source_dirs_by_selector);
         }
 
@@ -347,26 +350,46 @@ mod tests {
     use std::path::Path;
     use tempfile::tempdir;
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
-    fn test_select_sources_empty() {
+    fn test_select_sources_linux() {
+        let source_os = SourceOs::Linux;
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        let sources = SourceReader::select_sources(temp_path).unwrap();
-        assert!(sources.is_empty());
+        test_utils::tests::create_test_files(temp_path, &source_os);
+
+        let sources = SourceReader::select_sources(temp_path, &source_os).unwrap();
+        assert_eq!(sources.len(), 10);
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
-    fn test_select_sources() {
+    fn test_select_sources_macos() {
+        let source_os = SourceOs::Macos;
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        test_utils::tests::create_test_files(temp_path);
+        test_utils::tests::create_test_files(temp_path, &source_os);
 
-        let sources = SourceReader::select_sources(temp_path).unwrap();
-        assert_eq!(sources.len(), 7);
+        let sources = SourceReader::select_sources(temp_path, &source_os).unwrap();
+        assert_eq!(sources.len(), 1);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_select_sources_windows() {
+        let source_os = SourceOs::Windows;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        test_utils::tests::create_test_files(temp_path, &source_os);
+
+        let sources = SourceReader::select_sources(temp_path, &source_os).unwrap();
+        assert_eq!(sources.len(), 4);
     }
 
     #[test]

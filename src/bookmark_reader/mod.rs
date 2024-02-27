@@ -31,9 +31,11 @@ pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 
 /// The supported operating system.
 #[non_exhaustive]
+#[derive(Debug)]
 pub enum SourceOs {
     Linux,
     Macos,
+    Windows,
 }
 
 /// The parsed bookmarks from a bookmarks file.
@@ -50,15 +52,24 @@ pub enum ParsedBookmarks<'a> {
 pub trait SelectSource {
     fn name(&self) -> SourceType;
 
-    fn source_os(&self) -> SourceOs;
-
     /// The extension of the bookmarks file.
     fn extension(&self) -> Option<&str>;
 
     /// Find the source files for a given browser and file format.
-    fn find_sources(&self, _home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error>;
+    ///
+    /// `home_dir` is provided as e.g.
+    ///     /home/alice on Linux
+    ///     /Users/Alice on macOS
+    ///     C:\Users\Alice on Windows
+    fn find_sources(
+        &self,
+        _home_dir: &Path,
+        _source_os: &SourceOs,
+    ) -> Result<Vec<PathBuf>, anyhow::Error>;
 
     /// Select the bookmarks file if the source is given as a directory.
+    ///
+    /// `source_dir` is the directory which contains the bookmarks file.
     fn find_source_file(&self, _source_dir: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
         Ok(None)
     }

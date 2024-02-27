@@ -1,3 +1,4 @@
+use super::ProcessReport;
 use crate::{
     errors::BogrepError, html, Action, Caching, Fetch, Settings, SourceType, TargetBookmark,
     TargetBookmarks,
@@ -14,6 +15,7 @@ pub struct BookmarkProcessor<C: Caching, F: Fetch> {
     cache: C,
     settings: Settings,
     underlying_bookmarks: Rc<Mutex<Vec<TargetBookmark>>>,
+    report: Mutex<ProcessReport>,
 }
 
 impl<C, F> BookmarkProcessor<C, F>
@@ -21,7 +23,7 @@ where
     F: Fetch,
     C: Caching,
 {
-    pub fn new(client: F, cache: C, settings: Settings) -> Self
+    pub fn new(client: F, cache: C, settings: Settings, report: ProcessReport) -> Self
     where
         F: Fetch,
         C: Caching,
@@ -31,6 +33,7 @@ where
             cache,
             settings,
             underlying_bookmarks: Rc::new(Mutex::new(vec![])),
+            report: Mutex::new(report),
         }
     }
 
@@ -48,21 +51,19 @@ where
             .into_iter()
             .filter(|bookmark| bookmark.action != Action::None)
             .collect::<Vec<_>>();
-        let mut processed = 0;
-        let mut cached = 0;
-        let mut failed_response = 0;
-        let mut binary_response = 0;
-        let mut empty_response = 0;
-        let total = bookmarks.len();
+        {
+            let mut report = self.report.lock();
+            report.set_total(bookmarks.len());
+        }
 
         let mut stream = stream::iter(bookmarks)
             .map(|bookmark| self.execute_actions(bookmark))
             .buffer_unordered(self.settings.max_concurrent_requests);
 
         while let Some(item) = stream.next().await {
-            processed += 1;
-
-            print!("Processing bookmarks ({processed}/{total})\r");
+            let mut report = self.report.lock();
+            report.increment_processed();
+            report.print();
 
             if let Err(err) = item {
                 match err {
@@ -80,34 +81,34 @@ where
                             debug!("{err} ");
                         }
 
-                        failed_response += 1;
+                        report.increment_failed_response();
                     }
                     BogrepError::HttpStatus { .. } => {
                         debug!("{err}");
-                        failed_response += 1;
+                        report.increment_failed_response();
                     }
                     BogrepError::ParseHttpResponse(_) => {
                         debug!("{err}");
-                        failed_response += 1;
+                        report.increment_failed_response();
                     }
                     BogrepError::BinaryResponse(_) => {
                         debug!("{err}");
-                        binary_response += 1;
+                        report.increment_binary_response();
                     }
                     BogrepError::EmptyResponse(_) => {
                         debug!("{err}");
-                        empty_response += 1;
+                        report.increment_empty_response();
                     }
                     BogrepError::ConvertHost(_) => {
                         warn!("{err}");
-                        failed_response += 1;
+                        report.increment_failed_response();
                     }
                     BogrepError::CreateFile { .. } => {
                         // Write errors are expected if there are "Too many open
                         // files", so we are issuing a warning instead of returning
                         // a hard failure.
                         warn!("{err}");
-                        failed_response += 1;
+                        report.increment_failed_response();
                     }
                     // We are aborting if there is an unexpected error.
                     err => {
@@ -115,22 +116,13 @@ where
                     }
                 }
             } else {
-                cached += 1;
+                report.increment_cached();
             }
 
             std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
         }
 
-        if total == 0 {
-            println!("Processing bookmarks (0/0)");
-        } else {
-            println!();
-        }
-
-        println!(
-            "Processed {total} bookmarks, {cached} cached, {} ignored, {failed_response} failed",
-            binary_response + empty_response
-        );
+        self.report.lock().print_summary();
 
         Ok(())
     }
@@ -178,6 +170,7 @@ where
             Action::Remove => {
                 cache.remove(bookmark).await?;
             }
+            Action::DryRun => (),
             Action::None => (),
         }
 
@@ -240,7 +233,8 @@ mod tests {
         let settings = Settings::default();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
-        let bookmark_processor = BookmarkProcessor::new(client, cache, settings);
+        let bookmark_processor =
+            BookmarkProcessor::new(client, cache, settings, ProcessReport::default());
         let url = Url::parse("https://news.ycombinator.com").unwrap();
         let website = r#"
             <html>

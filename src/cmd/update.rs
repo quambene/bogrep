@@ -1,9 +1,9 @@
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{SourceReader, TargetReaderWriter},
-    bookmarks::BookmarkProcessor,
+    bookmarks::{BookmarkProcessor, ProcessReport},
     cache::CacheMode,
-    Cache, Caching, Client, Config, Fetch, Settings, SourceBookmarks, TargetBookmarks,
+    Action, Cache, Caching, Client, Config, Fetch, Settings, SourceBookmarks, TargetBookmarks,
 };
 use log::debug;
 
@@ -11,6 +11,10 @@ use log::debug;
 /// new bookmarks; delete cache for removed bookmarks.
 pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
+
+    if args.dry_run {
+        println!("Running in dry mode ...")
+    }
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
@@ -36,6 +40,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         &mut source_readers,
         &mut target_bookmarks,
         &config.settings,
+        args.dry_run,
     )
     .await?;
 
@@ -51,6 +56,7 @@ async fn update_bookmarks(
     source_readers: &mut [SourceReader],
     target_bookmarks: &mut TargetBookmarks,
     settings: &Settings,
+    dry_run: bool,
 ) -> Result<(), anyhow::Error> {
     let mut source_bookmarks = SourceBookmarks::default();
 
@@ -60,8 +66,16 @@ async fn update_bookmarks(
 
     target_bookmarks.update(&source_bookmarks)?;
 
-    let bookmark_processor =
-        BookmarkProcessor::new(client.clone(), cache.clone(), settings.clone());
+    if dry_run {
+        target_bookmarks.set_action(&Action::DryRun);
+    }
+
+    let bookmark_processor = BookmarkProcessor::new(
+        client.clone(),
+        cache.clone(),
+        settings.clone(),
+        ProcessReport::init(dry_run),
+    );
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
         .await?;
@@ -167,6 +181,7 @@ mod tests {
             &mut [source_reader],
             &mut target_bookmarks,
             &settings,
+            false,
         )
         .await;
         assert!(res.is_ok());
@@ -287,6 +302,7 @@ mod tests {
             &mut [source_reader],
             &mut target_bookmarks,
             &settings,
+            false,
         )
         .await;
         assert!(res.is_ok());

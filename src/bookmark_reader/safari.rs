@@ -19,17 +19,22 @@ impl SelectSource for SafariSelector {
         SourceType::Safari
     }
 
-    fn source_os(&self) -> SourceOs {
-        SourceOs::Macos
-    }
-
     fn extension(&self) -> Option<&str> {
         Some("plist")
     }
 
-    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    fn find_sources(
+        &self,
+        home_dir: &Path,
+        source_os: &SourceOs,
+    ) -> Result<Vec<PathBuf>, anyhow::Error> {
         debug!("Find sources for {}", self.name());
-        let browser_dirs = [home_dir.join("Library/Safari")];
+
+        let browser_dirs = match source_os {
+            SourceOs::Linux => vec![],
+            SourceOs::Windows => vec![],
+            SourceOs::Macos => vec![home_dir.join("Library/Safari")],
+        };
         let bookmark_files = browser_dirs
             .into_iter()
             .filter_map(|bookmark_dir| {
@@ -199,28 +204,76 @@ mod test {
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
         let selector = SafariSelector;
-        let res = selector.find_sources(temp_path);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
 
+        let res = selector.find_sources(temp_path, &SourceOs::Linux);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Macos);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Windows);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
         let sources = res.unwrap();
         assert!(sources.is_empty());
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
-    fn test_find_sources() {
+    fn test_find_sources_macos() {
+        let source_os = SourceOs::Macos;
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        tests::create_test_files(temp_path);
+        tests::create_test_files(temp_path, &source_os);
 
         let selector = SafariSelector;
-        let res = selector.find_sources(temp_path);
+        let res = selector.find_sources(temp_path, &source_os);
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
         assert_eq!(bookmark_dirs.len(), 1);
         assert!(bookmark_dirs.contains(&temp_path.join("Library/Safari/Bookmarks.plist")));
+    }
+
+    #[cfg(not(any(target_os = "windows")))]
+    #[test]
+    fn test_find_sources_linux() {
+        let source_os = SourceOs::Linux;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_files(temp_path, &source_os);
+
+        let selector = SafariSelector;
+        let res = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert!(bookmark_dirs.is_empty());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_find_sources_windows() {
+        let source_os = SourceOs::Windows;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        tests::create_test_files(temp_path, &source_os);
+
+        let selector = SafariSelector;
+        let res = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_dirs = res.unwrap();
+        assert!(bookmark_dirs.is_empty());
     }
 
     #[test]

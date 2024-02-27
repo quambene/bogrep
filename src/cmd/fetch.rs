@@ -1,6 +1,6 @@
 use crate::{
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::{Action, BookmarkProcessor},
+    bookmarks::{Action, BookmarkProcessor, ProcessReport},
     cache::CacheMode,
     errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, Settings, SourceType,
@@ -16,6 +16,10 @@ use url::Url;
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
+
+    if args.dry_run {
+        println!("Running in dry mode ...")
+    }
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
@@ -59,7 +63,8 @@ pub async fn fetch_bookmarks(
 
     set_actions(&mut target_bookmarks, now, args)?;
 
-    let bookmark_processor = BookmarkProcessor::new(client, cache, settings.to_owned());
+    let report = ProcessReport::init(args.dry_run);
+    let bookmark_processor = BookmarkProcessor::new(client, cache, settings.to_owned(), report);
 
     bookmark_processor
         .process_bookmarks(target_bookmarks.values_mut().collect())
@@ -84,6 +89,8 @@ pub fn set_actions(
 ) -> Result<(), anyhow::Error> {
     if args.all {
         target_bookmarks.set_action(&Action::FetchAndReplace);
+    } else if args.dry_run {
+        target_bookmarks.set_action(&Action::DryRun);
     } else if !args.urls.is_empty() {
         let urls = args
             .urls
@@ -174,7 +181,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MockCache, MockClient, UnderlyingType};
+    use crate::{bookmarks::ProcessReport, MockCache, MockClient, UnderlyingType};
     use std::collections::HashMap;
     use url::Url;
 
@@ -226,7 +233,12 @@ mod tests {
         }
 
         let settings = Settings::default();
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
+        let bookmark_processor = BookmarkProcessor::new(
+            client.clone(),
+            cache.clone(),
+            settings,
+            ProcessReport::default(),
+        );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;
@@ -294,7 +306,12 @@ mod tests {
         }
 
         let settings = Settings::default();
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
+        let bookmark_processor = BookmarkProcessor::new(
+            client.clone(),
+            cache.clone(),
+            settings,
+            ProcessReport::default(),
+        );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;
@@ -370,7 +387,12 @@ mod tests {
             .unwrap();
 
         let settings = Settings::default();
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
+        let bookmark_processor = BookmarkProcessor::new(
+            client.clone(),
+            cache.clone(),
+            settings,
+            ProcessReport::default(),
+        );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;
@@ -448,7 +470,12 @@ mod tests {
             .unwrap();
 
         let settings = Settings::default();
-        let bookmark_processor = BookmarkProcessor::new(client.clone(), cache.clone(), settings);
+        let bookmark_processor = BookmarkProcessor::new(
+            client.clone(),
+            cache.clone(),
+            settings,
+            ProcessReport::default(),
+        );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
             .await;

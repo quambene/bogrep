@@ -1,8 +1,8 @@
 use crate::{
     args::ImportArgs,
-    bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
+    bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
     bookmarks::RawSource,
-    json, utils, Config, SourceBookmarks, TargetBookmarks,
+    json, utils, Action, Config, SourceBookmarks, TargetBookmarks,
 };
 use anyhow::anyhow;
 use log::debug;
@@ -17,6 +17,13 @@ use url::Url;
 pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
+    let source_os = match std::env::consts::OS {
+        "linux" => Some(SourceOs::Linux),
+        "macos" => Some(SourceOs::Macos),
+        "windows" => Some(SourceOs::Windows),
+        _ => None,
+    };
+    debug!("Source OS: {:?}", source_os);
     let mut config = config;
     let home_dir = dirs::home_dir().ok_or(anyhow!("Missing home dir"))?;
 
@@ -25,12 +32,14 @@ pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     }
 
     if config.settings.sources.is_empty() {
-        configure_sources(&mut config, &home_dir)?;
+        if let Some(source_os) = source_os {
+            configure_sources(&mut config, &home_dir, &source_os)?;
 
-        if !args.dry_run {
-            let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
-            let settings_json = json::serialize(config.settings.clone())?;
-            settings_file.write_all(&settings_json)?;
+            if !args.dry_run {
+                let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
+                let settings_json = json::serialize(config.settings.clone())?;
+                settings_file.write_all(&settings_json)?;
+            }
         }
     }
 
@@ -84,19 +93,24 @@ fn import_source(
     target_bookmarks.ignore_urls(ignored_urls);
     target_bookmarks.clean_up();
 
-    if !dry_run {
-        target_writer.write(&target_bookmarks)?;
-    } else {
-        target_writer.write(&TargetBookmarks::default())?;
+    if dry_run {
+        target_bookmarks.set_action(&Action::DryRun);
     }
+
+    target_writer.write(&target_bookmarks)?;
 
     utils::log_import(source_readers, &target_bookmarks);
 
     Ok(())
 }
 
-fn configure_sources(config: &mut Config, home_dir: &Path) -> Result<(), anyhow::Error> {
-    let sources = SourceReader::select_sources(home_dir)?;
+/// Configure sources if no sources are configured.
+fn configure_sources(
+    config: &mut Config,
+    home_dir: &Path,
+    source_os: &SourceOs,
+) -> Result<(), anyhow::Error> {
+    let sources = SourceReader::select_sources(home_dir, source_os)?;
 
     log_sources(&sources);
 

@@ -60,24 +60,28 @@ impl SelectSource for FirefoxSelector {
         SourceType::Firefox
     }
 
-    fn source_os(&self) -> SourceOs {
-        SourceOs::Linux
-    }
-
     fn extension(&self) -> Option<&str> {
         Some("jsonlz4")
     }
 
-    fn find_sources(&self, home_dir: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    fn find_sources(
+        &self,
+        home_dir: &Path,
+        source_os: &SourceOs,
+    ) -> Result<Vec<PathBuf>, anyhow::Error> {
         debug!("Find sources for {}", self.name());
-        let mut bookmark_dirs = vec![];
 
-        let browser_dirs = [
-            // apt package
-            home_dir.join(".mozilla/firefox"),
-            // snap package
-            home_dir.join("snap/firefox/common/.mozilla/firefox"),
-        ];
+        let mut bookmark_dirs = vec![];
+        let browser_dirs = match source_os {
+            SourceOs::Linux => vec![
+                // apt package
+                home_dir.join(".mozilla/firefox"),
+                // snap package
+                home_dir.join("snap/firefox/common/.mozilla/firefox"),
+            ],
+            SourceOs::Windows => vec![],
+            SourceOs::Macos => vec![],
+        };
 
         for browser_dir in browser_dirs {
             let profiles_path = &browser_dir.join("profiles.ini");
@@ -282,7 +286,7 @@ mod tests {
         test_utils, utils,
     };
     use assert_matches::assert_matches;
-    use std::{collections::HashMap, fs::File, io::Write};
+    use std::collections::HashMap;
     use tempfile::tempdir;
 
     #[test]
@@ -298,72 +302,35 @@ mod tests {
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
         let selector = FirefoxSelector;
-        let res = selector.find_sources(temp_path);
-        assert!(res.is_ok(), "{}", res.unwrap_err());
 
+        let res = selector.find_sources(temp_path, &SourceOs::Linux);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Macos);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+
+        let res = selector.find_sources(temp_path, &SourceOs::Windows);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
         let sources = res.unwrap();
         assert!(sources.is_empty());
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
-    fn test_find_sources() {
+    fn test_find_sources_linux() {
+        let source_os = SourceOs::Linux;
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
 
-        let browser_dir = temp_path.join("snap/firefox/common/.mozilla/firefox");
-        let profile_dir1 = browser_dir.join("profile1.default/bookmarkbackups");
-        let profile_dir2 = browser_dir.join("profile1.username/bookmarkbackups");
-        fs::create_dir_all(&profile_dir1).unwrap();
-        fs::create_dir_all(&profile_dir2).unwrap();
-        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
-        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
-        let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
-        let content = r#"
-            [Profile2]
-            Name=bene
-            IsRelative=1
-            Path=profile3.username
-
-            [Profile1]
-            Name=bene
-            IsRelative=1
-            Path=profile1.username
-            Default=1
-            
-            [Profile0]
-            Name=default
-            IsRelative=1
-            Path=profile1.default
-        "#;
-        file.write_all(content.as_bytes()).unwrap();
-        file.flush().unwrap();
-
-        let browser_dir = temp_path.join(".mozilla/firefox");
-        let profile_dir1 = browser_dir.join("profile2.default/bookmarkbackups");
-        let profile_dir2 = browser_dir.join("profile2.username/bookmarkbackups");
-        fs::create_dir_all(&profile_dir1).unwrap();
-        fs::create_dir_all(&profile_dir2).unwrap();
-        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
-        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
-        let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
-        let content = r#"
-            [Profile1]
-            Name=bene
-            IsRelative=1
-            Path=profile2.username
-            Default=1
-            
-            [Profile0]
-            Name=default
-            IsRelative=1
-            Path=profile2.default
-        "#;
-        file.write_all(content.as_bytes()).unwrap();
-        file.flush().unwrap();
+        test_utils::tests::create_test_files(temp_path, &source_os);
 
         let selector = FirefoxSelector;
-        let res = selector.find_sources(temp_path);
+        let res = selector.find_sources(temp_path, &source_os);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let sources = res.unwrap();
@@ -384,8 +351,45 @@ mod tests {
         );
     }
 
+    #[cfg(not(any(target_os = "windows")))]
     #[test]
-    fn test_find_source_file() {
+    fn test_find_sources_macos() {
+        let source_os = SourceOs::Macos;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        test_utils::tests::create_test_files(temp_path, &source_os);
+
+        let selector = FirefoxSelector;
+        let res = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_find_sources_windows() {
+        let source_os = SourceOs::Windows;
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        test_utils::tests::create_test_files(temp_path, &source_os);
+
+        let selector = FirefoxSelector;
+        let res = selector.find_sources(temp_path, &source_os);
+        assert!(res.is_ok(), "{}", res.unwrap_err());
+
+        let sources = res.unwrap();
+        assert!(sources.is_empty());
+    }
+
+    #[cfg(not(any(target_os = "windows")))]
+    #[test]
+    fn test_find_source_file_linux() {
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
