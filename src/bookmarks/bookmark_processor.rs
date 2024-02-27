@@ -51,16 +51,19 @@ where
             .into_iter()
             .filter(|bookmark| bookmark.action != Action::None)
             .collect::<Vec<_>>();
-        let mut report = self.report.lock();
-        report.set_total(bookmarks.len());
+        {
+            let mut report = self.report.lock();
+            report.set_total(bookmarks.len());
+        }
+
         let mut stream = stream::iter(bookmarks)
             .map(|bookmark| self.execute_actions(bookmark))
             .buffer_unordered(self.settings.max_concurrent_requests);
 
         while let Some(item) = stream.next().await {
+            let mut report = self.report.lock();
             report.increment_processed();
-
-            report.print_report();
+            report.print();
 
             if let Err(err) = item {
                 match err {
@@ -119,7 +122,7 @@ where
             std::io::stdout().flush().map_err(BogrepError::FlushFile)?;
         }
 
-        report.print_summary();
+        self.report.lock().print_summary();
 
         Ok(())
     }

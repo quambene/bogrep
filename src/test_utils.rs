@@ -61,8 +61,8 @@ pub mod tests {
 
         let default_profile_file = default_profile_dir.join("Bookmarks");
         let profile_file = profile_dir.join("Bookmarks");
-        File::create(&default_profile_file).unwrap();
-        File::create(&profile_file).unwrap();
+        File::create(default_profile_file).unwrap();
+        File::create(profile_file).unwrap();
     }
 
     fn create_chromium_dirs_linux(home_dir: &Path) {

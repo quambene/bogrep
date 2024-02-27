@@ -329,7 +329,7 @@ impl ProcessReport {
         Self::new(0, 0, 0, 0, 0, 0, dry_run)
     }
 
-    pub fn print_report(&self) {
+    pub fn print(&self) {
         print!("Processing bookmarks ({}/{})\r", self.processed, self.total);
     }
 
