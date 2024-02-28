@@ -204,7 +204,7 @@ fn select_sources_from_input(
                 .collect::<Vec<_>>();
             nums.sort();
 
-            if nums.iter().all(|num| indexed_sources.contains(&num)) {
+            if nums.iter().all(|num| indexed_sources.contains(num)) {
                 Ok(nums)
             } else {
                 Err(BogrepError::InvalidInput)
