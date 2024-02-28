@@ -341,7 +341,7 @@ impl ImportReport {
         } else {
             "sources"
         };
-        let dry_run_str = if self.dry_run { " (dry run)" } else { " " };
+        let dry_run_str = if self.dry_run { " (dry run)" } else { "" };
 
         if self.source_count == 0 {
             println!(
