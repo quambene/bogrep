@@ -3,6 +3,12 @@
 ### Unreleased
 
 - added
+- changed
+- removed
+
+### v0.8.0
+
+- added
   - Implement running in dry mode
   - Select sources from user input
 - changed
@@ -10,7 +16,6 @@
   - Update rust toolchain to 1.76
   - Fix `settings.json` for `bogrep config --ignore` and `bogrep config --underlying` if run
     multiple times
-- removed
 
 ### v0.7.0
 
