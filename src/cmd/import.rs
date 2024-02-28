@@ -1,12 +1,14 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
-    bookmarks::{ImportReport, RawSource},
+    bookmarks::ImportReport,
+    errors::BogrepError,
     json, utils, Action, Config, SourceBookmarks, TargetBookmarks,
 };
 use anyhow::anyhow;
 use log::debug;
 use std::{
+    collections::HashSet,
     io::{self, Write},
     path::Path,
 };
@@ -112,42 +114,104 @@ fn configure_sources(
     source_os: &SourceOs,
 ) -> Result<(), anyhow::Error> {
     let sources = SourceReader::select_sources(home_dir, source_os)?;
+    let indexed_sources = sources
+        .iter()
+        .enumerate()
+        .map(|(i, _)| i + 1)
+        .collect::<Vec<_>>();
 
-    log_sources(&sources);
+    println!("Found sources:");
+    for (index, source) in sources.iter().enumerate() {
+        println!("{}: {}", index + 1, source.path.display());
+    }
 
-    println!("Select sources: yes (y) or no (n)");
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim().to_lowercase();
+    println!("Select sources: yes (y), no (n), or specify numbers separated by whitespaces");
 
-    if input == "n" {
-        println!("Aborting ...");
-        return Ok(());
-    } else if input == "y" {
+    let selected_indices = loop {
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_lowercase();
+        match select_sources_from_input(&input, &indexed_sources) {
+            Ok(selected_sources) => {
+                break selected_sources;
+            }
+            Err(_) => {
+                println!("Invalid input. Please try again");
+                continue;
+            }
+        }
+    };
+
+    if selected_indices.is_empty() {
+        println!("No sources selected. Aborting ...");
+    } else {
         println!(
             "Selected sources: {}",
-            (1..=sources.len())
+            selected_indices
+                .iter()
                 .map(|num| num.to_string())
                 .collect::<Vec<String>>()
                 .join(", ")
         );
-    } else {
-        println!("Aborting ...");
-        return Ok(());
     }
 
-    for source in sources {
-        config.settings.sources.push(source);
+    let selected_sources = selected_indices
+        .iter()
+        .filter_map(|&i| sources.get(i - 1))
+        .collect::<Vec<_>>();
+
+    for source in selected_sources {
+        config.settings.sources.push(source.to_owned());
     }
 
     Ok(())
 }
 
-fn log_sources(sources: &[RawSource]) {
-    println!("Found sources:");
+fn select_sources_from_input(
+    input: &str,
+    indexed_sources: &[usize],
+) -> Result<Vec<usize>, BogrepError> {
+    let choices: Vec<&str> = input.split_whitespace().collect();
 
-    for (index, source) in sources.iter().enumerate() {
-        println!("{}: {}", index + 1, source.path.display());
+    if choices.len() == 1 {
+        match choices[0] {
+            "y" | "yes" => Ok(indexed_sources.to_vec()),
+            "n" | "no" => Ok(vec![]),
+            num => {
+                let num = num
+                    .parse::<usize>()
+                    .map_err(|_| BogrepError::InvalidInput)?;
+
+                if indexed_sources.contains(&num) {
+                    Ok(vec![num])
+                } else {
+                    Err(BogrepError::InvalidInput)
+                }
+            }
+        }
+    } else {
+        let nums: Result<Vec<usize>, _> = choices
+            .iter()
+            // .flat_map(|s| s.split(' '))
+            .map(|s| s.parse::<usize>())
+            .collect();
+        if let Ok(nums) = nums {
+            // Remove duplicates
+            let mut nums = nums
+                .into_iter()
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>();
+            nums.sort();
+
+            if nums.iter().all(|num| indexed_sources.contains(&num)) {
+                Ok(nums)
+            } else {
+                Err(BogrepError::InvalidInput)
+            }
+        } else {
+            Err(BogrepError::InvalidInput)
+        }
     }
 }
 
@@ -258,6 +322,62 @@ mod tests {
         );
 
         assert!(res.is_ok(), "{}", res.unwrap_err());
+    }
+
+    #[test]
+    fn test_select_sources_from_input() {
+        let indexed_sources = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        let selected_sources = select_sources_from_input("y", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let selected_sources = select_sources_from_input("yes", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let selected_sources = select_sources_from_input("n", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![] as Vec<usize>);
+
+        let selected_sources = select_sources_from_input("no", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![] as Vec<usize>);
+
+        let selected_sources = select_sources_from_input("1", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1]);
+
+        let selected_sources = select_sources_from_input("1 5 10", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 5, 10]);
+
+        let selected_sources = select_sources_from_input("1 1", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1]);
+
+        let selected_sources = select_sources_from_input("1 5 1 10", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 5, 10]);
+
+        let selected_sources = select_sources_from_input("1 5 1 10 0", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("x", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("x ", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input(" x", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("xx", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("x x", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("0", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("11", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("1 5 11", &indexed_sources);
+        assert!(selected_sources.is_err());
     }
 
     #[test]
