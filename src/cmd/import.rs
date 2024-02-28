@@ -190,11 +190,7 @@ fn select_sources_from_input(
             }
         }
     } else {
-        let nums: Result<Vec<usize>, _> = choices
-            .iter()
-            // .flat_map(|s| s.split(' '))
-            .map(|s| s.parse::<usize>())
-            .collect();
+        let nums: Result<Vec<usize>, _> = choices.iter().map(|s| s.parse::<usize>()).collect();
         if let Ok(nums) = nums {
             // Remove duplicates
             let mut nums = nums
