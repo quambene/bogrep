@@ -42,6 +42,7 @@ pub enum SourceOs {
 #[derive(Debug)]
 pub enum ParsedBookmarks<'a> {
     Json(serde_json::Value),
+    #[allow(dead_code)]
     Html(scraper::Html),
     Plist(plist::Value),
     Text(Lines<BufReader<&'a mut dyn SeekRead>>),

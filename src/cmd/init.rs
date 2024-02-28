@@ -1,8 +1,8 @@
 use crate::{
     bookmark_reader::{SourceReader, TargetReaderWriter},
-    bookmarks::{BookmarkProcessor, ProcessReport},
+    bookmarks::{BookmarkProcessor, ImportReport, ProcessReport},
     cache::CacheMode,
-    utils, Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
+    Action, Cache, Caching, Client, Config, Fetch, InitArgs, Settings, SourceBookmarks,
     TargetBookmarks,
 };
 use log::debug;
@@ -69,7 +69,8 @@ async fn init_bookmarks(
 
     target_bookmarks.set_action(&Action::FetchAndAdd);
 
-    utils::log_import(source_readers, &target_bookmarks);
+    let report = ImportReport::new(source_readers, &target_bookmarks, dry_run);
+    report.print();
 
     if dry_run {
         target_bookmarks.set_action(&Action::DryRun);

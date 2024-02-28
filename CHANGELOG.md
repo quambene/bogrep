@@ -4,6 +4,7 @@
 
 - added
   - Implement running in dry mode
+  - Select sources from user input
 - changed
   - Select sources for `bogrep import` if no sources are configured
   - Update rust toolchain to 1.76

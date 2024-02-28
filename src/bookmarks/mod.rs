@@ -2,7 +2,7 @@ mod bookmark_processor;
 mod source_bookmarks;
 mod target_bookmarks;
 
-use crate::CacheMode;
+use crate::{bookmark_reader::SourceReader, CacheMode};
 pub use bookmark_processor::BookmarkProcessor;
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
@@ -290,6 +290,68 @@ impl<'a> Iterator for JsonBookmarksIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.bookmarks_iter.next()
+    }
+}
+
+/// Summary of imported bookmarks.
+#[derive(Debug)]
+pub struct ImportReport {
+    import_count: usize,
+    source_count: usize,
+    sources: String,
+    dry_run: bool,
+}
+
+impl ImportReport {
+    pub fn new(
+        source_reader: &[SourceReader],
+        target_bookmarks: &TargetBookmarks,
+        dry_run: bool,
+    ) -> Self {
+        let import_count = target_bookmarks
+            .values()
+            .filter(|bookmark| {
+                bookmark.action == Action::FetchAndReplace
+                    || bookmark.action == Action::FetchAndAdd
+                    || bookmark.action == Action::DryRun
+            })
+            .collect::<Vec<_>>()
+            .len();
+        let source_count = source_reader.len();
+        let sources = source_reader
+            .iter()
+            .map(|source_reader| source_reader.source().path.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        Self {
+            import_count,
+            source_count,
+            sources,
+            dry_run,
+        }
+    }
+
+    pub fn print(&self) {
+        let import_count = self.import_count;
+        let source_count = self.source_count;
+        let sources = &self.sources;
+        let source_str = if self.source_count == 1 {
+            "source"
+        } else {
+            "sources"
+        };
+        let dry_run_str = if self.dry_run { " (dry run)" } else { " " };
+
+        if self.source_count == 0 {
+            println!(
+                "Imported {import_count} bookmarks from {source_count} {source_str}{dry_run_str}"
+            );
+        } else {
+            println!(
+                "Imported {import_count} bookmarks from {source_count} {source_str}{dry_run_str}: {sources}",
+            );
+        }
     }
 }
 
