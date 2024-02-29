@@ -66,7 +66,7 @@ pub mod tests {
     }
 
     fn create_safari_dirs(browser_dir: &Path) {
-        fs::create_dir_all(&browser_dir).unwrap();
+        fs::create_dir_all(browser_dir).unwrap();
         utils::create_file(&browser_dir.join("Bookmarks.plist")).unwrap();
     }
 
