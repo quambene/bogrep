@@ -33,7 +33,7 @@ impl SelectSource for ChromeSelector {
                 home_dir.join(".config/google-chrome"),
             ],
             SourceOs::Windows => vec![home_dir.join("AppData\\Local\\Google\\Chrome\\User Data")],
-            SourceOs::Macos => vec![],
+            SourceOs::Macos => vec![home_dir.join("Library/Application Support/Google/Chrome")],
         };
         let bookmark_dirs = ChromiumSelector::find_profile_dirs(&browser_dirs);
         let bookmark_files = bookmark_dirs
@@ -126,7 +126,13 @@ mod tests {
         assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
 
         let bookmark_dirs = res.unwrap();
-        assert!(bookmark_dirs.is_empty());
+        assert_eq!(bookmark_dirs.len(), 2);
+        assert!(bookmark_dirs.contains(
+            &temp_path.join("Library/Application Support/Google/Chrome/Default/Bookmarks")
+        ));
+        assert!(bookmark_dirs.contains(
+            &temp_path.join("Library/Application Support/Google/Chrome/Profile 1/Bookmarks")
+        ));
     }
 
     #[cfg(target_os = "windows")]

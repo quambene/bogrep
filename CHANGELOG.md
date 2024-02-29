@@ -3,6 +3,7 @@
 ### Unreleased
 
 - added
+  - Select sources for Chrome on macOS
 - changed
 - removed
 

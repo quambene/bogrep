@@ -65,31 +65,6 @@ pub mod tests {
         File::create(profile_file).unwrap();
     }
 
-    fn create_chromium_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join("snap/chromium/common/chromium");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_chrome_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join(".config/google-chrome");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_chrome_dirs_windows(home_dir: &Path) {
-        let browser_dir = home_dir.join("AppData\\Local\\Google\\Chrome\\User Data");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_edge_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join(".config/microsoft-edge");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_edge_dirs_windows(home_dir: &Path) {
-        let browser_dir = home_dir.join("AppData\\Local\\Microsoft\\Edge\\User Data");
-        create_browser_dirs(&browser_dir);
-    }
-
     fn create_safari_dirs_macos(home_dir: &Path) {
         let safari_dir = home_dir.join("Library/Safari");
         fs::create_dir_all(&safari_dir).unwrap();
@@ -154,16 +129,28 @@ pub mod tests {
         match source_os {
             SourceOs::Linux => {
                 create_firefox_dirs_linux(home_dir);
-                create_chromium_dirs_linux(home_dir);
-                create_chrome_dirs_linux(home_dir);
-                create_edge_dirs_linux(home_dir);
+
+                let browser_dir = home_dir.join("snap/chromium/common/chromium");
+                create_browser_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join(".config/google-chrome");
+                create_browser_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join(".config/microsoft-edge");
+                create_browser_dirs(&browser_dir);
             }
             SourceOs::Macos => {
                 create_safari_dirs_macos(home_dir);
+
+                let browser_dir = home_dir.join("Library/Application Support/Google/Chrome");
+                create_browser_dirs(&browser_dir);
             }
             SourceOs::Windows => {
-                create_chrome_dirs_windows(home_dir);
-                create_edge_dirs_windows(home_dir);
+                let browser_dir = home_dir.join("AppData\\Local\\Google\\Chrome\\User Data");
+                create_browser_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join("AppData\\Local\\Microsoft\\Edge\\User Data");
+                create_browser_dirs(&browser_dir);
             }
         }
     }
