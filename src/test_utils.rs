@@ -52,7 +52,7 @@ pub mod tests {
     use crate::bookmark_reader::SourceOs;
     use std::fs::{self, File};
 
-    fn create_browser_dirs(browser_dir: &Path) {
+    fn create_chromium_dirs(browser_dir: &Path) {
         let default_profile_dir = browser_dir.join("Default");
         let profile_dir = browser_dir.join("Profile 1");
 
@@ -111,13 +111,13 @@ pub mod tests {
                 create_firefox_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join("snap/chromium/common/chromium");
-                create_browser_dirs(&browser_dir);
+                create_chromium_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join(".config/google-chrome");
-                create_browser_dirs(&browser_dir);
+                create_chromium_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join(".config/microsoft-edge");
-                create_browser_dirs(&browser_dir);
+                create_chromium_dirs(&browser_dir);
             }
             SourceOs::Macos => {
                 create_safari_dirs_macos(home_dir);
@@ -126,14 +126,14 @@ pub mod tests {
                 create_firefox_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join("Library/Application Support/Google/Chrome");
-                create_browser_dirs(&browser_dir);
+                create_chromium_dirs(&browser_dir);
             }
             SourceOs::Windows => {
                 let browser_dir = home_dir.join("AppData\\Local\\Google\\Chrome\\User Data");
-                create_browser_dirs(&browser_dir);
+                create_chromium_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join("AppData\\Local\\Microsoft\\Edge\\User Data");
-                create_browser_dirs(&browser_dir);
+                create_chromium_dirs(&browser_dir);
             }
         }
     }
