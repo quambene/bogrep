@@ -72,10 +72,9 @@ pub mod tests {
         utils::create_file(&safari_file).unwrap();
     }
 
-    fn create_firefox_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join("snap/firefox/common/.mozilla/firefox");
+    fn create_firefox_dirs(browser_dir: &Path) {
         let profile_dir1 = browser_dir.join("profile1.default/bookmarkbackups");
-        let profile_dir2 = browser_dir.join("profile1.username/bookmarkbackups");
+        let profile_dir2 = browser_dir.join("profile2.username/bookmarkbackups");
         fs::create_dir_all(&profile_dir1).unwrap();
         fs::create_dir_all(&profile_dir2).unwrap();
         utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
@@ -90,7 +89,7 @@ pub mod tests {
             [Profile1]
             Name=bene
             IsRelative=1
-            Path=profile1.username
+            Path=profile2.username
             Default=1
             
             [Profile0]
@@ -100,35 +99,16 @@ pub mod tests {
         "#;
         file.write_all(content.as_bytes()).unwrap();
         file.flush().unwrap();
-
-        let browser_dir = home_dir.join(".mozilla/firefox");
-        let profile_dir1 = browser_dir.join("profile2.default/bookmarkbackups");
-        let profile_dir2 = browser_dir.join("profile2.username/bookmarkbackups");
-        fs::create_dir_all(&profile_dir1).unwrap();
-        fs::create_dir_all(&profile_dir2).unwrap();
-        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
-        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
-        let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
-        let content = r#"
-            [Profile1]
-            Name=bene
-            IsRelative=1
-            Path=profile2.username
-            Default=1
-            
-            [Profile0]
-            Name=default
-            IsRelative=1
-            Path=profile2.default
-        "#;
-        file.write_all(content.as_bytes()).unwrap();
-        file.flush().unwrap();
     }
 
     pub fn create_test_files(home_dir: &Path, source_os: &SourceOs) {
         match source_os {
             SourceOs::Linux => {
-                create_firefox_dirs_linux(home_dir);
+                let browser_dir = home_dir.join("snap/firefox/common/.mozilla/firefox");
+                create_firefox_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join(".mozilla/firefox");
+                create_firefox_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join("snap/chromium/common/chromium");
                 create_browser_dirs(&browser_dir);
@@ -141,6 +121,9 @@ pub mod tests {
             }
             SourceOs::Macos => {
                 create_safari_dirs_macos(home_dir);
+
+                let browser_dir = home_dir.join("Library/Application Support/Firefox/Profiles");
+                create_firefox_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join("Library/Application Support/Google/Chrome");
                 create_browser_dirs(&browser_dir);

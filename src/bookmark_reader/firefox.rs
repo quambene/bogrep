@@ -80,7 +80,7 @@ impl SelectSource for FirefoxSelector {
                 home_dir.join("snap/firefox/common/.mozilla/firefox"),
             ],
             SourceOs::Windows => vec![],
-            SourceOs::Macos => vec![],
+            SourceOs::Macos => vec![home_dir.join("Library/Application Support/Firefox/Profiles")],
         };
 
         for browser_dir in browser_dirs {
@@ -341,10 +341,10 @@ mod tests {
         ));
         assert!(sources.contains(
             &temp_path
-                .join("snap/firefox/common/.mozilla/firefox/profile1.username/bookmarkbackups")
+                .join("snap/firefox/common/.mozilla/firefox/profile2.username/bookmarkbackups")
         ));
         assert!(
-            sources.contains(&temp_path.join(".mozilla/firefox/profile2.default/bookmarkbackups"))
+            sources.contains(&temp_path.join(".mozilla/firefox/profile1.default/bookmarkbackups"))
         );
         assert!(
             sources.contains(&temp_path.join(".mozilla/firefox/profile2.username/bookmarkbackups"))
@@ -366,7 +366,13 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let sources = res.unwrap();
-        assert!(sources.is_empty());
+        assert_eq!(sources.len(), 2);
+        assert!(sources.contains(&temp_path.join(
+            "Library/Application Support/Firefox/Profiles/profile1.default/bookmarkbackups"
+        )));
+        assert!(sources.contains(&temp_path.join(
+            "Library/Application Support/Firefox/Profiles/profile2.username/bookmarkbackups"
+        )));
     }
 
     #[cfg(target_os = "windows")]
@@ -409,6 +415,31 @@ mod tests {
             bookmark_file.unwrap(),
             // We are expecting the file which was created more recently.
             temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups/bookmarks2.jsonlz4")
+        );
+    }
+
+    #[cfg(not(any(target_os = "windows")))]
+    #[test]
+    fn test_find_source_file_macos() {
+        let temp_dir = tempdir().unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
+
+        let bookmark_dir = temp_path
+            .join("Library/Application Support/Firefox/Profiles/profile1.default/bookmarkbackups");
+        fs::create_dir_all(&bookmark_dir).unwrap();
+        utils::create_file(&bookmark_dir.join("bookmarks1.jsonlz4")).unwrap();
+        utils::create_file(&bookmark_dir.join("bookmarks2.jsonlz4")).unwrap();
+
+        let selector = FirefoxSelector;
+        let res = selector.find_source_file(&bookmark_dir);
+        assert!(res.is_ok(), "Can't find dir: {}", res.unwrap_err());
+
+        let bookmark_file = res.unwrap();
+        assert_eq!(
+            bookmark_file.unwrap(),
+            // We are expecting the file which was created more recently.
+            temp_path.join("Library/Application Support/Firefox/Profiles/profile1.default/bookmarkbackups/bookmarks2.jsonlz4")
         );
     }
 
