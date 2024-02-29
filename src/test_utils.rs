@@ -65,11 +65,9 @@ pub mod tests {
         File::create(profile_file).unwrap();
     }
 
-    fn create_safari_dirs_macos(home_dir: &Path) {
-        let safari_dir = home_dir.join("Library/Safari");
-        fs::create_dir_all(&safari_dir).unwrap();
-        let safari_file = safari_dir.join("Bookmarks.plist");
-        utils::create_file(&safari_file).unwrap();
+    fn create_safari_dirs(browser_dir: &Path) {
+        fs::create_dir_all(&browser_dir).unwrap();
+        utils::create_file(&browser_dir.join("Bookmarks.plist")).unwrap();
     }
 
     fn create_firefox_dirs(browser_dir: &Path) {
@@ -120,7 +118,8 @@ pub mod tests {
                 create_chromium_dirs(&browser_dir);
             }
             SourceOs::Macos => {
-                create_safari_dirs_macos(home_dir);
+                let browser_dir = home_dir.join("Library/Safari");
+                create_safari_dirs(&browser_dir);
 
                 let browser_dir = home_dir.join("Library/Application Support/Firefox/Profiles");
                 create_firefox_dirs(&browser_dir);
