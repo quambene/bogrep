@@ -52,6 +52,42 @@ pub mod tests {
     use crate::bookmark_reader::SourceOs;
     use std::fs::{self, File};
 
+    const PROFILES_INI_LINUX: &str = r#"
+        [Profile2]
+        Name=bene
+        IsRelative=1
+        Path=profile3.username
+
+        [Profile1]
+        Name=bene
+        IsRelative=1
+        Path=profile2.username
+        Default=1
+            
+        [Profile0]
+        Name=default
+        IsRelative=1
+        Path=profile1.default
+    "#;
+
+    const PROFILES_INI_MACOS: &str = r#"
+        [Profile2]
+        Name=bene
+        IsRelative=1
+        Path=Profiles/profile3.username
+
+        [Profile1]
+        Name=bene
+        IsRelative=1
+        Path=Profiles/profile2.username
+        Default=1
+            
+        [Profile0]
+        Name=default
+        IsRelative=1
+        Path=Profiles/profile1.default
+    "#;
+
     fn create_chromium_dirs(browser_dir: &Path) {
         let default_profile_dir = browser_dir.join("Default");
         let profile_dir = browser_dir.join("Profile 1");
@@ -70,7 +106,7 @@ pub mod tests {
         utils::create_file(&browser_dir.join("Bookmarks.plist")).unwrap();
     }
 
-    fn create_firefox_dirs(browser_dir: &Path) {
+    fn create_firefox_dirs_linux(browser_dir: &Path) {
         let profile_dir1 = browser_dir.join("profile1.default/bookmarkbackups");
         let profile_dir2 = browser_dir.join("profile2.username/bookmarkbackups");
         fs::create_dir_all(&profile_dir1).unwrap();
@@ -78,24 +114,19 @@ pub mod tests {
         utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
         utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
         let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
-        let content = r#"
-            [Profile2]
-            Name=bene
-            IsRelative=1
-            Path=profile3.username
+        file.write_all(PROFILES_INI_LINUX.as_bytes()).unwrap();
+        file.flush().unwrap();
+    }
 
-            [Profile1]
-            Name=bene
-            IsRelative=1
-            Path=profile2.username
-            Default=1
-            
-            [Profile0]
-            Name=default
-            IsRelative=1
-            Path=profile1.default
-        "#;
-        file.write_all(content.as_bytes()).unwrap();
+    fn create_firefox_dirs_macos(browser_dir: &Path) {
+        let profile_dir1 = browser_dir.join("Profiles/profile1.default/bookmarkbackups");
+        let profile_dir2 = browser_dir.join("Profiles/profile2.username/bookmarkbackups");
+        fs::create_dir_all(&profile_dir1).unwrap();
+        fs::create_dir_all(&profile_dir2).unwrap();
+        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
+        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
+        let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
+        file.write_all(PROFILES_INI_MACOS.as_bytes()).unwrap();
         file.flush().unwrap();
     }
 
@@ -103,10 +134,10 @@ pub mod tests {
         match source_os {
             SourceOs::Linux => {
                 let browser_dir = home_dir.join("snap/firefox/common/.mozilla/firefox");
-                create_firefox_dirs(&browser_dir);
+                create_firefox_dirs_linux(&browser_dir);
 
                 let browser_dir = home_dir.join(".mozilla/firefox");
-                create_firefox_dirs(&browser_dir);
+                create_firefox_dirs_linux(&browser_dir);
 
                 let browser_dir = home_dir.join("snap/chromium/common/chromium");
                 create_chromium_dirs(&browser_dir);
@@ -121,8 +152,8 @@ pub mod tests {
                 let browser_dir = home_dir.join("Library/Safari");
                 create_safari_dirs(&browser_dir);
 
-                let browser_dir = home_dir.join("Library/Application Support/Firefox/Profiles");
-                create_firefox_dirs(&browser_dir);
+                let browser_dir = home_dir.join("Library/Application Support/Firefox");
+                create_firefox_dirs_macos(&browser_dir);
 
                 let browser_dir = home_dir.join("Library/Application Support/Google/Chrome");
                 create_chromium_dirs(&browser_dir);

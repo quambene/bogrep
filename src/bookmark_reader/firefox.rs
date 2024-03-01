@@ -80,14 +80,14 @@ impl SelectSource for FirefoxSelector {
                 home_dir.join("snap/firefox/common/.mozilla/firefox"),
             ],
             SourceOs::Windows => vec![],
-            SourceOs::Macos => vec![home_dir.join("Library/Application Support/Firefox/Profiles")],
+            SourceOs::Macos => vec![home_dir.join("Library/Application Support/Firefox")],
         };
 
         for browser_dir in browser_dirs {
-            let profiles_path = &browser_dir.join("profiles.ini");
+            let profiles_path = browser_dir.join("profiles.ini");
 
             if profiles_path.is_file() {
-                let profiles_file = utils::open_file(&browser_dir.join("profiles.ini"))?;
+                let profiles_file = utils::open_file(&profiles_path)?;
                 let buf_reader = BufReader::new(profiles_file);
                 let lines = buf_reader.lines();
 
