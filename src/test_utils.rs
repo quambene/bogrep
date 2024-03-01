@@ -52,7 +52,43 @@ pub mod tests {
     use crate::bookmark_reader::SourceOs;
     use std::fs::{self, File};
 
-    fn create_browser_dirs(browser_dir: &Path) {
+    const PROFILES_INI_LINUX: &str = r#"
+        [Profile2]
+        Name=bene
+        IsRelative=1
+        Path=profile3.username
+
+        [Profile1]
+        Name=bene
+        IsRelative=1
+        Path=profile2.username
+        Default=1
+            
+        [Profile0]
+        Name=default
+        IsRelative=1
+        Path=profile1.default
+    "#;
+
+    const PROFILES_INI_MACOS: &str = r#"
+        [Profile2]
+        Name=bene
+        IsRelative=1
+        Path=Profiles/profile3.username
+
+        [Profile1]
+        Name=bene
+        IsRelative=1
+        Path=Profiles/profile2.username
+        Default=1
+            
+        [Profile0]
+        Name=default
+        IsRelative=1
+        Path=Profiles/profile1.default
+    "#;
+
+    fn create_chromium_dirs(browser_dir: &Path) {
         let default_profile_dir = browser_dir.join("Default");
         let profile_dir = browser_dir.join("Profile 1");
 
@@ -65,105 +101,69 @@ pub mod tests {
         File::create(profile_file).unwrap();
     }
 
-    fn create_chromium_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join("snap/chromium/common/chromium");
-        create_browser_dirs(&browser_dir);
+    fn create_safari_dirs(browser_dir: &Path) {
+        fs::create_dir_all(browser_dir).unwrap();
+        utils::create_file(&browser_dir.join("Bookmarks.plist")).unwrap();
     }
 
-    fn create_chrome_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join(".config/google-chrome");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_chrome_dirs_windows(home_dir: &Path) {
-        let browser_dir = home_dir.join("AppData\\Local\\Google\\Chrome\\User Data");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_edge_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join(".config/microsoft-edge");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_edge_dirs_windows(home_dir: &Path) {
-        let browser_dir = home_dir.join("AppData\\Local\\Microsoft\\Edge\\User Data");
-        create_browser_dirs(&browser_dir);
-    }
-
-    fn create_safari_dirs_macos(home_dir: &Path) {
-        let safari_dir = home_dir.join("Library/Safari");
-        fs::create_dir_all(&safari_dir).unwrap();
-        let safari_file = safari_dir.join("Bookmarks.plist");
-        utils::create_file(&safari_file).unwrap();
-    }
-
-    fn create_firefox_dirs_linux(home_dir: &Path) {
-        let browser_dir = home_dir.join("snap/firefox/common/.mozilla/firefox");
+    fn create_firefox_dirs_linux(browser_dir: &Path) {
         let profile_dir1 = browser_dir.join("profile1.default/bookmarkbackups");
-        let profile_dir2 = browser_dir.join("profile1.username/bookmarkbackups");
-        fs::create_dir_all(&profile_dir1).unwrap();
-        fs::create_dir_all(&profile_dir2).unwrap();
-        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
-        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
-        let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
-        let content = r#"
-            [Profile2]
-            Name=bene
-            IsRelative=1
-            Path=profile3.username
-
-            [Profile1]
-            Name=bene
-            IsRelative=1
-            Path=profile1.username
-            Default=1
-            
-            [Profile0]
-            Name=default
-            IsRelative=1
-            Path=profile1.default
-        "#;
-        file.write_all(content.as_bytes()).unwrap();
-        file.flush().unwrap();
-
-        let browser_dir = home_dir.join(".mozilla/firefox");
-        let profile_dir1 = browser_dir.join("profile2.default/bookmarkbackups");
         let profile_dir2 = browser_dir.join("profile2.username/bookmarkbackups");
         fs::create_dir_all(&profile_dir1).unwrap();
         fs::create_dir_all(&profile_dir2).unwrap();
         utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
         utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
-        let mut file = File::create(browser_dir.join("profiles.ini")).unwrap();
-        let content = r#"
-            [Profile1]
-            Name=bene
-            IsRelative=1
-            Path=profile2.username
-            Default=1
-            
-            [Profile0]
-            Name=default
-            IsRelative=1
-            Path=profile2.default
-        "#;
-        file.write_all(content.as_bytes()).unwrap();
+        let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
+        file.write_all(PROFILES_INI_LINUX.as_bytes()).unwrap();
+        file.flush().unwrap();
+    }
+
+    fn create_firefox_dirs_macos(browser_dir: &Path) {
+        let profile_dir1 = browser_dir.join("Profiles/profile1.default/bookmarkbackups");
+        let profile_dir2 = browser_dir.join("Profiles/profile2.username/bookmarkbackups");
+        fs::create_dir_all(&profile_dir1).unwrap();
+        fs::create_dir_all(&profile_dir2).unwrap();
+        utils::create_file(&profile_dir1.join("bookmarks.jsonlz4")).unwrap();
+        utils::create_file(&profile_dir2.join("bookmarks.jsonlz4")).unwrap();
+        let mut file = utils::create_file(&browser_dir.join("profiles.ini")).unwrap();
+        file.write_all(PROFILES_INI_MACOS.as_bytes()).unwrap();
         file.flush().unwrap();
     }
 
     pub fn create_test_files(home_dir: &Path, source_os: &SourceOs) {
         match source_os {
             SourceOs::Linux => {
-                create_firefox_dirs_linux(home_dir);
-                create_chromium_dirs_linux(home_dir);
-                create_chrome_dirs_linux(home_dir);
-                create_edge_dirs_linux(home_dir);
+                let browser_dir = home_dir.join("snap/firefox/common/.mozilla/firefox");
+                create_firefox_dirs_linux(&browser_dir);
+
+                let browser_dir = home_dir.join(".mozilla/firefox");
+                create_firefox_dirs_linux(&browser_dir);
+
+                let browser_dir = home_dir.join("snap/chromium/common/chromium");
+                create_chromium_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join(".config/google-chrome");
+                create_chromium_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join(".config/microsoft-edge");
+                create_chromium_dirs(&browser_dir);
             }
             SourceOs::Macos => {
-                create_safari_dirs_macos(home_dir);
+                let browser_dir = home_dir.join("Library/Safari");
+                create_safari_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join("Library/Application Support/Firefox");
+                create_firefox_dirs_macos(&browser_dir);
+
+                let browser_dir = home_dir.join("Library/Application Support/Google/Chrome");
+                create_chromium_dirs(&browser_dir);
             }
             SourceOs::Windows => {
-                create_chrome_dirs_windows(home_dir);
-                create_edge_dirs_windows(home_dir);
+                let browser_dir = home_dir.join("AppData\\Local\\Google\\Chrome\\User Data");
+                create_chromium_dirs(&browser_dir);
+
+                let browser_dir = home_dir.join("AppData\\Local\\Microsoft\\Edge\\User Data");
+                create_chromium_dirs(&browser_dir);
             }
         }
     }

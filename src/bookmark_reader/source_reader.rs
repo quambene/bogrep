@@ -375,7 +375,7 @@ mod tests {
         test_utils::tests::create_test_files(temp_path, &source_os);
 
         let sources = SourceReader::select_sources(temp_path, &source_os).unwrap();
-        assert_eq!(sources.len(), 1);
+        assert_eq!(sources.len(), 5);
     }
 
     #[cfg(target_os = "windows")]
