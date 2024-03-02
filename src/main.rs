@@ -20,7 +20,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             }
 
-            Err(anyhow!("Aborting ..."))
+            println!("Aborting ...");
+            Ok(())
         },
         res = run_app(args, config) => {
             res
