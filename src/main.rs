@@ -32,7 +32,7 @@ async fn run_app(args: Args, config: Config) -> Result<(), anyhow::Error> {
     if let Some(subcommands) = args.subcommands {
         match subcommands {
             Subcommands::Config(args) => cmd::configure(config, args)?,
-            Subcommands::Import(args) => cmd::import(config, args)?,
+            Subcommands::Import(args) => cmd::import(config, args).await?,
             Subcommands::Init(args) => cmd::init(&config, &args).await?,
             Subcommands::Update(args) => cmd::update(&config, &args).await?,
             Subcommands::Fetch(args) => {

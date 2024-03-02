@@ -4,6 +4,7 @@ use predicates::{prelude::PredicateBooleanExt, str};
 use std::{collections::HashSet, fs, io::Write, path::Path};
 use tempfile::tempdir;
 
+// TODO: test cache for removed bookmarks
 fn test_import(source_path: &str, home_path: &Path, expected_bookmarks: usize) {
     println!("Execute 'bogrep -v config --source {source_path}'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();

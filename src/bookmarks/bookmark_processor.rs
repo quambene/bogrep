@@ -170,7 +170,8 @@ where
             Action::Remove => {
                 cache.remove(bookmark).await?;
             }
-            Action::DryRun => (),
+            // We don't reset the action to `Action::None` in a dry run.
+            Action::DryRun => return Ok(()),
             Action::None => (),
         }
 

@@ -67,6 +67,23 @@ impl BookmarkManager {
     pub fn set_actions(&mut self) {
         if self.dry_run {
             self.target_bookmarks.set_action(&Action::DryRun);
+        } else {
+            for target_bookmark in self.target_bookmarks.values_mut() {
+                match target_bookmark.status {
+                    Status::Removed => target_bookmark.set_action(Action::Remove),
+                    Status::Added | Status::None => (),
+                }
+            }
+        }
+    }
+
+    // TODO: fix ignored urls for same hosts
+    pub fn ignore_urls(&mut self, ignored_urls: &[Url]) {
+        for url in ignored_urls {
+            if let Some(target_bookmark) = self.target_bookmarks.get_mut(url) {
+                target_bookmark.set_status(Status::Removed);
+                target_bookmark.set_action(Action::Remove);
+            }
         }
     }
 
@@ -104,15 +121,6 @@ impl BookmarkManager {
     pub fn remove_urls(&mut self, urls: &[Url]) {
         for url in urls {
             if let Some(target_bookmark) = self.target_bookmarks.get_mut(url) {
-                target_bookmark.status = Status::Added;
-            }
-        }
-    }
-
-    // TODO: fix ignored urls for same hosts
-    pub fn ignore_urls(&mut self, ignored_urls: &[Url]) {
-        for url in ignored_urls {
-            if let Some(target_bookmark) = self.target_bookmarks.get_mut(url) {
                 target_bookmark.set_status(Status::Removed);
                 target_bookmark.set_action(Action::Remove);
             }
@@ -133,7 +141,7 @@ impl BookmarkManager {
             source_bookmark.sources.to_owned(),
             HashSet::new(),
             Status::Added,
-            Action::FetchAndAdd,
+            Action::None,
         );
         self.target_bookmarks.insert(target_bookmark);
         Ok(())
@@ -159,7 +167,7 @@ impl BookmarkManager {
                 source_bookmark.sources.to_owned(),
                 HashSet::new(),
                 Status::Added,
-                Action::FetchAndAdd,
+                Action::None,
             );
             self.target_bookmarks.insert(target_bookmark);
         }
@@ -180,7 +188,6 @@ impl BookmarkManager {
 
         for bookmark in bookmarks_to_remove {
             bookmark.status = Status::Removed;
-            bookmark.action = Action::Remove;
         }
     }
 

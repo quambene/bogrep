@@ -3,7 +3,8 @@ use crate::{
     bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
     bookmarks::BookmarkManager,
     errors::BogrepError,
-    json, utils, Config,
+    json, utils, BookmarkProcessor, Cache, CacheMode, Caching, Client, Config, Fetch,
+    ProcessReport, Settings,
 };
 use anyhow::anyhow;
 use chrono::Utc;
@@ -17,7 +18,7 @@ use url::Url;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
-pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
+pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let source_os = match std::env::consts::OS {
@@ -46,6 +47,9 @@ pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         }
     }
 
+    let cache_mode = CacheMode::new(&None, &config.settings.cache_mode);
+    let cache = Cache::new(&config.cache_path, cache_mode);
+    let client = Client::new(&config)?;
     let ignored_urls = config
         .settings
         .ignored_urls
@@ -64,19 +68,26 @@ pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     )?;
 
     import_source(
+        &config.settings,
+        client,
+        cache,
         &mut source_readers,
         &mut target_reader_writer.reader(),
         &mut target_reader_writer.writer(),
         &ignored_urls,
         args.dry_run,
-    )?;
+    )
+    .await?;
 
     target_reader_writer.close()?;
 
     Ok(())
 }
 
-fn import_source(
+async fn import_source(
+    settings: &Settings,
+    client: impl Fetch,
+    cache: impl Caching,
     source_readers: &mut [SourceReader],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
@@ -85,6 +96,8 @@ fn import_source(
 ) -> Result<(), anyhow::Error> {
     let now = Utc::now();
     let mut bookmark_manager = BookmarkManager::new(dry_run);
+    let report = ProcessReport::init(dry_run);
+    let bookmark_processor = BookmarkProcessor::new(client, cache, settings.to_owned(), report);
 
     target_reader.read(&mut bookmark_manager.target_bookmarks_mut())?;
 
@@ -94,7 +107,14 @@ fn import_source(
     bookmark_manager.ignore_urls(&ignored_urls);
     bookmark_manager.set_actions();
 
-    // TODO: Process bookmarks and remove bookmarks with `Action::Remove` from cache.
+    bookmark_processor
+        .process_bookmarks(
+            bookmark_manager
+                .target_bookmarks_mut()
+                .values_mut()
+                .collect(),
+        )
+        .await?;
 
     bookmark_manager.print_report(&source_readers);
     bookmark_manager.finish();
@@ -214,7 +234,7 @@ mod tests {
     use crate::{
         bookmark_reader::{ReadSource, TextReader},
         bookmarks::RawSource,
-        json, test_utils, JsonBookmarks, Source, SourceType,
+        json, test_utils, JsonBookmarks, MockCache, MockClient, Source, SourceType,
     };
     use std::{
         collections::HashSet,
@@ -222,11 +242,14 @@ mod tests {
         path::Path,
     };
 
-    fn test_import_source(
+    async fn test_import_source(
         sources: &[RawSource],
         expected_bookmarks: HashSet<String>,
         dry_run: bool,
     ) {
+        let settings = Settings::default();
+        let client = MockClient::new();
+        let cache = MockCache::new(CacheMode::Html);
         let bookmarks_json = JsonBookmarks::default();
         let buf = json::serialize(&bookmarks_json).unwrap();
 
@@ -242,12 +265,16 @@ mod tests {
             .collect::<Vec<_>>();
 
         let res = import_source(
+            &settings,
+            client,
+            cache,
             &mut source_readers,
             &mut target_reader,
             &mut target_writer,
             &ignored_urls,
             dry_run,
-        );
+        )
+        .await;
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.into_inner();
@@ -264,7 +291,7 @@ mod tests {
         );
     }
 
-    fn test_import_source_bookmarks(
+    async fn test_import_source_bookmarks(
         source_bookmarks: HashSet<String>,
         source: &Source,
         source_reader: Box<dyn ReadSource>,
@@ -277,6 +304,9 @@ mod tests {
         }
         source_reader_writer.set_position(0);
 
+        let settings = Settings::default();
+        let client = MockClient::new();
+        let cache = MockCache::new(CacheMode::Html);
         let source_reader = SourceReader::new(
             source.clone(),
             Box::new(source_reader_writer.clone()),
@@ -286,12 +316,16 @@ mod tests {
         let dry_run = false;
 
         let res = import_source(
+            &settings,
+            client,
+            cache,
             &mut [source_reader],
             target_reader,
             target_writer,
             &ignored_urls,
             dry_run,
-        );
+        )
+        .await;
 
         let actual = target_writer.get_ref();
         let actual_bookmarks = json::deserialize::<JsonBookmarks>(actual);
@@ -317,8 +351,8 @@ mod tests {
         assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 
-    #[test]
-    fn test_import_source_empty() {
+    #[tokio::test]
+    async fn test_import_source_empty() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
@@ -329,11 +363,11 @@ mod tests {
             String::from("https://doc.rust-lang.org/book/title-page.html")
         ]);
 
-        test_import_source(&[source], expected_bookmarks, false);
+        test_import_source(&[source], expected_bookmarks, false).await;
     }
 
-    #[test]
-    fn test_import_source_firefox() {
+    #[tokio::test]
+    async fn test_import_source_firefox() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
@@ -344,11 +378,11 @@ mod tests {
             String::from("https://doc.rust-lang.org/book/title-page.html")
         ]);
 
-        test_import_source(&[source], expected_bookmarks, false);
+        test_import_source(&[source], expected_bookmarks, false).await;
     }
 
-    #[test]
-    fn test_import_source_firefox_compressed() {
+    #[tokio::test]
+    async fn test_import_source_firefox_compressed() {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
@@ -360,11 +394,11 @@ mod tests {
         ]);
         test_utils::create_compressed_json_file(source_path).unwrap();
 
-        test_import_source(&[source], expected_bookmarks, false);
+        test_import_source(&[source], expected_bookmarks, false).await;
     }
 
-    #[test]
-    fn test_import_source_chrome() {
+    #[tokio::test]
+    async fn test_import_source_chrome() {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
@@ -375,11 +409,11 @@ mod tests {
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
 
-        test_import_source(&[source], expected_bookmarks, false);
+        test_import_source(&[source], expected_bookmarks, false).await;
     }
 
-    #[test]
-    fn test_import_source_chromium_no_extension() {
+    #[tokio::test]
+    async fn test_import_source_chromium_no_extension() {
         let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
@@ -390,11 +424,11 @@ mod tests {
             String::from("https://doc.rust-lang.org/book/title-page.html"),
         ]);
 
-        test_import_source(&[source], expected_bookmarks, false);
+        test_import_source(&[source], expected_bookmarks, false).await;
     }
 
-    #[test]
-    fn test_import_source_simple() {
+    #[tokio::test]
+    async fn test_import_source_simple() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
@@ -405,21 +439,21 @@ mod tests {
             "https://en.wikipedia.org/wiki/Design_Patterns".to_owned(),
             "https://doc.rust-lang.org/book/title-page.html".to_owned(),
         ]);
-        test_import_source(&[source], expected_bookmarks, false);
+        test_import_source(&[source], expected_bookmarks, false).await;
     }
 
-    #[test]
-    fn test_import_source_simple_dry_run() {
+    #[tokio::test]
+    async fn test_import_source_simple_dry_run() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = RawSource::new(source_path, source_folders);
         // We are expecting no bookmarks in a dry run.
         let expected_bookmarks = HashSet::new();
-        test_import_source(&[source], expected_bookmarks, true);
+        test_import_source(&[source], expected_bookmarks, true).await;
     }
 
-    #[test]
-    fn test_import_bookmarks_simple_add_source_bookmarks() {
+    #[tokio::test]
+    async fn test_import_bookmarks_simple_add_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = Source::new(SourceType::Unknown, source_path, source_folders);
@@ -443,7 +477,8 @@ mod tests {
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,
-        );
+        )
+        .await;
 
         // Clean up source and simulate change of source bookmarks.
         source_reader_writer.get_mut().clear();
@@ -462,11 +497,12 @@ mod tests {
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn test_import_bookmarks_simple_delete_source_bookmarks() {
+    #[tokio::test]
+    async fn test_import_bookmarks_simple_delete_source_bookmarks() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let source_folders = vec![];
         let source = Source::new(SourceType::Unknown, source_path, source_folders);
@@ -495,7 +531,8 @@ mod tests {
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,
-        );
+        )
+        .await;
 
         // Clean up source and simulate change of source bookmarks.
         source_reader_writer.get_mut().clear();
@@ -511,7 +548,8 @@ mod tests {
             &mut source_reader_writer,
             &mut target_reader,
             &mut target_writer,
-        );
+        )
+        .await;
     }
 
     #[test]
