@@ -203,7 +203,7 @@ impl Fetch for MockClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmarks::Action;
+    use crate::bookmarks::{Action, Status};
     use std::collections::HashSet;
     use tokio::time::Instant;
 
@@ -222,6 +222,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
         let bookmark2 = TargetBookmark::new(
@@ -231,6 +232,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
 
@@ -260,6 +262,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
         let bookmark2 = TargetBookmark::new(
@@ -269,6 +272,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
 

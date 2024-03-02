@@ -229,7 +229,7 @@ impl Caching for Cache {
     async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
         let cache_path = self.bookmark_path(&bookmark.id);
 
-        if cache_path.exists() {
+        if bookmark.last_cached.is_some() && cache_path.exists() {
             debug!("Remove website from cache: {}", cache_path.display());
             utils::remove_file_async(&cache_path).await?;
             bookmark.last_cached = None;
@@ -410,7 +410,7 @@ impl Caching for MockCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmarks::Action;
+    use crate::bookmarks::{Action, Status};
     use chrono::Utc;
     use std::collections::HashSet;
     use url::Url;
@@ -427,6 +427,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
@@ -453,6 +454,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
@@ -476,6 +478,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
@@ -505,6 +508,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
         let content1 = "<html><head></head><body><p>Test content 1</p></body></html>";
@@ -531,6 +535,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::None,
         );
         let content = "<html><head></head><body><p>Test content</p></body></html>";
@@ -562,6 +567,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -574,6 +580,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -608,6 +615,7 @@ mod tests {
                 None,
                 HashSet::new(),
                 HashSet::new(),
+                Status::None,
                 Action::None,
             ),
         )]));

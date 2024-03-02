@@ -1,4 +1,4 @@
-use super::{Action, JsonBookmark};
+use super::{Action, JsonBookmark, Status};
 use crate::{
     cache::CacheMode, errors::BogrepError, SourceBookmark, SourceBookmarks, SourceType,
     UnderlyingType,
@@ -24,6 +24,7 @@ pub struct TargetBookmark {
     pub last_cached: Option<i64>,
     pub sources: HashSet<SourceType>,
     pub cache_modes: HashSet<CacheMode>,
+    pub status: Status,
     pub action: Action,
 }
 
@@ -35,6 +36,7 @@ impl TargetBookmark {
         last_cached: Option<DateTime<Utc>>,
         sources: HashSet<SourceType>,
         cache_modes: HashSet<CacheMode>,
+        status: Status,
         action: Action,
     ) -> Self {
         let underlying_type = UnderlyingType::from(&url);
@@ -48,8 +50,13 @@ impl TargetBookmark {
             last_cached: last_cached.map(|timestamp| timestamp.timestamp_millis()),
             sources,
             cache_modes,
+            status,
             action,
         }
+    }
+
+    pub fn set_status(&mut self, status: Status) {
+        self.status = status;
     }
 
     pub fn set_action(&mut self, action: Action) {
@@ -77,6 +84,7 @@ impl TryFrom<JsonBookmark> for TargetBookmark {
             last_cached: value.last_cached,
             sources: value.sources,
             cache_modes: value.cache_modes,
+            status: Status::None,
             action: Action::None,
         })
     }
@@ -266,6 +274,7 @@ impl TargetBookmarks {
                 None,
                 bookmark.sources.to_owned(),
                 HashSet::new(),
+                Status::Added,
                 Action::FetchAndAdd,
             );
             self.insert(target_bookmark);
@@ -324,6 +333,7 @@ impl TryFrom<SourceBookmarks> for TargetBookmarks {
                 None,
                 source_bookmark.1.sources,
                 HashSet::new(),
+                Status::Added,
                 Action::None,
             );
             target_bookmarks.insert(target_bookmark)
@@ -408,6 +418,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -420,6 +431,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -432,6 +444,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -468,6 +481,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -480,6 +494,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -492,6 +507,7 @@ mod tests {
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::None,
                 ),
             ),
@@ -525,6 +541,7 @@ mod tests {
                         last_cached: None,
                         sources: HashSet::new(),
                         cache_modes: HashSet::new(),
+                        status: Status::None,
                         action: Action::None,
                     }
                 ),
@@ -539,6 +556,7 @@ mod tests {
                         last_cached: None,
                         sources: HashSet::new(),
                         cache_modes: HashSet::new(),
+                        status: Status::None,
                         action: Action::None,
                     }
                 )
@@ -571,6 +589,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::None,
                 },
             ),
@@ -585,6 +604,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::None,
                 },
             ),

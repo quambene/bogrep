@@ -1,6 +1,6 @@
 use crate::{
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::{Action, BookmarkProcessor, ProcessReport},
+    bookmarks::{Action, BookmarkProcessor, ProcessReport, Status},
     cache::CacheMode,
     errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, Settings, SourceType,
@@ -112,6 +112,7 @@ pub fn set_actions(
                     None,
                     sources,
                     HashSet::new(),
+                    Status::Added,
                     Action::FetchAndReplace,
                 );
                 target_bookmarks.insert(target_bookmark);
@@ -181,7 +182,10 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::ProcessReport, MockCache, MockClient, UnderlyingType};
+    use crate::{
+        bookmarks::{ProcessReport, Status},
+        MockCache, MockClient, UnderlyingType,
+    };
     use std::collections::HashMap;
     use url::Url;
 
@@ -204,6 +208,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndReplace,
                 },
             ),
@@ -218,6 +223,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndReplace,
                 },
             ),
@@ -277,6 +283,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndReplace,
                 },
             ),
@@ -291,6 +298,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndReplace,
                 },
             ),
@@ -350,6 +358,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),
@@ -364,6 +373,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),
@@ -433,6 +443,7 @@ mod tests {
                     last_cached: Some(now),
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),
@@ -447,6 +458,7 @@ mod tests {
                     last_cached: None,
                     sources: HashSet::new(),
                     cache_modes: HashSet::new(),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),

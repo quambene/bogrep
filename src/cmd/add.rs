@@ -1,7 +1,7 @@
 use crate::{
     args::AddArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::Action,
+    bookmarks::{Action, Status},
     Config, SourceType, TargetBookmark, TargetBookmarks,
 };
 use anyhow::anyhow;
@@ -59,6 +59,7 @@ fn add_urls(
             None,
             sources.clone(),
             cache_modes.clone(),
+            Status::None,
             Action::None,
         );
         target_bookmarks.insert(bookmark);
@@ -74,7 +75,7 @@ fn add_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, JsonBookmarks};
+    use crate::{bookmarks::Status, json, JsonBookmarks};
     use std::io::{Cursor, Write};
     use url::Url;
 
@@ -147,6 +148,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::FetchAndAdd,
         ));
         target_bookmarks.insert(TargetBookmark::new(
@@ -156,6 +158,7 @@ mod tests {
             None,
             HashSet::new(),
             HashSet::new(),
+            Status::None,
             Action::FetchAndAdd,
         ));
         let bookmarks_json = JsonBookmarks::from(&target_bookmarks);

@@ -80,7 +80,7 @@ pub trait SeekRead: Seek + Read + fmt::Debug {}
 impl<T> SeekRead for T where T: Seek + Read + fmt::Debug {}
 
 /// A trait to read and parse the content for different file extensions.
-pub trait ReadSource {
+pub trait ReadSource: fmt::Debug {
     fn extension(&self) -> Option<&str>;
 
     fn read_and_parse<'a>(

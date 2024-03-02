@@ -1,6 +1,6 @@
 use bogrep::{
     errors::BogrepError, html, Action, BookmarkProcessor, Cache, CacheMode, Caching, Fetch,
-    MockClient, ProcessReport, Settings, TargetBookmark, TargetBookmarks,
+    MockClient, ProcessReport, Settings, Status, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -74,7 +74,8 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
                 None,
                 HashSet::new(),
                 HashSet::new(),
-                bogrep::Action::FetchAndReplace,
+                Status::None,
+                Action::FetchAndReplace,
             ),
         );
     }
@@ -119,6 +120,7 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
                 None,
                 HashSet::new(),
                 HashSet::new(),
+                Status::None,
                 Action::FetchAndReplace,
             ),
         );

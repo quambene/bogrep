@@ -1,7 +1,7 @@
 use super::ProcessReport;
 use crate::{
-    errors::BogrepError, html, Action, Caching, Fetch, Settings, SourceType, TargetBookmark,
-    TargetBookmarks,
+    bookmarks::Status, errors::BogrepError, html, Action, Caching, Fetch, Settings, SourceType,
+    TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use futures::{stream, StreamExt};
@@ -207,6 +207,7 @@ where
                     None,
                     HashSet::new(),
                     HashSet::new(),
+                    Status::None,
                     Action::FetchAndAdd,
                 );
                 underlying_bookmark.set_source(SourceType::Underlying(bookmark.url.to_string()));
@@ -225,7 +226,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CacheMode, MockCache, MockClient, UnderlyingType};
+    use crate::{bookmarks::Status, CacheMode, MockCache, MockClient, UnderlyingType};
     use url::Url;
 
     #[test]
@@ -265,6 +266,7 @@ mod tests {
             None,
             HashSet::from([SourceType::Internal]),
             HashSet::from_iter([CacheMode::Text]),
+            Status::None,
             Action::None,
         );
 

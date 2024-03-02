@@ -72,7 +72,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Action, CacheMode, TargetBookmark, UnderlyingType};
+    use crate::{bookmarks::Status, Action, CacheMode, TargetBookmark, UnderlyingType};
     use chrono::Utc;
     use std::collections::HashSet;
 
@@ -88,6 +88,7 @@ mod tests {
             None,
             HashSet::from_iter([SourceType::Internal]),
             HashSet::from_iter([CacheMode::Text]),
+            Status::None,
             Action::None,
         ));
         let url2 = Url::parse("https://github.com/some_project").unwrap();
@@ -101,6 +102,7 @@ mod tests {
                 "https://news.ycombinator.com/item?id=00000000".to_owned(),
             )]),
             HashSet::from_iter([CacheMode::Text]),
+            Status::None,
             Action::None,
         ));
 

@@ -1,11 +1,12 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
-    bookmarks::ImportReport,
+    bookmarks::BookmarkManager,
     errors::BogrepError,
-    json, utils, Action, Config, SourceBookmarks, TargetBookmarks,
+    json, utils, Config,
 };
 use anyhow::anyhow;
+use chrono::Utc;
 use log::debug;
 use std::{
     collections::HashSet,
@@ -45,6 +46,12 @@ pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         }
     }
 
+    let ignored_urls = config
+        .settings
+        .ignored_urls
+        .iter()
+        .map(|url| Url::parse(url))
+        .collect::<Result<Vec<_>, _>>()?;
     let mut source_readers = config
         .settings
         .sources
@@ -55,12 +62,6 @@ pub fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
-    let ignored_urls = config
-        .settings
-        .ignored_urls
-        .iter()
-        .map(|url| Url::parse(url))
-        .collect::<Result<Vec<_>, _>>()?;
 
     import_source(
         &mut source_readers,
@@ -82,27 +83,23 @@ fn import_source(
     ignored_urls: &[Url],
     dry_run: bool,
 ) -> Result<(), anyhow::Error> {
-    let mut source_bookmarks = SourceBookmarks::default();
+    let now = Utc::now();
+    let mut bookmark_manager = BookmarkManager::new(dry_run);
 
-    for source_reader in source_readers.iter_mut() {
-        source_reader.import(&mut source_bookmarks)?;
-    }
+    target_reader.read(&mut bookmark_manager.target_bookmarks_mut())?;
 
-    let mut target_bookmarks = TargetBookmarks::default();
-    target_reader.read(&mut target_bookmarks)?;
+    bookmark_manager.import(source_readers)?;
+    bookmark_manager.add_bookmarks(now)?;
+    bookmark_manager.remove_bookmarks();
+    bookmark_manager.ignore_urls(&ignored_urls);
+    bookmark_manager.set_actions();
 
-    target_bookmarks.update(&source_bookmarks)?;
-    target_bookmarks.ignore_urls(ignored_urls);
-    target_bookmarks.clean_up();
+    // TODO: Process bookmarks and remove bookmarks with `Action::Remove` from cache.
 
-    if dry_run {
-        target_bookmarks.set_action(&Action::DryRun);
-    }
+    bookmark_manager.print_report(&source_readers);
+    bookmark_manager.finish();
 
-    target_writer.write(&target_bookmarks)?;
-
-    let report = ImportReport::new(source_readers, &target_bookmarks, dry_run);
-    report.print();
+    target_writer.write(bookmark_manager.target_bookmarks())?;
 
     Ok(())
 }
@@ -321,62 +318,6 @@ mod tests {
     }
 
     #[test]
-    fn test_select_sources_from_input() {
-        let indexed_sources = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-        let selected_sources = select_sources_from_input("y", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-
-        let selected_sources = select_sources_from_input("yes", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-
-        let selected_sources = select_sources_from_input("n", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![] as Vec<usize>);
-
-        let selected_sources = select_sources_from_input("no", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![] as Vec<usize>);
-
-        let selected_sources = select_sources_from_input("1", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![1]);
-
-        let selected_sources = select_sources_from_input("1 5 10", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![1, 5, 10]);
-
-        let selected_sources = select_sources_from_input("1 1", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![1]);
-
-        let selected_sources = select_sources_from_input("1 5 1 10", &indexed_sources).unwrap();
-        assert_eq!(selected_sources, vec![1, 5, 10]);
-
-        let selected_sources = select_sources_from_input("1 5 1 10 0", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input("x", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input("x ", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input(" x", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input("xx", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input("x x", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input("0", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input("11", &indexed_sources);
-        assert!(selected_sources.is_err());
-
-        let selected_sources = select_sources_from_input("1 5 11", &indexed_sources);
-        assert!(selected_sources.is_err());
-    }
-
-    #[test]
     fn test_import_source_empty() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
         let source_folders = vec![];
@@ -571,5 +512,61 @@ mod tests {
             &mut target_reader,
             &mut target_writer,
         );
+    }
+
+    #[test]
+    fn test_select_sources_from_input() {
+        let indexed_sources = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        let selected_sources = select_sources_from_input("y", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let selected_sources = select_sources_from_input("yes", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let selected_sources = select_sources_from_input("n", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![] as Vec<usize>);
+
+        let selected_sources = select_sources_from_input("no", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![] as Vec<usize>);
+
+        let selected_sources = select_sources_from_input("1", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1]);
+
+        let selected_sources = select_sources_from_input("1 5 10", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 5, 10]);
+
+        let selected_sources = select_sources_from_input("1 1", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1]);
+
+        let selected_sources = select_sources_from_input("1 5 1 10", &indexed_sources).unwrap();
+        assert_eq!(selected_sources, vec![1, 5, 10]);
+
+        let selected_sources = select_sources_from_input("1 5 1 10 0", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("x", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("x ", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input(" x", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("xx", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("x x", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("0", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("11", &indexed_sources);
+        assert!(selected_sources.is_err());
+
+        let selected_sources = select_sources_from_input("1 5 11", &indexed_sources);
+        assert!(selected_sources.is_err());
     }
 }

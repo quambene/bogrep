@@ -1,8 +1,10 @@
+mod bookmark_manager;
 mod bookmark_processor;
 mod source_bookmarks;
 mod target_bookmarks;
 
 use crate::{bookmark_reader::SourceReader, CacheMode};
+pub use bookmark_manager::BookmarkManager;
 pub use bookmark_processor::BookmarkProcessor;
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
@@ -64,6 +66,15 @@ impl fmt::Display for SourceType {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Status {
+    /// Bookmark added to state.
+    Added,
+    /// Bookmark removed from state.
+    Removed,
+    None,
+}
+
 /// The action to be performed on the bookmark.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Action {
@@ -75,7 +86,7 @@ pub enum Action {
     Remove,
     /// No actions to be performed.
     None,
-    /// Skip fetching and caching.
+    /// Skip fetching, caching, and writing to file.
     DryRun,
 }
 

@@ -54,7 +54,7 @@ pub use bookmark_reader::{
 };
 pub use bookmarks::{
     Action, BookmarkProcessor, JsonBookmark, JsonBookmarks, ProcessReport, Source, SourceBookmark,
-    SourceBookmarks, SourceType, TargetBookmark, TargetBookmarks, UnderlyingType,
+    SourceBookmarks, SourceType, Status, TargetBookmark, TargetBookmarks, UnderlyingType,
 };
 pub use cache::{Cache, CacheMode, Caching, MockCache};
 pub use client::{Client, Fetch, MockClient};

@@ -92,7 +92,7 @@ async fn update_bookmarks(
 mod tests {
     use super::*;
     use crate::{
-        bookmarks::RawSource, Action, MockCache, MockClient, TargetBookmark, UnderlyingType,
+        bookmarks::RawSource, Action, MockCache, MockClient, Status, TargetBookmark, UnderlyingType,
     };
     use chrono::Utc;
     use std::{
@@ -131,6 +131,7 @@ mod tests {
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Html]),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),
@@ -145,6 +146,7 @@ mod tests {
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Html]),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),
@@ -252,6 +254,7 @@ mod tests {
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Text]),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),
@@ -266,6 +269,7 @@ mod tests {
                     last_cached: Some(now.timestamp_millis()),
                     sources: HashSet::new(),
                     cache_modes: HashSet::from_iter([CacheMode::Text]),
+                    status: Status::None,
                     action: Action::FetchAndAdd,
                 },
             ),

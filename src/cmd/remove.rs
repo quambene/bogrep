@@ -61,7 +61,7 @@ fn remove_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Action, json, JsonBookmarks, SourceType, TargetBookmark};
+    use crate::{bookmarks::Action, json, JsonBookmarks, SourceType, Status, TargetBookmark};
     use chrono::{DateTime, Utc};
     use std::{
         collections::HashSet,
@@ -78,6 +78,7 @@ mod tests {
             None,
             sources,
             HashSet::new(),
+            Status::None,
             Action::None,
         )
     }
