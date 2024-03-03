@@ -1,10 +1,11 @@
+mod common;
+
 use assert_cmd::Command;
 use bogrep::{json, test_utils, utils, JsonBookmarks};
 use predicates::{prelude::PredicateBooleanExt, str};
 use std::{collections::HashSet, fs, io::Write, path::Path};
 use tempfile::tempdir;
 
-// TODO: test cache for removed bookmarks
 fn test_import(source_path: &str, home_path: &Path, expected_bookmarks: usize) {
     println!("Execute 'bogrep -v config --source {source_path}'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
@@ -131,7 +132,7 @@ fn test_import_safari_binary() {
 
 // Test renaming of `bookmarks-lock.json` to `bookmarks.json`.
 #[test]
-fn test_import_consecutive() {
+fn test_import_simple_consecutive() {
     let temp_dir = tempdir().unwrap();
     let temp_path = temp_dir.path();
     assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -165,6 +166,9 @@ fn test_import_consecutive() {
         .success()
         .stdout(str::contains("Imported 4 bookmarks from 1 source"));
 
+    let bookmarks = common::test_bookmarks(temp_path);
+    assert_eq!(bookmarks.len(), 4);
+
     // Truncate file and simulate change of source bookmarks.
     let mut source_file = utils::open_and_truncate_file(&source_path).unwrap();
     let source_bookmarks: HashSet<String> =
@@ -174,23 +178,16 @@ fn test_import_consecutive() {
         writeln!(source_file, "{}", bookmark).unwrap();
     }
 
-    println!("Execute 'bogrep import'");
+    println!("Execute 'bogrep -v import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["import"]);
+    cmd.args(["-v", "import"]);
     // Info messages are logged to stderr.
     cmd.assert().success().stdout(
         str::contains("Imported 0 bookmarks from 1 source")
             .and(str::contains("Removed 3 bookmarks")),
     );
 
-    let bookmarks_path = temp_path.join("bookmarks.json");
-    assert!(bookmarks_path.exists());
-    // Lock file was cleaned up.
-    let bookmarks_lock_path = temp_path.join("bookmarks-lock.json");
-    assert!(!bookmarks_lock_path.exists());
-
-    let bookmarks = utils::read_file(&bookmarks_path).unwrap();
-    let bookmarks = json::deserialize::<JsonBookmarks>(&bookmarks).unwrap();
+    let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 1);
 }

@@ -160,7 +160,7 @@ impl Source {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, PartialEq, Deserialize)]
 pub struct JsonBookmark {
     pub id: String,
     pub url: String,
@@ -215,7 +215,7 @@ impl From<&TargetBookmark> for JsonBookmark {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct JsonBookmarks {
     pub bookmarks: Vec<JsonBookmark>,
 }

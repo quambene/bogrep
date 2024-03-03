@@ -166,7 +166,11 @@ impl TargetBookmarks {
         }
     }
 
-    pub fn insert(&mut self, bookmark: TargetBookmark) {
+    pub fn insert(&mut self, bookmark: TargetBookmark) -> Option<TargetBookmark> {
+        self.0.insert(bookmark.url.clone(), bookmark)
+    }
+
+    pub fn upsert(&mut self, bookmark: TargetBookmark) {
         let url = &bookmark.url;
         let entry = self.0.entry(url.clone());
 
@@ -184,7 +188,8 @@ impl TargetBookmarks {
                 target_bookmark.action = bookmark.action;
             }
             Entry::Vacant(entry) => {
-                entry.insert(bookmark);
+                let inserted_bookmark = entry.insert(bookmark);
+                inserted_bookmark.status = Status::Added;
             }
         }
     }
@@ -193,12 +198,12 @@ impl TargetBookmarks {
         self.0.remove(url)
     }
 
-    /// Clean up bookmarks which are marked by [`Action::Remove`].
+    /// Clean up bookmarks which are marked by [`Status::Removed`].
     pub fn clean_up(&mut self) {
         let urls_to_remove = self
             .values()
             .filter_map(|bookmark| {
-                if bookmark.action == Action::Remove {
+                if bookmark.status == Status::Removed {
                     Some(bookmark.url.to_owned())
                 } else {
                     None
@@ -333,10 +338,10 @@ impl TryFrom<SourceBookmarks> for TargetBookmarks {
                 None,
                 source_bookmark.1.sources,
                 HashSet::new(),
-                Status::Added,
+                Status::None,
                 Action::None,
             );
-            target_bookmarks.insert(target_bookmark)
+            target_bookmarks.insert(target_bookmark);
         }
 
         Ok(target_bookmarks)

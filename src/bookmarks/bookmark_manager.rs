@@ -111,10 +111,10 @@ impl BookmarkManager {
                 None,
                 sources.clone(),
                 cache_modes.clone(),
-                Status::Added,
+                Status::None,
                 action.clone(),
             );
-            self.target_bookmarks.insert(bookmark);
+            self.target_bookmarks.upsert(bookmark);
         }
     }
 
@@ -140,10 +140,10 @@ impl BookmarkManager {
             None,
             source_bookmark.sources.to_owned(),
             HashSet::new(),
-            Status::Added,
+            Status::None,
             Action::None,
         );
-        self.target_bookmarks.insert(target_bookmark);
+        self.target_bookmarks.upsert(target_bookmark);
         Ok(())
     }
 
@@ -166,10 +166,10 @@ impl BookmarkManager {
                 None,
                 source_bookmark.sources.to_owned(),
                 HashSet::new(),
-                Status::Added,
+                Status::None,
                 Action::None,
             );
-            self.target_bookmarks.insert(target_bookmark);
+            self.target_bookmarks.upsert(target_bookmark);
         }
 
         Ok(())
@@ -271,5 +271,178 @@ impl BookmarkManager {
             .filter(|(url, _)| !source_bookmarks.contains_key(url.as_str()))
             .map(|(_, target_bookmark)| target_bookmark)
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{bookmarks::SourceBookmarkBuilder, UnderlyingType};
+    use std::{collections::HashMap, str::FromStr};
+
+    #[test]
+    fn test_add_and_remove_bookmarks() {
+        let now = Utc::now();
+        let url1 = Url::from_str("https://url1.com").unwrap();
+        let url2 = Url::from_str("https://url2.com").unwrap();
+        let url3 = Url::from_str("https://url3.com").unwrap();
+        let source_bookmarks = SourceBookmarks::new(HashMap::from_iter([
+            (
+                url1.to_string(),
+                SourceBookmarkBuilder::new(url1.as_str())
+                    .add_source(&SourceType::Simple)
+                    .build(),
+            ),
+            (
+                url3.to_string(),
+                SourceBookmarkBuilder::new(url3.as_str())
+                    .add_source(&SourceType::Simple)
+                    .build(),
+            ),
+        ]));
+        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
+            (
+                url1.clone(),
+                TargetBookmark {
+                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url: url1.clone(),
+                    underlying_url: None,
+                    underlying_type: UnderlyingType::None,
+                    last_imported: now.timestamp_millis(),
+                    last_cached: None,
+                    sources: HashSet::from_iter([SourceType::Simple]),
+                    cache_modes: HashSet::new(),
+                    status: Status::None,
+                    action: Action::None,
+                },
+            ),
+            (
+                url2.clone(),
+                TargetBookmark {
+                    id: "511b1590-e6de-4989-bca4-96dc61730508".to_owned(),
+                    url: url2.clone(),
+                    underlying_url: None,
+                    underlying_type: UnderlyingType::None,
+                    last_imported: now.timestamp_millis(),
+                    last_cached: None,
+                    sources: HashSet::from_iter([SourceType::Simple]),
+                    cache_modes: HashSet::new(),
+                    status: Status::None,
+                    action: Action::None,
+                },
+            ),
+        ]));
+
+        let mut bookmark_manager = BookmarkManager {
+            source_bookmarks,
+            target_bookmarks,
+            dry_run: false,
+        };
+
+        bookmark_manager.add_bookmarks(now).unwrap();
+        let actual_bookmarks = bookmark_manager.target_bookmarks();
+        assert_eq!(
+            actual_bookmarks,
+            &TargetBookmarks::new(HashMap::from_iter([
+                (
+                    url1.clone(),
+                    TargetBookmark {
+                        id: String::from("dd30381b-8e67-4e84-9379-0852f60a7cd7"),
+                        url: url1.clone(),
+                        underlying_url: None,
+                        underlying_type: UnderlyingType::None,
+                        last_imported: now.timestamp_millis(),
+                        last_cached: None,
+                        sources: HashSet::from_iter([SourceType::Simple]),
+                        cache_modes: HashSet::new(),
+                        status: Status::None,
+                        action: Action::None,
+                    }
+                ),
+                (
+                    url2.clone(),
+                    TargetBookmark {
+                        id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                        url: url2.clone(),
+                        underlying_url: None,
+                        underlying_type: UnderlyingType::None,
+                        last_imported: now.timestamp_millis(),
+                        last_cached: None,
+                        sources: HashSet::from_iter([SourceType::Simple]),
+                        cache_modes: HashSet::new(),
+                        status: Status::None,
+                        action: Action::None,
+                    }
+                ),
+                (
+                    url3.clone(),
+                    TargetBookmark {
+                        id: actual_bookmarks.get(&url3).unwrap().id.clone(),
+                        url: url3.clone(),
+                        underlying_url: None,
+                        underlying_type: UnderlyingType::None,
+                        last_imported: now.timestamp_millis(),
+                        last_cached: None,
+                        sources: HashSet::from_iter([SourceType::Simple]),
+                        cache_modes: HashSet::new(),
+                        status: Status::Added,
+                        action: Action::None,
+                    }
+                ),
+            ]))
+        );
+
+        bookmark_manager.remove_bookmarks();
+        let actual_bookmarks = bookmark_manager.target_bookmarks();
+        assert_eq!(
+            actual_bookmarks,
+            &TargetBookmarks::new(HashMap::from_iter([
+                (
+                    url1.clone(),
+                    TargetBookmark {
+                        id: String::from("dd30381b-8e67-4e84-9379-0852f60a7cd7"),
+                        url: url1,
+                        underlying_url: None,
+                        underlying_type: UnderlyingType::None,
+                        last_imported: now.timestamp_millis(),
+                        last_cached: None,
+                        sources: HashSet::from_iter([SourceType::Simple]),
+                        cache_modes: HashSet::new(),
+                        status: Status::None,
+                        action: Action::None,
+                    }
+                ),
+                (
+                    url2.clone(),
+                    TargetBookmark {
+                        id: String::from("511b1590-e6de-4989-bca4-96dc61730508"),
+                        url: url2,
+                        underlying_url: None,
+                        underlying_type: UnderlyingType::None,
+                        last_imported: now.timestamp_millis(),
+                        last_cached: None,
+                        sources: HashSet::from_iter([SourceType::Simple]),
+                        cache_modes: HashSet::new(),
+                        status: Status::Removed,
+                        action: Action::None,
+                    }
+                ),
+                (
+                    url3.clone(),
+                    TargetBookmark {
+                        id: actual_bookmarks.get(&url3).unwrap().id.clone(),
+                        url: url3,
+                        underlying_url: None,
+                        underlying_type: UnderlyingType::None,
+                        last_imported: now.timestamp_millis(),
+                        last_cached: None,
+                        sources: HashSet::from_iter([SourceType::Simple]),
+                        cache_modes: HashSet::new(),
+                        status: Status::Added,
+                        action: Action::None,
+                    }
+                ),
+            ]))
+        );
     }
 }
