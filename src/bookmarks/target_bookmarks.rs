@@ -16,19 +16,31 @@ use uuid::Uuid;
 /// [`SourceBookmarks`].
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TargetBookmark {
-    pub id: String,
-    pub url: Url,
-    pub underlying_url: Option<Url>,
-    pub underlying_type: UnderlyingType,
-    pub last_imported: i64,
-    pub last_cached: Option<i64>,
-    pub sources: HashSet<SourceType>,
-    pub cache_modes: HashSet<CacheMode>,
-    pub status: Status,
-    pub action: Action,
+    id: String,
+    url: Url,
+    underlying_url: Option<Url>,
+    underlying_type: UnderlyingType,
+    last_imported: i64,
+    last_cached: Option<i64>,
+    sources: HashSet<SourceType>,
+    cache_modes: HashSet<CacheMode>,
+    status: Status,
+    action: Action,
 }
 
 impl TargetBookmark {
+    pub fn builder(url: Url, last_imported: DateTime<Utc>) -> TargetBookmarkBuilder {
+        TargetBookmarkBuilder::new(url, last_imported)
+    }
+
+    pub fn builder_with_id(
+        id: String,
+        url: Url,
+        last_imported: DateTime<Utc>,
+    ) -> TargetBookmarkBuilder {
+        TargetBookmarkBuilder::new_with_id(id, url, last_imported)
+    }
+
     pub fn new(
         url: Url,
         underlying_url: Option<Url>,
@@ -55,6 +67,66 @@ impl TargetBookmark {
         }
     }
 
+    pub fn id(&self) -> &str {
+        self.id.as_ref()
+    }
+
+    pub fn url(&self) -> &Url {
+        &self.url
+    }
+
+    pub fn underlying_url(&self) -> Option<&Url> {
+        self.underlying_url.as_ref()
+    }
+
+    pub fn underlying_type(&self) -> &UnderlyingType {
+        &self.underlying_type
+    }
+
+    pub fn last_imported(&self) -> i64 {
+        self.last_imported
+    }
+
+    pub fn last_cached(&self) -> Option<i64> {
+        self.last_cached
+    }
+
+    pub fn status(&self) -> &Status {
+        &self.status
+    }
+
+    pub fn action(&self) -> &Action {
+        &self.action
+    }
+
+    pub fn sources(&self) -> &HashSet<SourceType> {
+        &self.sources
+    }
+
+    pub fn cache_modes(&self) -> &HashSet<CacheMode> {
+        &self.cache_modes
+    }
+
+    pub fn set_url(&mut self, url: Url) {
+        self.url = url;
+    }
+
+    pub fn set_underlying_url(&mut self, underlying_url: Url) {
+        self.underlying_url = Some(underlying_url);
+    }
+
+    pub fn set_last_imported(&mut self, last_imported: DateTime<Utc>) {
+        self.last_imported = last_imported.timestamp_millis();
+    }
+
+    pub fn set_last_cached(&mut self, last_cached: DateTime<Utc>) {
+        self.last_cached = Some(last_cached.timestamp_millis());
+    }
+
+    pub fn unset_last_cached(&mut self) {
+        self.last_cached = None;
+    }
+
     pub fn set_status(&mut self, status: Status) {
         self.status = status;
     }
@@ -63,8 +135,114 @@ impl TargetBookmark {
         self.action = action;
     }
 
-    pub fn set_source(&mut self, source: SourceType) {
+    pub fn add_source(&mut self, source: SourceType) {
         self.sources.insert(source);
+    }
+
+    pub fn add_cache_mode(&mut self, cache_mode: CacheMode) {
+        self.cache_modes.insert(cache_mode);
+    }
+
+    pub fn remove_cache_mode(&mut self, cache_mode: &CacheMode) {
+        self.cache_modes.remove(cache_mode);
+    }
+
+    pub fn clear_cache_mode(&mut self) {
+        self.cache_modes.clear();
+    }
+}
+
+pub struct TargetBookmarkBuilder {
+    id: String,
+    url: Url,
+    underlying_url: Option<Url>,
+    underlying_type: UnderlyingType,
+    last_imported: DateTime<Utc>,
+    last_cached: Option<DateTime<Utc>>,
+    sources: HashSet<SourceType>,
+    cache_modes: HashSet<CacheMode>,
+    status: Status,
+    action: Action,
+}
+
+impl TargetBookmarkBuilder {
+    pub fn new(url: Url, last_imported: DateTime<Utc>) -> TargetBookmarkBuilder {
+        TargetBookmarkBuilder {
+            id: Uuid::new_v4().to_string(),
+            url,
+            underlying_url: None,
+            underlying_type: UnderlyingType::None,
+            last_imported,
+            last_cached: None,
+            sources: HashSet::new(),
+            cache_modes: HashSet::new(),
+            status: Status::None,
+            action: Action::None,
+        }
+    }
+
+    pub fn new_with_id(
+        id: String,
+        url: Url,
+        last_imported: DateTime<Utc>,
+    ) -> TargetBookmarkBuilder {
+        TargetBookmarkBuilder {
+            id,
+            url,
+            underlying_url: None,
+            underlying_type: UnderlyingType::None,
+            last_imported,
+            last_cached: None,
+            sources: HashSet::new(),
+            cache_modes: HashSet::new(),
+            status: Status::None,
+            action: Action::None,
+        }
+    }
+
+    pub fn with_underlying_type(
+        mut self,
+        underlying_type: UnderlyingType,
+    ) -> TargetBookmarkBuilder {
+        self.underlying_type = underlying_type;
+        self
+    }
+
+    pub fn with_status(mut self, status: Status) -> TargetBookmarkBuilder {
+        self.status = status;
+        self
+    }
+
+    pub fn with_action(mut self, action: Action) -> TargetBookmarkBuilder {
+        self.action = action;
+        self
+    }
+
+    pub fn add_source(mut self, source: SourceType) -> TargetBookmarkBuilder {
+        self.sources.insert(source);
+        self
+    }
+
+    pub fn add_cache_mode(mut self, cache_mode: CacheMode) -> TargetBookmarkBuilder {
+        self.cache_modes.insert(cache_mode);
+        self
+    }
+
+    pub fn build(self) -> TargetBookmark {
+        TargetBookmark {
+            id: self.id,
+            url: self.url,
+            underlying_url: self.underlying_url,
+            underlying_type: self.underlying_type,
+            last_imported: self.last_imported.timestamp_millis(),
+            last_cached: self
+                .last_cached
+                .map(|timestamp| timestamp.timestamp_millis()),
+            sources: self.sources,
+            cache_modes: self.cache_modes,
+            status: self.status,
+            action: self.action,
+        }
     }
 }
 

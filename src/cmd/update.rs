@@ -91,9 +91,7 @@ async fn update_bookmarks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        bookmarks::RawSource, Action, MockCache, MockClient, Status, TargetBookmark, UnderlyingType,
-    };
+    use crate::{bookmarks::RawSource, Action, MockCache, MockClient, TargetBookmark};
     use chrono::Utc;
     use std::{
         collections::{HashMap, HashSet},
@@ -122,33 +120,25 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.clone(),
-                TargetBookmark {
-                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: url1.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: Some(now.timestamp_millis()),
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::from_iter([CacheMode::Html]),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url1.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .add_cache_mode(CacheMode::Html)
+                .build(),
             ),
             (
                 url2.clone(),
-                TargetBookmark {
-                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: url2.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: Some(now.timestamp_millis()),
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::from_iter([CacheMode::Html]),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url2.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .add_cache_mode(CacheMode::Html)
+                .build(),
             ),
         ]));
         for url in &expected_bookmarks {
@@ -190,7 +180,7 @@ mod tests {
         assert_eq!(
             target_bookmarks
                 .values()
-                .map(|bookmark| bookmark.url.clone())
+                .map(|bookmark| bookmark.url().clone())
                 .collect::<HashSet<_>>(),
             HashSet::from_iter([url1.clone(), url2.clone(), url3.clone(), url4.clone()]),
         );
@@ -211,14 +201,14 @@ mod tests {
         assert_eq!(
             cache
                 .cache_map()
-                .get(&target_bookmarks.get(&url3).unwrap().id)
+                .get(target_bookmarks.get(&url3).unwrap().id())
                 .unwrap(),
             "<html><head></head><body><p>Test content (fetched)</p></body></html>"
         );
         assert_eq!(
             cache
                 .cache_map()
-                .get(&target_bookmarks.get(&url4).unwrap().id)
+                .get(target_bookmarks.get(&url4).unwrap().id())
                 .unwrap(),
             "<html><head></head><body><p>Test content (fetched)</p></body></html>"
         );
@@ -245,33 +235,25 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.clone(),
-                TargetBookmark {
-                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: url1.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: Some(now.timestamp_millis()),
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::from_iter([CacheMode::Text]),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url1.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .add_cache_mode(CacheMode::Text)
+                .build(),
             ),
             (
                 url2.clone(),
-                TargetBookmark {
-                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: url2.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: Some(now.timestamp_millis()),
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::from_iter([CacheMode::Text]),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url2.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .add_cache_mode(CacheMode::Text)
+                .build(),
             ),
         ]));
         for url in &expected_bookmarks {
@@ -313,7 +295,7 @@ mod tests {
         assert_eq!(
             target_bookmarks
                 .values()
-                .map(|bookmark| bookmark.url.clone())
+                .map(|bookmark| bookmark.url().clone())
                 .collect::<HashSet<_>>(),
             HashSet::from_iter([url1.clone(), url2.clone(), url3.clone(), url4.clone()]),
         );
@@ -334,14 +316,14 @@ mod tests {
         assert_eq!(
             cache
                 .cache_map()
-                .get(&target_bookmarks.get(&url3).unwrap().id)
+                .get(target_bookmarks.get(&url3).unwrap().id())
                 .unwrap(),
             "Test content (fetched)"
         );
         assert_eq!(
             cache
                 .cache_map()
-                .get(&target_bookmarks.get(&url4).unwrap().id)
+                .get(target_bookmarks.get(&url4).unwrap().id())
                 .unwrap(),
             "Test content (fetched)"
         );

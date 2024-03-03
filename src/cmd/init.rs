@@ -133,20 +133,20 @@ mod tests {
         assert_eq!(
             target_bookmarks
                 .values()
-                .map(|bookmark| bookmark.url.clone())
+                .map(|bookmark| bookmark.url().clone())
                 .collect::<HashSet<_>>(),
             expected_bookmarks,
         );
         assert!(target_bookmarks
             .values()
-            .all(|bookmark| bookmark.last_cached.is_some()));
+            .all(|bookmark| bookmark.last_cached().is_some()));
         assert_eq!(
             cache.cache_map(),
             target_bookmarks
                 .values()
                 .fold(HashMap::new(), |mut acc, bookmark| {
                     acc.insert(
-                        bookmark.id.clone(),
+                        bookmark.id().to_owned(),
                         "<html><head></head><body><p>Test content</p></body></html>".to_owned(),
                     );
                     acc
@@ -185,19 +185,19 @@ mod tests {
         assert_eq!(
             target_bookmarks
                 .values()
-                .map(|bookmark| bookmark.url.clone())
+                .map(|bookmark| bookmark.url().clone())
                 .collect::<HashSet<_>>(),
             expected_bookmarks,
         );
         assert!(target_bookmarks
             .values()
-            .all(|bookmark| bookmark.last_cached.is_some()));
+            .all(|bookmark| bookmark.last_cached().is_some()));
         assert_eq!(
             cache.cache_map(),
             target_bookmarks
                 .values()
                 .fold(HashMap::new(), |mut acc, bookmark| {
-                    acc.insert(bookmark.id.clone(), "Test content".to_owned());
+                    acc.insert(bookmark.id().to_owned(), "Test content".to_owned());
                     acc
                 })
         );

@@ -35,7 +35,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
         .values()
         .filter_map(|bookmark| {
             if bookmark
-                .sources
+                .sources()
                 .iter()
                 .any(|source| matches!(source, SourceType::Underlying(_)))
             {
@@ -48,7 +48,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
 
     for underlying_bookmark in underlying_bookmarks {
         let underlying_source = underlying_bookmark
-            .sources
+            .sources()
             .iter()
             .find(|source| matches!(source, SourceType::Underlying(_)));
         let underlying_url = match underlying_source {
@@ -61,7 +61,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
 
         if let Some(underlying_url) = underlying_url {
             if let Some(bookmark) = target_bookmarks.get_mut(&underlying_url) {
-                bookmark.underlying_url = Some(underlying_bookmark.url.clone())
+                bookmark.set_underlying_url(underlying_bookmark.url().clone());
             }
         }
     }
@@ -114,10 +114,10 @@ mod tests {
         );
 
         let bookmark1 = target_bookmarks.get(&url1).unwrap();
-        assert_eq!(bookmark1.underlying_url, Some(url2.clone()));
-        assert_eq!(bookmark1.underlying_type, UnderlyingType::HackerNews);
+        assert_eq!(bookmark1.underlying_url(), Some(&url2));
+        assert_eq!(bookmark1.underlying_type(), &UnderlyingType::HackerNews);
         let bookmark2 = target_bookmarks.get(&url2).unwrap();
-        assert!(bookmark2.underlying_url.is_none());
-        assert_eq!(bookmark2.underlying_type, UnderlyingType::None);
+        assert!(bookmark2.underlying_url().is_none());
+        assert_eq!(bookmark2.underlying_type(), &UnderlyingType::None);
     }
 }

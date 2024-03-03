@@ -192,12 +192,12 @@ impl JsonBookmark {
 impl From<TargetBookmark> for JsonBookmark {
     fn from(value: TargetBookmark) -> Self {
         Self {
-            id: value.id,
-            url: value.url.to_string(),
-            last_imported: value.last_imported,
-            last_cached: value.last_cached,
-            sources: value.sources,
-            cache_modes: value.cache_modes,
+            id: value.id().to_owned(),
+            url: value.url().to_string(),
+            last_imported: value.last_imported(),
+            last_cached: value.last_cached(),
+            sources: value.sources().to_owned(),
+            cache_modes: value.cache_modes().to_owned(),
         }
     }
 }
@@ -205,12 +205,12 @@ impl From<TargetBookmark> for JsonBookmark {
 impl From<&TargetBookmark> for JsonBookmark {
     fn from(value: &TargetBookmark) -> Self {
         Self {
-            id: value.id.clone(),
-            url: value.url.to_string(),
-            last_imported: value.last_imported,
-            last_cached: value.last_cached,
-            sources: value.sources.clone(),
-            cache_modes: value.cache_modes.clone(),
+            id: value.id().to_owned(),
+            url: value.url().to_string(),
+            last_imported: value.last_imported(),
+            last_cached: value.last_cached(),
+            sources: value.sources().clone(),
+            cache_modes: value.cache_modes().clone(),
         }
     }
 }
@@ -264,7 +264,7 @@ impl From<&TargetBookmarks> for JsonBookmarks {
     fn from(target_bookmarks: &TargetBookmarks) -> Self {
         let mut bookmarks = target_bookmarks
             .values()
-            .filter(|bookmark| bookmark.action != Action::DryRun)
+            .filter(|bookmark| bookmark.action() != &Action::DryRun)
             .map(JsonBookmark::from)
             .collect::<Vec<_>>();
         bookmarks.sort_by(Self::compare);
@@ -322,9 +322,9 @@ impl ImportReport {
         let import_count = target_bookmarks
             .values()
             .filter(|bookmark| {
-                bookmark.action == Action::FetchAndReplace
-                    || bookmark.action == Action::FetchAndAdd
-                    || bookmark.action == Action::DryRun
+                bookmark.action() == &Action::FetchAndReplace
+                    || bookmark.action() == &Action::FetchAndAdd
+                    || bookmark.action() == &Action::DryRun
             })
             .collect::<Vec<_>>()
             .len();

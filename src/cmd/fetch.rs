@@ -101,7 +101,7 @@ pub fn set_actions(
         for url in &urls {
             if let Some(target_bookmark) = target_bookmarks.get_mut(url) {
                 target_bookmark.set_action(Action::FetchAndReplace);
-                target_bookmark.set_source(SourceType::Internal);
+                target_bookmark.add_source(SourceType::Internal);
             } else {
                 let mut sources = HashSet::new();
                 sources.insert(SourceType::Internal);
@@ -182,10 +182,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        bookmarks::{ProcessReport, Status},
-        MockCache, MockClient, UnderlyingType,
-    };
+    use crate::{bookmarks::ProcessReport, MockCache, MockClient};
     use std::collections::HashMap;
     use url::Url;
 
@@ -199,33 +196,23 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.clone(),
-                TargetBookmark {
-                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: url1.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: None,
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndReplace,
-                },
+                TargetBookmark::builder_with_id(
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url1,
+                    now,
+                )
+                .with_action(Action::FetchAndReplace)
+                .build(),
             ),
             (
                 url2.clone(),
-                TargetBookmark {
-                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: url2.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: None,
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndReplace,
-                },
+                TargetBookmark::builder_with_id(
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url2,
+                    now,
+                )
+                .with_action(Action::FetchAndReplace)
+                .build(),
             ),
         ]));
         for bookmark in target_bookmarks.values() {
@@ -233,7 +220,7 @@ mod tests {
                 .add(
                     "<html><head></head><body><img></img><p>Test content</p></body></html>"
                         .to_owned(),
-                    &bookmark.url,
+                    &bookmark.url(),
                 )
                 .unwrap();
         }
@@ -274,33 +261,23 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.clone(),
-                TargetBookmark {
-                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: url1.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: None,
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndReplace,
-                },
+                TargetBookmark::builder_with_id(
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url1.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndReplace)
+                .build(),
             ),
             (
                 url2.clone(),
-                TargetBookmark {
-                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: url2.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now.timestamp_millis(),
-                    last_cached: None,
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndReplace,
-                },
+                TargetBookmark::builder_with_id(
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url2.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndReplace)
+                .build(),
             ),
         ]));
         for bookmark in target_bookmarks.values() {
@@ -308,7 +285,7 @@ mod tests {
                 .add(
                     "<html><head></head><body><img></img><p>Test content</p></body></html>"
                         .to_owned(),
-                    &bookmark.url,
+                    &bookmark.url(),
                 )
                 .unwrap();
         }
@@ -341,7 +318,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_and_cache_if_not_exists_mode_html() {
-        let now = Utc::now().timestamp_millis();
+        let now = Utc::now();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Html);
         let url1 = Url::parse("https://url1.com").unwrap();
@@ -349,33 +326,23 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.clone(),
-                TargetBookmark {
-                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: url1.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now,
-                    last_cached: Some(now),
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url1.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .build(),
             ),
             (
                 url2.clone(),
-                TargetBookmark {
-                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: url2.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now,
-                    last_cached: None,
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url2.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .build(),
             ),
         ]));
         for bookmark in target_bookmarks.values() {
@@ -383,7 +350,7 @@ mod tests {
                 .add(
                     "<html><head></head><body><img></img><p>Test content (fetched)</p></body></html>"
                         .to_owned(),
-                    &bookmark.url,
+                    &bookmark.url(),
                 )
                 .unwrap();
         }
@@ -426,7 +393,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_and_cache_if_not_exists_mode_text() {
-        let now = Utc::now().timestamp_millis();
+        let now = Utc::now();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
         let url1 = Url::parse("https://url1.com").unwrap();
@@ -434,33 +401,23 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.clone(),
-                TargetBookmark {
-                    id: "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url: url1.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now,
-                    last_cached: Some(now),
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    url1.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .build(),
             ),
             (
                 url2.clone(),
-                TargetBookmark {
-                    id: "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
-                    url: url2.clone(),
-                    underlying_url: None,
-                    underlying_type: UnderlyingType::None,
-                    last_imported: now,
-                    last_cached: None,
-                    sources: HashSet::new(),
-                    cache_modes: HashSet::new(),
-                    status: Status::None,
-                    action: Action::FetchAndAdd,
-                },
+                TargetBookmark::builder_with_id(
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    url2.clone(),
+                    now,
+                )
+                .with_action(Action::FetchAndAdd)
+                .build(),
             ),
         ]));
         for bookmark in target_bookmarks.values() {
@@ -468,7 +425,7 @@ mod tests {
                 .add(
                     "<html><head></head><body><img></img><p>Test content (fetched)</p></body></html>"
                         .to_owned(),
-                    &bookmark.url,
+                    &bookmark.url(),
                 )
                 .unwrap();
         }

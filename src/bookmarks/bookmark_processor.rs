@@ -49,7 +49,7 @@ where
     ) -> Result<(), BogrepError> {
         let bookmarks = bookmarks
             .into_iter()
-            .filter(|bookmark| bookmark.action != Action::None)
+            .filter(|bookmark| bookmark.action() != &Action::None)
             .collect::<Vec<_>>();
         {
             let mut report = self.report.lock();
@@ -150,7 +150,7 @@ where
         let client = &self.client;
         let cache = &self.cache;
 
-        match bookmark.action {
+        match bookmark.action() {
             Action::FetchAndReplace => {
                 let website = self.client.fetch(bookmark).await?;
                 trace!("Fetched website: {website}");
@@ -175,7 +175,7 @@ where
             Action::None => (),
         }
 
-        bookmark.action = Action::None;
+        bookmark.set_action(Action::None);
 
         Ok(())
     }
@@ -195,11 +195,11 @@ where
     ) -> Result<(), BogrepError> {
         debug!("Add underlying");
 
-        if bookmark.underlying_url.is_none() {
-            let underlying_url = html::select_underlying(website, &bookmark.underlying_type)?;
+        if bookmark.underlying_url().is_none() {
+            let underlying_url = html::select_underlying(website, &bookmark.underlying_type())?;
 
             if let Some(underlying_url) = underlying_url {
-                bookmark.underlying_url = Some(underlying_url.clone());
+                bookmark.set_underlying_url(underlying_url.clone());
 
                 let mut underlying_bookmark = TargetBookmark::new(
                     underlying_url.clone(),
@@ -211,7 +211,7 @@ where
                     Status::None,
                     Action::FetchAndAdd,
                 );
-                underlying_bookmark.set_source(SourceType::Underlying(bookmark.url.to_string()));
+                underlying_bookmark.add_source(SourceType::Underlying(bookmark.url().to_string()));
 
                 debug!("Added underlying bookmark: {underlying_bookmark:#?}");
 
@@ -275,30 +275,30 @@ mod tests {
         assert!(res.is_ok());
 
         assert!(bookmark
-            .underlying_url
-            .is_some_and(|url| url == Url::parse("https://underlying_url.com").unwrap()));
-        assert_eq!(bookmark.underlying_type, UnderlyingType::HackerNews);
-        assert_eq!(bookmark.sources, HashSet::from([SourceType::Internal]));
-        assert!(bookmark.last_cached.is_none());
+            .underlying_url()
+            .is_some_and(|url| url == &Url::parse("https://underlying_url.com").unwrap()));
+        assert_eq!(bookmark.underlying_type(), &UnderlyingType::HackerNews);
+        assert_eq!(bookmark.sources(), &HashSet::from([SourceType::Internal]));
+        assert!(bookmark.last_cached().is_none());
 
         let underlying_bookmarks = bookmark_processor.underlying_bookmarks();
         assert_eq!(underlying_bookmarks.len(), 1);
 
         let underlying_bookmark = &underlying_bookmarks[0];
         assert_eq!(
-            underlying_bookmark.url,
-            Url::parse("https://underlying_url.com").unwrap()
+            underlying_bookmark.url(),
+            &Url::parse("https://underlying_url.com").unwrap()
         );
-        assert!(underlying_bookmark.underlying_url.is_none());
-        assert_eq!(underlying_bookmark.underlying_type, UnderlyingType::None);
-        assert!(underlying_bookmark.last_cached.is_none());
+        assert!(underlying_bookmark.underlying_url().is_none());
+        assert_eq!(underlying_bookmark.underlying_type(), &UnderlyingType::None);
+        assert!(underlying_bookmark.last_cached().is_none());
         assert_eq!(
-            underlying_bookmark.sources,
-            HashSet::from_iter([SourceType::Underlying(
+            underlying_bookmark.sources(),
+            &HashSet::from_iter([SourceType::Underlying(
                 "https://news.ycombinator.com/".to_owned()
             )])
         );
-        assert!(underlying_bookmark.cache_modes.is_empty());
-        assert_eq!(underlying_bookmark.action, Action::FetchAndAdd);
+        assert!(underlying_bookmark.cache_modes().is_empty());
+        assert_eq!(underlying_bookmark.action(), &Action::FetchAndAdd);
     }
 }
