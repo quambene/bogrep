@@ -1,13 +1,12 @@
 use crate::{
     args::AddArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::{Action, Status},
-    Config, SourceType, TargetBookmark, TargetBookmarks,
+    bookmarks::BookmarkManager,
+    Config, SourceType,
 };
 use anyhow::anyhow;
 use chrono::Utc;
 use log::debug;
-use std::collections::HashSet;
 use url::Url;
 
 pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
@@ -28,6 +27,7 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
             &urls,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
+            args.dry_run,
         )?;
     } else {
         return Err(anyhow!("Invalid argument: Specify the URLs to be added"));
@@ -42,30 +42,16 @@ fn add_urls(
     urls: &[Url],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
+    dry_run: bool,
 ) -> Result<(), anyhow::Error> {
     let now = Utc::now();
-    let cache_modes = HashSet::new();
-    let mut sources = HashSet::new();
-    sources.insert(SourceType::Internal);
-    let mut target_bookmarks = TargetBookmarks::default();
+    let mut bookmark_manager = BookmarkManager::new(dry_run);
 
-    target_reader.read(&mut target_bookmarks)?;
+    target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
-    for url in urls {
-        let bookmark = TargetBookmark::new(
-            url.clone(),
-            None,
-            now,
-            None,
-            sources.clone(),
-            cache_modes.clone(),
-            Status::None,
-            Action::None,
-        );
-        target_bookmarks.insert(bookmark);
-    }
+    bookmark_manager.add_urls(urls, &SourceType::Internal, now);
 
-    target_writer.write(&target_bookmarks)?;
+    target_writer.write(bookmark_manager.target_bookmarks())?;
 
     println!("Added {} bookmarks", urls.len());
 
@@ -75,8 +61,11 @@ fn add_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Status, json, JsonBookmarks};
-    use std::io::{Cursor, Write};
+    use crate::{bookmarks::Status, json, Action, JsonBookmarks, TargetBookmarks};
+    use std::{
+        collections::HashSet,
+        io::{Cursor, Write},
+    };
     use url::Url;
 
     #[test]
@@ -99,7 +88,7 @@ mod tests {
 
         let urls = vec![url1, url2];
 
-        let res = add_urls(&urls, &mut target_reader, &mut target_writer);
+        let res = add_urls(&urls, &mut target_reader, &mut target_writer, false);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();
@@ -172,7 +161,7 @@ mod tests {
 
         let urls = vec![url1.to_owned(), url2.to_owned()];
 
-        let res = add_urls(&urls, &mut target_reader, &mut target_writer);
+        let res = add_urls(&urls, &mut target_reader, &mut target_writer, false);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();

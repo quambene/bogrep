@@ -92,29 +92,12 @@ impl BookmarkManager {
         self.target_bookmarks.clean_up();
     }
 
-    pub fn add_urls(
-        &mut self,
-        urls: &[Url],
-        source_type: &SourceType,
-        action: &Action,
-        now: DateTime<Utc>,
-    ) {
-        let cache_modes = HashSet::new();
-        let mut sources = HashSet::new();
-        sources.insert(source_type.to_owned());
-
+    pub fn add_urls(&mut self, urls: &[Url], source_type: &SourceType, now: DateTime<Utc>) {
         for url in urls {
-            let bookmark = TargetBookmark::new(
-                url.clone(),
-                None,
-                now,
-                None,
-                sources.clone(),
-                cache_modes.clone(),
-                Status::None,
-                action.clone(),
-            );
-            self.target_bookmarks.upsert(bookmark);
+            let target_bookmark = TargetBookmark::builder(url.clone(), now)
+                .add_source(source_type.to_owned())
+                .build();
+            self.target_bookmarks.upsert(target_bookmark);
         }
     }
 

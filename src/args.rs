@@ -174,6 +174,9 @@ pub struct AddArgs {
     /// Multiple URLs are separated by a whitespace.
     #[arg(num_args = 0.., value_name = "URLs", value_delimiter = ' ')]
     pub urls: Vec<String>,
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
 }
 
 /// Describes the arguments for the `remove` subcommand.
