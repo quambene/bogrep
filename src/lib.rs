@@ -48,7 +48,7 @@ pub mod test_utils;
 /// Utilities to work with files (create, open, read, write).
 pub mod utils;
 
-pub use args::{Args, ConfigArgs, FetchArgs, InitArgs, Subcommands};
+pub use args::{Args, ConfigArgs, FetchArgs, Subcommands};
 pub use bookmark_reader::{
     ChromiumReader, FirefoxReader, ReadBookmark, SafariReader, SimpleReader,
 };

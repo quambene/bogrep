@@ -34,10 +34,12 @@ impl TargetReaderWriter {
         &self.writer
     }
 
+    #[allow(dead_code)]
     pub fn read(&mut self, target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         self.reader.read(target_bookmarks)
     }
 
+    #[allow(dead_code)]
     pub fn write(&mut self, target_bookmarks: &TargetBookmarks) -> Result<(), BogrepError> {
         self.writer.write(target_bookmarks)
     }
