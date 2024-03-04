@@ -170,7 +170,7 @@ impl BookmarkManager {
     pub fn add_bookmarks(&mut self, now: DateTime<Utc>) -> Result<(), BogrepError> {
         let bookmarks_to_add = Self::filter_to_add(&self.source_bookmarks, &self.target_bookmarks);
         trace!(
-            "Added new bookmarks: {:#?}",
+            "Added bookmarks: {:#?}",
             bookmarks_to_add
                 .iter()
                 .map(|bookmark| bookmark.url().to_owned())
@@ -235,7 +235,7 @@ impl BookmarkManager {
         };
 
         if !added_bookmarks.is_empty() {
-            println!("Added {added_count} new bookmarks");
+            println!("Added {added_count} bookmarks");
         }
 
         if !removed_bookmarks.is_empty() {

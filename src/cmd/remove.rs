@@ -51,6 +51,7 @@ fn remove_urls(
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
     bookmark_manager.remove_urls(urls);
+    bookmark_manager.print_report(&vec![]);
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;

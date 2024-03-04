@@ -39,7 +39,7 @@ pub enum Subcommands {
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
     Clean(CleanArgs),
-    /// Add a new bookmark.
+    /// Add a bookmark.
     Add(AddArgs),
     /// Remove a bookmark.
     Remove(RemoveArgs),

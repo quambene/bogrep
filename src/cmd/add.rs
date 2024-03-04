@@ -53,6 +53,7 @@ fn add_urls(
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
     bookmark_manager.add_urls(urls, &SourceType::Internal, now);
+    bookmark_manager.print_report(&vec![]);
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;
