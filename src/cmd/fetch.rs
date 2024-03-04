@@ -1,16 +1,15 @@
 use crate::{
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::{Action, BookmarkProcessor, ProcessReport, Status},
+    bookmarks::{Action, BookmarkProcessor, ProcessReport, Status, TargetBookmarkBuilder},
     cache::CacheMode,
     errors::BogrepError,
     html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, Settings, SourceType,
-    TargetBookmark, TargetBookmarks,
+    TargetBookmarks,
 };
 use chrono::{DateTime, Utc};
 use colored::Colorize;
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
-use std::collections::HashSet;
 use url::Url;
 
 /// Fetch and cache bookmarks.
@@ -103,18 +102,11 @@ pub fn set_actions(
                 target_bookmark.set_action(Action::FetchAndReplace);
                 target_bookmark.add_source(SourceType::Internal);
             } else {
-                let mut sources = HashSet::new();
-                sources.insert(SourceType::Internal);
-                let target_bookmark = TargetBookmark::new(
-                    url.to_owned(),
-                    None,
-                    now,
-                    None,
-                    sources,
-                    HashSet::new(),
-                    Status::Added,
-                    Action::FetchAndReplace,
-                );
+                let target_bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
+                    .add_source(SourceType::Internal)
+                    .with_status(Status::Added)
+                    .with_action(Action::FetchAndReplace)
+                    .build();
                 target_bookmarks.insert(target_bookmark);
             }
         }
@@ -182,7 +174,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::ProcessReport, MockCache, MockClient};
+    use crate::{bookmarks::ProcessReport, MockCache, MockClient, TargetBookmark};
     use std::collections::HashMap;
     use url::Url;
 

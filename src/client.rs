@@ -203,8 +203,6 @@ impl Fetch for MockClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmarks::{Action, Status};
-    use std::collections::HashSet;
     use tokio::time::Instant;
 
     #[tokio::test]
@@ -215,26 +213,8 @@ mod tests {
         let url1 = Url::parse("https://url/path1.com").unwrap();
         let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
-        let bookmark1 = TargetBookmark::new(
-            url1,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Status::None,
-            Action::None,
-        );
-        let bookmark2 = TargetBookmark::new(
-            url2,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Status::None,
-            Action::None,
-        );
+        let bookmark1 = TargetBookmark::new(url1, now);
+        let bookmark2 = TargetBookmark::new(url2, now);
 
         let start_instant = Instant::now();
         throttler.throttle(&bookmark1).await.unwrap();
@@ -255,26 +235,8 @@ mod tests {
         let url1 = Url::parse("https://url/path1.com").unwrap();
         let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
-        let bookmark1 = TargetBookmark::new(
-            url1,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Status::None,
-            Action::None,
-        );
-        let bookmark2 = TargetBookmark::new(
-            url2,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Status::None,
-            Action::None,
-        );
+        let bookmark1 = TargetBookmark::new(url1, now);
+        let bookmark2 = TargetBookmark::new(url2, now);
 
         let last_fetched = throttler.last_fetched(&bookmark1, now).unwrap();
         assert!(last_fetched.is_none());

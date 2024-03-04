@@ -61,27 +61,12 @@ fn remove_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Action, json, JsonBookmarks, SourceType, Status, TargetBookmark};
-    use chrono::{DateTime, Utc};
+    use crate::{bookmarks::TargetBookmarkBuilder, json, JsonBookmarks, SourceType};
+    use chrono::Utc;
     use std::{
         collections::HashSet,
         io::{Cursor, Write},
     };
-
-    fn create_target_bookmark(url: &Url, now: DateTime<Utc>) -> TargetBookmark {
-        let mut sources = HashSet::new();
-        sources.insert(SourceType::Internal);
-        TargetBookmark::new(
-            url.to_owned(),
-            None,
-            now,
-            None,
-            sources,
-            HashSet::new(),
-            Status::None,
-            Action::None,
-        )
-    }
 
     #[test]
     fn test_remove_urls() {
@@ -94,9 +79,21 @@ mod tests {
         expected_urls.insert(url1.clone());
 
         let mut target_bookmarks = TargetBookmarks::default();
-        target_bookmarks.insert(create_target_bookmark(&url1, now));
-        target_bookmarks.insert(create_target_bookmark(&url2, now));
-        target_bookmarks.insert(create_target_bookmark(&url3, now));
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url1.clone(), now)
+                .add_source(SourceType::Internal)
+                .build(),
+        );
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url2.clone(), now)
+                .add_source(SourceType::Internal)
+                .build(),
+        );
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url3.clone(), now)
+                .add_source(SourceType::Internal)
+                .build(),
+        );
         let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
 

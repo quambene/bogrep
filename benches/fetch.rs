@@ -1,18 +1,12 @@
 use bogrep::{
     errors::BogrepError, html, Action, BookmarkProcessor, Cache, CacheMode, Caching, Fetch,
-    MockClient, ProcessReport, Settings, Status, TargetBookmark, TargetBookmarks,
+    MockClient, ProcessReport, Settings, TargetBookmark, TargetBookmarkBuilder, TargetBookmarks,
 };
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
-use std::{
-    collections::{HashMap, HashSet},
-    error::Error,
-    fs,
-    io::Write,
-    sync::Arc,
-};
+use std::{collections::HashMap, error::Error, fs, io::Write, sync::Arc};
 use tempfile::tempdir;
 use tokio::sync::Mutex;
 use url::Url;
@@ -67,16 +61,9 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
         client.add(CONTENT.to_owned(), &url).unwrap();
         bookmarks.insert(
             url.clone(),
-            TargetBookmark::new(
-                url.clone(),
-                None,
-                now,
-                None,
-                HashSet::new(),
-                HashSet::new(),
-                Status::None,
-                Action::FetchAndReplace,
-            ),
+            TargetBookmarkBuilder::new(url.clone(), now)
+                .with_action(Action::FetchAndReplace)
+                .build(),
         );
     }
 
@@ -113,16 +100,9 @@ async fn fetch_in_parallel(max_parallel_requests: usize) {
         client.add(CONTENT.to_owned(), &url).unwrap();
         bookmarks.insert(
             url.clone(),
-            TargetBookmark::new(
-                url.clone(),
-                None,
-                now,
-                None,
-                HashSet::new(),
-                HashSet::new(),
-                Status::None,
-                Action::FetchAndReplace,
-            ),
+            TargetBookmarkBuilder::new(url.clone(), now)
+                .with_action(Action::FetchAndReplace)
+                .build(),
         );
     }
 

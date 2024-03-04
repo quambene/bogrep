@@ -61,7 +61,7 @@ fn add_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Status, json, Action, JsonBookmarks, TargetBookmarks};
+    use crate::{bookmarks::TargetBookmarkBuilder, json, Action, JsonBookmarks, TargetBookmarks};
     use std::{
         collections::HashSet,
         io::{Cursor, Write},
@@ -123,6 +123,7 @@ mod tests {
 
     #[test]
     fn test_add_urls_existing() {
+        let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
         let mut expected_urls = HashSet::new();
@@ -130,26 +131,11 @@ mod tests {
         expected_urls.insert(url2.to_owned());
 
         let mut target_bookmarks = TargetBookmarks::default();
-        target_bookmarks.insert(TargetBookmark::new(
-            url1.clone(),
-            None,
-            Utc::now(),
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Status::None,
-            Action::FetchAndAdd,
-        ));
-        target_bookmarks.insert(TargetBookmark::new(
-            url2.clone(),
-            None,
-            Utc::now(),
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Status::None,
-            Action::FetchAndAdd,
-        ));
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url1.clone(), now)
+                .with_action(Action::FetchAndAdd)
+                .build(),
+        );
         let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
 

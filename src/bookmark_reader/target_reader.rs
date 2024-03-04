@@ -72,39 +72,29 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Status, Action, CacheMode, TargetBookmark, UnderlyingType};
+    use crate::{bookmarks::TargetBookmarkBuilder, CacheMode, UnderlyingType};
     use chrono::Utc;
-    use std::collections::HashSet;
 
     #[test]
     fn test_convert_underlyings() {
+        let now = Utc::now();
         let mut target_bookmarks = TargetBookmarks::default();
         let url1 = Url::parse("https://news.ycombinator.com/item?id=00000000").unwrap();
-        let underlying_url1 = None;
-        target_bookmarks.insert(TargetBookmark::new(
-            url1.clone(),
-            underlying_url1,
-            Utc::now(),
-            None,
-            HashSet::from_iter([SourceType::Internal]),
-            HashSet::from_iter([CacheMode::Text]),
-            Status::None,
-            Action::None,
-        ));
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url1.clone(), now)
+                .add_source(SourceType::Internal)
+                .add_cache_mode(CacheMode::Text)
+                .build(),
+        );
         let url2 = Url::parse("https://github.com/some_project").unwrap();
-        let underlying_url2 = None;
-        target_bookmarks.insert(TargetBookmark::new(
-            url2.clone(),
-            underlying_url2,
-            Utc::now(),
-            None,
-            HashSet::from_iter([SourceType::Underlying(
-                "https://news.ycombinator.com/item?id=00000000".to_owned(),
-            )]),
-            HashSet::from_iter([CacheMode::Text]),
-            Status::None,
-            Action::None,
-        ));
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url2.clone(), now)
+                .add_source(SourceType::Underlying(
+                    "https://news.ycombinator.com/item?id=00000000".to_owned(),
+                ))
+                .add_cache_mode(CacheMode::Text)
+                .build(),
+        );
 
         let res = convert_underlyings(&mut target_bookmarks);
         assert!(

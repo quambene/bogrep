@@ -8,8 +8,8 @@ use std::collections::{
 /// A bookmark from a specific source, like Firefox or Chrome.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceBookmark {
-    pub url: String,
-    pub sources: HashSet<SourceType>,
+    url: String,
+    sources: HashSet<SourceType>,
 }
 
 impl SourceBookmark {
@@ -18,6 +18,18 @@ impl SourceBookmark {
             url: url.to_owned(),
             sources: HashSet::new(),
         }
+    }
+
+    pub fn url(&self) -> &str {
+        self.url.as_ref()
+    }
+
+    pub fn sources(&self) -> &HashSet<SourceType> {
+        &self.sources
+    }
+
+    pub fn sources_owned(self) -> HashSet<SourceType> {
+        self.sources
     }
 
     pub fn add_source(&mut self, source: SourceType) {

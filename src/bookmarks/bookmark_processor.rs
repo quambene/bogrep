@@ -1,13 +1,13 @@
 use super::ProcessReport;
 use crate::{
-    bookmarks::Status, errors::BogrepError, html, Action, Caching, Fetch, Settings, SourceType,
-    TargetBookmark, TargetBookmarks,
+    bookmarks::TargetBookmarkBuilder, errors::BogrepError, html, Action, Caching, Fetch, Settings,
+    SourceType, TargetBookmark, TargetBookmarks,
 };
 use chrono::Utc;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use parking_lot::Mutex;
-use std::{collections::HashSet, error::Error, io::Write, rc::Rc};
+use std::{error::Error, io::Write, rc::Rc};
 
 #[derive(Debug)]
 pub struct BookmarkProcessor<C: Caching, F: Fetch> {
@@ -201,17 +201,11 @@ where
             if let Some(underlying_url) = underlying_url {
                 bookmark.set_underlying_url(underlying_url.clone());
 
-                let mut underlying_bookmark = TargetBookmark::new(
-                    underlying_url.clone(),
-                    None,
-                    Utc::now(),
-                    None,
-                    HashSet::new(),
-                    HashSet::new(),
-                    Status::None,
-                    Action::FetchAndAdd,
-                );
-                underlying_bookmark.add_source(SourceType::Underlying(bookmark.url().to_string()));
+                let underlying_bookmark =
+                    TargetBookmarkBuilder::new(underlying_url.to_owned(), Utc::now())
+                        .add_source(SourceType::Underlying(bookmark.url().to_string()))
+                        .with_action(Action::FetchAndAdd)
+                        .build();
 
                 debug!("Added underlying bookmark: {underlying_bookmark:#?}");
 
@@ -227,11 +221,15 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::Status, CacheMode, MockCache, MockClient, UnderlyingType};
+    use crate::{
+        bookmarks::TargetBookmarkBuilder, CacheMode, MockCache, MockClient, UnderlyingType,
+    };
+    use std::collections::HashSet;
     use url::Url;
 
     #[test]
     fn test_add_underlying() {
+        let now = Utc::now();
         let settings = Settings::default();
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
@@ -260,16 +258,10 @@ mod tests {
 
             </html>
         "#;
-        let mut bookmark = TargetBookmark::new(
-            url.clone(),
-            None,
-            Utc::now(),
-            None,
-            HashSet::from([SourceType::Internal]),
-            HashSet::from_iter([CacheMode::Text]),
-            Status::None,
-            Action::None,
-        );
+        let mut bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
+            .add_source(SourceType::Internal)
+            .add_cache_mode(CacheMode::Text)
+            .build();
 
         let res = bookmark_processor.add_underlying(&mut bookmark, website);
         assert!(res.is_ok());

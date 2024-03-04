@@ -4,7 +4,7 @@ use crate::{
     UnderlyingType,
 };
 use chrono::{DateTime, Utc};
-use log::{debug, trace, warn};
+use log::{debug, warn};
 use std::collections::{
     hash_map::{Entry, IntoIter, IntoValues, Iter, IterMut, Keys, Values, ValuesMut},
     HashMap, HashSet,
@@ -41,29 +41,20 @@ impl TargetBookmark {
         TargetBookmarkBuilder::new_with_id(id, url, last_imported)
     }
 
-    pub fn new(
-        url: Url,
-        underlying_url: Option<Url>,
-        last_imported: DateTime<Utc>,
-        last_cached: Option<DateTime<Utc>>,
-        sources: HashSet<SourceType>,
-        cache_modes: HashSet<CacheMode>,
-        status: Status,
-        action: Action,
-    ) -> Self {
+    pub fn new(url: Url, last_imported: DateTime<Utc>) -> Self {
         let underlying_type = UnderlyingType::from(&url);
 
         Self {
             id: Uuid::new_v4().to_string(),
             url,
-            underlying_url,
+            underlying_url: None,
             underlying_type,
             last_imported: last_imported.timestamp_millis(),
-            last_cached: last_cached.map(|timestamp| timestamp.timestamp_millis()),
-            sources,
-            cache_modes,
-            status,
-            action,
+            last_cached: None,
+            sources: HashSet::new(),
+            cache_modes: HashSet::new(),
+            status: Status::None,
+            action: Action::None,
         }
     }
 
@@ -215,6 +206,11 @@ impl TargetBookmarkBuilder {
 
     pub fn with_action(mut self, action: Action) -> TargetBookmarkBuilder {
         self.action = action;
+        self
+    }
+
+    pub fn with_sources(mut self, sources: HashSet<SourceType>) -> TargetBookmarkBuilder {
+        self.sources = sources;
         self
     }
 
@@ -434,61 +430,6 @@ impl TargetBookmarks {
             .map(|(_, target_bookmark)| target_bookmark)
             .collect()
     }
-
-    /// Update target bookmarks.
-    ///
-    /// Determine the difference between source and target bookmarks and update
-    /// the `action` of the target bookmarks.
-    pub fn update(&mut self, source_bookmarks: &SourceBookmarks) -> Result<(), anyhow::Error> {
-        let now = Utc::now();
-
-        let bookmarks_to_add = self.filter_to_add(source_bookmarks);
-        let urls_to_add = bookmarks_to_add
-            .iter()
-            .map(|bookmark| bookmark.url.to_owned())
-            .collect::<Vec<_>>();
-
-        for bookmark in bookmarks_to_add {
-            let url = Url::parse(&bookmark.url)?;
-            let target_bookmark = TargetBookmark::new(
-                url,
-                None,
-                now,
-                None,
-                bookmark.sources.to_owned(),
-                HashSet::new(),
-                Status::Added,
-                Action::FetchAndAdd,
-            );
-            self.insert(target_bookmark);
-        }
-
-        let bookmarks_to_remove = self.filter_to_remove(source_bookmarks);
-        let urls_to_remove = bookmarks_to_remove
-            .iter()
-            .map(|bookmark| bookmark.url.to_owned())
-            .collect::<Vec<_>>();
-
-        for bookmark in bookmarks_to_remove {
-            bookmark.action = Action::Remove;
-        }
-
-        if !urls_to_add.is_empty() {
-            println!("Added {} new bookmarks", urls_to_add.len());
-            trace!("Added new bookmarks: {urls_to_add:#?}",);
-        }
-
-        if !urls_to_remove.is_empty() {
-            println!("Removed {} bookmarks", urls_to_remove.len());
-            trace!("Removed bookmarks: {urls_to_remove:#?}",);
-        }
-
-        if urls_to_add.is_empty() && urls_to_remove.is_empty() {
-            println!("Bookmarks are already up to date");
-        }
-
-        Ok(())
-    }
 }
 
 impl IntoIterator for TargetBookmarks {
@@ -509,16 +450,9 @@ impl TryFrom<SourceBookmarks> for TargetBookmarks {
 
         for source_bookmark in source_bookmarks.into_iter() {
             let url = Url::parse(&source_bookmark.0)?;
-            let target_bookmark = TargetBookmark::new(
-                url,
-                None,
-                now,
-                None,
-                source_bookmark.1.sources,
-                HashSet::new(),
-                Status::None,
-                Action::None,
-            );
+            let target_bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
+                .with_sources(source_bookmark.1.sources_owned())
+                .build();
             target_bookmarks.insert(target_bookmark);
         }
 
@@ -529,10 +463,7 @@ impl TryFrom<SourceBookmarks> for TargetBookmarks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        bookmark_reader::{ReadTarget, WriteTarget},
-        bookmarks::SourceBookmarkBuilder,
-    };
+    use crate::bookmark_reader::{ReadTarget, WriteTarget};
     use std::{
         collections::{HashMap, HashSet},
         io::Cursor,
@@ -564,90 +495,6 @@ mod tests {
 }"#;
 
     #[test]
-    fn test_update() {
-        let now = Utc::now();
-
-        let url1 = Url::parse("https://url1.com").unwrap();
-        let url2 = Url::parse("https://url2.com").unwrap();
-        let url3 = Url::parse("https://url3.com").unwrap();
-        let url4 = Url::parse("https://url4.com").unwrap();
-        let url5 = Url::parse("https://url5.com").unwrap();
-
-        let source_bookmarks = SourceBookmarks::new(HashMap::from_iter([
-            (
-                url1.to_string(),
-                SourceBookmarkBuilder::new(url1.as_str()).build(),
-            ),
-            (
-                url2.to_string(),
-                SourceBookmarkBuilder::new(url2.as_str()).build(),
-            ),
-            (
-                url3.to_string(),
-                SourceBookmarkBuilder::new(url3.as_str()).build(),
-            ),
-            (
-                url4.to_string(),
-                SourceBookmarkBuilder::new(url4.as_str()).build(),
-            ),
-        ]));
-        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
-            (
-                url1.clone(),
-                TargetBookmark::new(
-                    url1.clone(),
-                    None,
-                    now,
-                    None,
-                    HashSet::new(),
-                    HashSet::new(),
-                    Status::None,
-                    Action::None,
-                ),
-            ),
-            (
-                url3.clone(),
-                TargetBookmark::new(
-                    url3.clone(),
-                    None,
-                    now,
-                    None,
-                    HashSet::new(),
-                    HashSet::new(),
-                    Status::None,
-                    Action::None,
-                ),
-            ),
-            (
-                url5.clone(),
-                TargetBookmark::new(
-                    url5.clone(),
-                    None,
-                    now,
-                    None,
-                    HashSet::new(),
-                    HashSet::new(),
-                    Status::None,
-                    Action::None,
-                ),
-            ),
-        ]));
-        let res = target_bookmarks.update(&source_bookmarks);
-        assert!(res.is_ok());
-        assert_eq!(target_bookmarks.get(&url1).unwrap().action, Action::None);
-        assert_eq!(
-            target_bookmarks.get(&url2).unwrap().action,
-            Action::FetchAndAdd
-        );
-        assert_eq!(target_bookmarks.get(&url3).unwrap().action, Action::None);
-        assert_eq!(
-            target_bookmarks.get(&url4).unwrap().action,
-            Action::FetchAndAdd
-        );
-        assert_eq!(target_bookmarks.get(&url5).unwrap().action, Action::Remove);
-    }
-
-    #[test]
     fn test_ignore_urls() {
         let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
@@ -657,42 +504,15 @@ mod tests {
         let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
             (
                 url1.clone(),
-                TargetBookmark::new(
-                    url1.clone(),
-                    None,
-                    now,
-                    None,
-                    HashSet::new(),
-                    HashSet::new(),
-                    Status::None,
-                    Action::None,
-                ),
+                TargetBookmarkBuilder::new(url1.clone(), now).build(),
             ),
             (
                 url2.clone(),
-                TargetBookmark::new(
-                    url2.clone(),
-                    None,
-                    now,
-                    None,
-                    HashSet::new(),
-                    HashSet::new(),
-                    Status::None,
-                    Action::None,
-                ),
+                TargetBookmarkBuilder::new(url2.clone(), now).build(),
             ),
             (
                 url3.clone(),
-                TargetBookmark::new(
-                    url3.clone(),
-                    None,
-                    now,
-                    None,
-                    HashSet::new(),
-                    HashSet::new(),
-                    Status::None,
-                    Action::None,
-                ),
+                TargetBookmarkBuilder::new(url3.clone(), now).build(),
             ),
         ]));
 

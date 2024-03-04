@@ -1,12 +1,11 @@
 use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
-    bookmarks::Status,
+    bookmarks::{target_bookmarks::TargetBookmarkBuilder, Status},
     errors::BogrepError,
     Action, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark, TargetBookmarks,
 };
 use chrono::{DateTime, Utc};
 use log::{trace, warn};
-use std::collections::HashSet;
 use url::Url;
 
 #[derive(Debug)]
@@ -115,49 +114,37 @@ impl BookmarkManager {
         source_bookmark: &SourceBookmark,
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
-        let url = Url::parse(&source_bookmark.url)?;
-        let target_bookmark = TargetBookmark::new(
-            url,
-            None,
-            now,
-            None,
-            source_bookmark.sources.to_owned(),
-            HashSet::new(),
-            Status::None,
-            Action::None,
-        );
+        let url = Url::parse(&source_bookmark.url())?;
+        let target_bookmark = TargetBookmarkBuilder::new(url, now)
+            .with_sources(source_bookmark.sources().to_owned())
+            .build();
         self.target_bookmarks.upsert(target_bookmark);
         Ok(())
     }
 
+    /// Add the difference between source and target bookmarks.
     pub fn add_bookmarks(&mut self, now: DateTime<Utc>) -> Result<(), BogrepError> {
         let bookmarks_to_add = Self::filter_to_add(&self.source_bookmarks, &self.target_bookmarks);
         trace!(
             "Added new bookmarks: {:#?}",
             bookmarks_to_add
                 .iter()
-                .map(|bookmark| bookmark.url.to_owned())
+                .map(|bookmark| bookmark.url().to_owned())
                 .collect::<Vec<_>>()
         );
 
         for source_bookmark in bookmarks_to_add {
-            let url = Url::parse(&source_bookmark.url)?;
-            let target_bookmark = TargetBookmark::new(
-                url,
-                None,
-                now,
-                None,
-                source_bookmark.sources.to_owned(),
-                HashSet::new(),
-                Status::None,
-                Action::None,
-            );
+            let url = Url::parse(&source_bookmark.url())?;
+            let target_bookmark = TargetBookmarkBuilder::new(url, now)
+                .with_sources(source_bookmark.sources().to_owned())
+                .build();
             self.target_bookmarks.upsert(target_bookmark);
         }
 
         Ok(())
     }
 
+    /// Remove the difference between source and target bookmarks.
     pub fn remove_bookmarks(&mut self) {
         let bookmarks_to_remove =
             Self::filter_to_remove(&self.source_bookmarks, &mut self.target_bookmarks);

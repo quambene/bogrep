@@ -15,7 +15,7 @@ use std::{
     path::{Path, PathBuf},
     slice::Iter,
 };
-pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
+pub use target_bookmarks::{TargetBookmark, TargetBookmarkBuilder, TargetBookmarks};
 use url::Url;
 use uuid::Uuid;
 
