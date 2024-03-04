@@ -1,7 +1,7 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
-    bookmarks::BookmarkManager,
+    bookmarks::{BookmarkManager, RunConfig, RunMode},
     errors::BogrepError,
     json, utils, BookmarkProcessor, Cache, CacheMode, Caching, Client, Config, Fetch,
     ProcessReport, Settings,
@@ -66,16 +66,21 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
+    let run_mode = if args.dry_run {
+        RunMode::DryRun
+    } else {
+        RunMode::Import
+    };
+    let run_config = RunConfig::new(run_mode, cache.is_empty(), ignored_urls, vec![]);
 
-    import_source(
+    import_and_process_bookmarks(
         &config.settings,
+        run_config,
         client,
         cache,
         &mut source_readers,
         &mut target_reader_writer.reader(),
         &mut target_reader_writer.writer(),
-        &ignored_urls,
-        args.dry_run,
     )
     .await?;
 
@@ -84,19 +89,18 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
     Ok(())
 }
 
-async fn import_source(
+pub async fn import_and_process_bookmarks(
     settings: &Settings,
+    run_config: RunConfig,
     client: impl Fetch,
     cache: impl Caching,
     source_readers: &mut [SourceReader],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
-    ignored_urls: &[Url],
-    dry_run: bool,
 ) -> Result<(), anyhow::Error> {
     let now = Utc::now();
-    let mut bookmark_manager = BookmarkManager::new(dry_run);
-    let report = ProcessReport::init(dry_run);
+    let mut bookmark_manager = BookmarkManager::new(run_config);
+    let report = ProcessReport::init(bookmark_manager.is_dry_run());
     let bookmark_processor = BookmarkProcessor::new(client, cache, settings.to_owned(), report);
 
     target_reader.read(&mut bookmark_manager.target_bookmarks_mut())?;
@@ -104,8 +108,7 @@ async fn import_source(
     bookmark_manager.import(source_readers)?;
     bookmark_manager.add_bookmarks(now)?;
     bookmark_manager.remove_bookmarks();
-    bookmark_manager.ignore_urls(&ignored_urls);
-    bookmark_manager.set_actions();
+    bookmark_manager.set_actions(now);
 
     bookmark_processor
         .process_bookmarks(
@@ -233,7 +236,7 @@ mod tests {
     use super::*;
     use crate::{
         bookmark_reader::{ReadSource, TextReader},
-        bookmarks::RawSource,
+        bookmarks::{RawSource, RunMode},
         json, test_utils, JsonBookmarks, MockCache, MockClient, Source, SourceType,
     };
     use std::{
@@ -263,16 +266,21 @@ mod tests {
             .iter()
             .map(|source| SourceReader::init(source).unwrap())
             .collect::<Vec<_>>();
+        let run_mode = if dry_run {
+            RunMode::DryRun
+        } else {
+            RunMode::Import
+        };
+        let config = RunConfig::new(run_mode, cache.is_empty(), ignored_urls, vec![]);
 
-        let res = import_source(
+        let res = import_and_process_bookmarks(
             &settings,
+            config,
             client,
             cache,
             &mut source_readers,
             &mut target_reader,
             &mut target_writer,
-            &ignored_urls,
-            dry_run,
         )
         .await;
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -312,18 +320,16 @@ mod tests {
             Box::new(source_reader_writer.clone()),
             source_reader,
         );
-        let ignored_urls = vec![];
-        let dry_run = false;
+        let config = RunConfig::new(RunMode::Import, cache.is_empty(), vec![], vec![]);
 
-        let res = import_source(
+        let res = import_and_process_bookmarks(
             &settings,
+            config,
             client,
             cache,
             &mut [source_reader],
             target_reader,
             target_writer,
-            &ignored_urls,
-            dry_run,
         )
         .await;
 

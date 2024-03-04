@@ -1,7 +1,7 @@
 use crate::{
     args::AddArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::BookmarkManager,
+    bookmarks::{BookmarkManager, RunConfig, RunMode},
     Config, SourceType,
 };
 use anyhow::anyhow;
@@ -23,11 +23,13 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
+        let config = RunConfig::new(RunMode::None, false, vec![], vec![]);
+
         add_urls(
+            config,
             &urls,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
-            args.dry_run,
         )?;
     } else {
         return Err(anyhow!("Invalid argument: Specify the URLs to be added"));
@@ -38,22 +40,22 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+// TODO: Use `BookmarkProcessor`.
 fn add_urls(
+    config: RunConfig,
     urls: &[Url],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
-    dry_run: bool,
 ) -> Result<(), anyhow::Error> {
     let now = Utc::now();
-    let mut bookmark_manager = BookmarkManager::new(dry_run);
+    let mut bookmark_manager = BookmarkManager::new(config);
 
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
     bookmark_manager.add_urls(urls, &SourceType::Internal, now);
+    bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;
-
-    println!("Added {} bookmarks", urls.len());
 
     Ok(())
 }
@@ -85,10 +87,10 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
-
         let urls = vec![url1, url2];
+        let run_mode = RunConfig::default();
 
-        let res = add_urls(&urls, &mut target_reader, &mut target_writer, false);
+        let res = add_urls(run_mode, &urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();
@@ -144,10 +146,10 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
-
         let urls = vec![url1.to_owned(), url2.to_owned()];
+        let run_mode = RunConfig::default();
 
-        let res = add_urls(&urls, &mut target_reader, &mut target_writer, false);
+        let res = add_urls(run_mode, &urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();

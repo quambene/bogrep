@@ -1,11 +1,11 @@
 use crate::{
     args::UpdateArgs,
-    bookmark_reader::{ReadTarget, SourceReader, TargetReaderWriter, WriteTarget},
-    bookmarks::{BookmarkManager, BookmarkProcessor, ProcessReport},
+    bookmark_reader::{SourceReader, TargetReaderWriter},
+    bookmarks::{RunConfig, RunMode},
     cache::CacheMode,
-    Cache, Caching, Client, Config, Fetch, Settings, TargetBookmarks,
+    cmd::import_and_process_bookmarks,
+    Cache, Caching, Client, Config,
 };
-use chrono::Utc;
 use log::debug;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
@@ -27,71 +27,29 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         .iter()
         .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-
-    let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader_writer = TargetReaderWriter::new(
+    let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
-    target_reader_writer.read(&mut target_bookmarks)?;
+    let run_mode = if args.dry_run {
+        RunMode::DryRun
+    } else {
+        RunMode::FetchAll
+    };
+    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![], vec![]);
 
-    update_bookmarks(
-        &client,
-        &cache,
+    import_and_process_bookmarks(
+        &config.settings,
+        run_config,
+        client,
+        cache,
         &mut source_readers,
         &mut target_reader_writer.reader(),
         &mut target_reader_writer.writer(),
-        &config.settings,
-        args.dry_run,
     )
     .await?;
 
     target_reader_writer.close()?;
-
-    Ok(())
-}
-
-async fn update_bookmarks(
-    client: &impl Fetch,
-    cache: &impl Caching,
-    source_readers: &mut [SourceReader],
-    target_reader: &mut impl ReadTarget,
-    target_writer: &mut impl WriteTarget,
-    settings: &Settings,
-    dry_run: bool,
-) -> Result<(), anyhow::Error> {
-    let now = Utc::now();
-    let mut bookmark_manager = BookmarkManager::new(dry_run);
-
-    target_reader.read(&mut bookmark_manager.target_bookmarks_mut())?;
-
-    bookmark_manager.import(source_readers)?;
-    bookmark_manager.add_bookmarks(now)?;
-    bookmark_manager.remove_bookmarks();
-    bookmark_manager.set_actions();
-
-    let bookmark_processor = BookmarkProcessor::new(
-        client.clone(),
-        cache.clone(),
-        settings.clone(),
-        ProcessReport::init(dry_run),
-    );
-    bookmark_processor
-        .process_bookmarks(
-            bookmark_manager
-                .target_bookmarks_mut()
-                .values_mut()
-                .collect(),
-        )
-        .await?;
-    bookmark_processor
-        .process_underlyings(bookmark_manager.target_bookmarks_mut())
-        .await?;
-
-    bookmark_manager.print_report(&source_readers);
-    bookmark_manager.finish();
-
-    target_writer.write(&bookmark_manager.target_bookmarks())?;
 
     Ok(())
 }

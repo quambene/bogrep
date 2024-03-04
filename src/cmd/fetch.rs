@@ -1,12 +1,11 @@
 use crate::{
-    bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::{Action, BookmarkProcessor, ProcessReport, Status, TargetBookmarkBuilder},
+    bookmark_reader::{ReadTarget, TargetReaderWriter},
+    bookmarks::{RunConfig, RunMode},
     cache::CacheMode,
+    cmd::import_and_process_bookmarks,
     errors::BogrepError,
-    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, Settings, SourceType,
-    TargetBookmarks,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmarks,
 };
-use chrono::{DateTime, Utc};
 use colored::Colorize;
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
@@ -23,16 +22,33 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(config)?;
+    let mut source_readers = vec![];
     let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
+    let fetch_urls = args
+        .urls
+        .iter()
+        .map(|url| Url::parse(url))
+        .collect::<Result<Vec<_>, _>>()?;
+    let run_mode = if args.all {
+        RunMode::FetchAll
+    } else if !args.all {
+        RunMode::Fetch
+    } else if args.dry_run {
+        RunMode::DryRun
+    } else {
+        RunMode::None
+    };
+    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![], fetch_urls);
 
-    fetch_bookmarks(
+    import_and_process_bookmarks(
         &config.settings,
-        args,
+        run_config,
         client,
         cache,
+        &mut source_readers,
         &mut target_reader_writer.reader(),
         &mut target_reader_writer.writer(),
     )
@@ -43,81 +59,8 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     Ok(())
 }
 
-pub async fn fetch_bookmarks(
-    settings: &Settings,
-    args: &FetchArgs,
-    client: impl Fetch,
-    cache: impl Caching,
-    target_reader: &mut impl ReadTarget,
-    target_writer: &mut impl WriteTarget,
-) -> Result<(), anyhow::Error> {
-    let now = Utc::now();
-    let mut target_bookmarks = TargetBookmarks::default();
-    target_reader.read(&mut target_bookmarks)?;
-
-    if cache.is_empty() {
-        debug!("Cache is empty");
-        target_bookmarks.reset_cache_status();
-    }
-
-    set_actions(&mut target_bookmarks, now, args)?;
-
-    let report = ProcessReport::init(args.dry_run);
-    let bookmark_processor = BookmarkProcessor::new(client, cache, settings.to_owned(), report);
-
-    bookmark_processor
-        .process_bookmarks(target_bookmarks.values_mut().collect())
-        .await?;
-    bookmark_processor
-        .process_underlyings(&mut target_bookmarks)
-        .await?;
-
-    trace!("Fetched bookmarks: {target_bookmarks:#?}");
-
-    // Write bookmarks with updated timestamps.
-    target_writer.write(&target_bookmarks)?;
-
-    Ok(())
-}
-
-/// Set actions for bookmarks.
-pub fn set_actions(
-    target_bookmarks: &mut TargetBookmarks,
-    now: DateTime<Utc>,
-    args: &FetchArgs,
-) -> Result<(), anyhow::Error> {
-    if args.all {
-        target_bookmarks.set_action(&Action::FetchAndReplace);
-    } else if args.dry_run {
-        target_bookmarks.set_action(&Action::DryRun);
-    } else if !args.urls.is_empty() {
-        let urls = args
-            .urls
-            .iter()
-            .map(|url| Url::parse(url))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        for url in &urls {
-            if let Some(target_bookmark) = target_bookmarks.get_mut(url) {
-                target_bookmark.set_action(Action::FetchAndReplace);
-                target_bookmark.add_source(SourceType::Internal);
-            } else {
-                let target_bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
-                    .add_source(SourceType::Internal)
-                    .with_status(Status::Added)
-                    .with_action(Action::FetchAndReplace)
-                    .build();
-                target_bookmarks.insert(target_bookmark);
-            }
-        }
-    } else {
-        target_bookmarks.set_action(&Action::FetchAndAdd);
-    }
-
-    Ok(())
-}
-
 /// Fetch difference between cached and fetched website, and display changes.
+// TODO: refactor to use `BookmarkManager`.
 pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepError> {
     debug!("Diff content for urls: {:#?}", args.diff);
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
@@ -174,7 +117,11 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::ProcessReport, MockCache, MockClient, TargetBookmark};
+    use crate::{
+        bookmarks::ProcessReport, Action, BookmarkProcessor, MockCache, MockClient, Settings,
+        TargetBookmark,
+    };
+    use chrono::Utc;
     use std::collections::HashMap;
     use url::Url;
 

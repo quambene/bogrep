@@ -1,40 +1,60 @@
 use crate::{
-    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmark_reader::SourceReader,
     bookmarks::{target_bookmarks::TargetBookmarkBuilder, Status},
     errors::BogrepError,
     Action, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark, TargetBookmarks,
 };
 use chrono::{DateTime, Utc};
-use log::{trace, warn};
+use log::{debug, trace, warn};
 use url::Url;
+
+use super::RunMode;
+
+#[derive(Debug, Default)]
+pub struct RunConfig {
+    run_mode: RunMode,
+    empty_cache: bool,
+    ignored_urls: Vec<Url>,
+    fetch_urls: Vec<Url>,
+}
+
+impl RunConfig {
+    pub fn new(
+        run_mode: RunMode,
+        empty_cache: bool,
+        ignored_urls: Vec<Url>,
+        fetch_urls: Vec<Url>,
+    ) -> Self {
+        Self {
+            run_mode,
+            empty_cache,
+            ignored_urls,
+            fetch_urls,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct BookmarkManager {
+    config: RunConfig,
     source_bookmarks: SourceBookmarks,
     target_bookmarks: TargetBookmarks,
-    dry_run: bool,
 }
 
 impl BookmarkManager {
-    pub fn new(dry_run: bool) -> Self {
+    pub fn new(config: RunConfig) -> Self {
         let source_bookmarks = SourceBookmarks::default();
         let target_bookmarks = TargetBookmarks::default();
 
         Self {
+            config,
             source_bookmarks,
             target_bookmarks,
-            dry_run,
         }
     }
 
-    pub fn read(&mut self, target_reader: &mut impl ReadTarget) -> Result<(), BogrepError> {
-        target_reader.read(&mut self.target_bookmarks)?;
-        Ok(())
-    }
-
-    pub fn write(&self, target_writer: &mut impl WriteTarget) -> Result<(), BogrepError> {
-        target_writer.write(&self.target_bookmarks)?;
-        Ok(())
+    pub fn is_dry_run(&self) -> bool {
+        self.config.run_mode == RunMode::DryRun
     }
 
     /// Import bookmarks from sources.
@@ -46,14 +66,6 @@ impl BookmarkManager {
         Ok(())
     }
 
-    pub fn source_bookmarks(&self) -> &SourceBookmarks {
-        &self.source_bookmarks
-    }
-
-    pub fn source_bookmarks_mut(&mut self) -> &mut SourceBookmarks {
-        &mut self.source_bookmarks
-    }
-
     pub fn target_bookmarks(&self) -> &TargetBookmarks {
         &self.target_bookmarks
     }
@@ -63,32 +75,77 @@ impl BookmarkManager {
     }
 
     /// Prepare bookmarks for processing in `BookmarkProcessor`.
-    pub fn set_actions(&mut self) {
-        if self.dry_run {
-            self.target_bookmarks.set_action(&Action::DryRun);
-        } else {
-            for target_bookmark in self.target_bookmarks.values_mut() {
-                match target_bookmark.status() {
-                    Status::Removed => target_bookmark.set_action(Action::Remove),
-                    Status::Added | Status::None => (),
-                }
+    pub fn set_actions(&mut self, now: DateTime<Utc>) {
+        for target_bookmark in self.target_bookmarks.values_mut() {
+            match target_bookmark.status() {
+                Status::Removed => target_bookmark.set_action(Action::Remove),
+                Status::Added | Status::None => (),
             }
         }
-    }
 
-    // TODO: fix ignored urls for same hosts
-    pub fn ignore_urls(&mut self, ignored_urls: &[Url]) {
-        for url in ignored_urls {
-            if let Some(target_bookmark) = self.target_bookmarks.get_mut(url) {
+        // TODO: fix ignored urls for same hosts
+        for url in &self.config.ignored_urls {
+            if let Some(target_bookmark) = self.target_bookmarks.get_mut(&url) {
                 target_bookmark.set_status(Status::Removed);
                 target_bookmark.set_action(Action::Remove);
             }
         }
+
+        for url in &self.config.fetch_urls {
+            if let Some(target_bookmark) = self.target_bookmarks.get_mut(url) {
+                target_bookmark.set_action(Action::FetchAndReplace);
+                target_bookmark.add_source(SourceType::Internal);
+            } else {
+                let target_bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
+                    .add_source(SourceType::Internal)
+                    .with_status(Status::Added)
+                    .with_action(Action::FetchAndReplace)
+                    .build();
+                self.target_bookmarks.insert(target_bookmark);
+            }
+        }
+
+        if self.config.empty_cache {
+            debug!("Cache is empty");
+            self.target_bookmarks.reset_cache_status();
+        }
+
+        match self.config.run_mode {
+            RunMode::Import => {
+                self.target_bookmarks.set_action(&Action::None);
+            }
+            RunMode::Fetch => {
+                self.target_bookmarks.set_action(&Action::FetchAndAdd);
+            }
+            RunMode::FetchAll => {
+                self.target_bookmarks.set_action(&Action::FetchAndReplace);
+            }
+            RunMode::DryRun => {
+                self.target_bookmarks.set_action(&Action::DryRun);
+            }
+            RunMode::None => {
+                self.target_bookmarks.set_action(&Action::None);
+            }
+        }
     }
 
-    /// Remove bookmarks which are marked as `Status::Removed`.
+    /// Remove bookmarks which are marked as [`Status::Removed`].
     pub fn finish(&mut self) {
-        self.target_bookmarks.clean_up();
+        let urls_to_remove = self
+            .target_bookmarks
+            .values()
+            .filter_map(|bookmark| {
+                if bookmark.status() == &Status::Removed {
+                    Some(bookmark.url().to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for url in urls_to_remove {
+            self.target_bookmarks.remove(&url);
+        }
     }
 
     pub fn add_urls(&mut self, urls: &[Url], source_type: &SourceType, now: DateTime<Utc>) {
@@ -107,19 +164,6 @@ impl BookmarkManager {
                 target_bookmark.set_action(Action::Remove);
             }
         }
-    }
-
-    pub fn add_bookmark(
-        &mut self,
-        source_bookmark: &SourceBookmark,
-        now: DateTime<Utc>,
-    ) -> Result<(), BogrepError> {
-        let url = Url::parse(&source_bookmark.url())?;
-        let target_bookmark = TargetBookmarkBuilder::new(url, now)
-            .with_sources(source_bookmark.sources().to_owned())
-            .build();
-        self.target_bookmarks.upsert(target_bookmark);
-        Ok(())
     }
 
     /// Add the difference between source and target bookmarks.
@@ -185,7 +229,10 @@ impl BookmarkManager {
         } else {
             "sources"
         };
-        let dry_run_str = if self.dry_run { " (dry run)" } else { "" };
+        let dry_run_str = match self.config.run_mode {
+            RunMode::DryRun => " (dry run)",
+            _ => "",
+        };
 
         if !added_bookmarks.is_empty() {
             println!("Added {added_count} new bookmarks");
@@ -294,9 +341,9 @@ mod tests {
         ]));
 
         let mut bookmark_manager = BookmarkManager {
+            config: RunConfig::default(),
             source_bookmarks,
             target_bookmarks,
-            dry_run: false,
         };
 
         bookmark_manager.add_bookmarks(now).unwrap();

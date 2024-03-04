@@ -1,10 +1,7 @@
 use super::{Action, JsonBookmark, Status};
-use crate::{
-    cache::CacheMode, errors::BogrepError, SourceBookmark, SourceBookmarks, SourceType,
-    UnderlyingType,
-};
+use crate::{cache::CacheMode, SourceBookmarks, SourceType, UnderlyingType};
 use chrono::{DateTime, Utc};
-use log::{debug, warn};
+use log::debug;
 use std::collections::{
     hash_map::{Entry, IntoIter, IntoValues, Iter, IterMut, Keys, Values, ValuesMut},
     HashMap, HashSet,
@@ -372,65 +369,6 @@ impl TargetBookmarks {
     pub fn remove(&mut self, url: &Url) -> Option<TargetBookmark> {
         self.0.remove(url)
     }
-
-    /// Clean up bookmarks which are marked by [`Status::Removed`].
-    pub fn clean_up(&mut self) {
-        let urls_to_remove = self
-            .values()
-            .filter_map(|bookmark| {
-                if bookmark.status == Status::Removed {
-                    Some(bookmark.url.to_owned())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        for url in urls_to_remove {
-            self.remove(&url);
-        }
-    }
-
-    pub fn ignore_urls(&mut self, ignored_urls: &[Url]) {
-        for url in ignored_urls {
-            if let Some(target_bookmark) = self.get_mut(url) {
-                target_bookmark.set_action(Action::Remove)
-            }
-        }
-    }
-
-    pub fn filter_to_add<'a>(
-        &self,
-        source_bookmarks: &'a SourceBookmarks,
-    ) -> Vec<&'a SourceBookmark> {
-        source_bookmarks
-            .iter()
-            .filter_map(|(url, bookmark)| match Url::parse(url) {
-                Ok(url) => {
-                    if !self.0.contains_key(&url) {
-                        Some(bookmark)
-                    } else {
-                        None
-                    }
-                }
-                Err(err) => {
-                    warn!("{}", BogrepError::ParseUrl(err));
-                    None
-                }
-            })
-            .collect()
-    }
-
-    pub fn filter_to_remove<'a>(
-        &'a mut self,
-        source_bookmarks: &SourceBookmarks,
-    ) -> Vec<&'a mut TargetBookmark> {
-        self.0
-            .iter_mut()
-            .filter(|(url, _)| !source_bookmarks.contains_key(url.as_str()))
-            .map(|(_, target_bookmark)| target_bookmark)
-            .collect()
-    }
 }
 
 impl IntoIterator for TargetBookmarks {
@@ -494,34 +432,6 @@ mod tests {
     const EXPECTED_BOOKMARKS_EMPTY: &str = r#"{
     "bookmarks": []
 }"#;
-
-    #[test]
-    fn test_ignore_urls() {
-        let now = Utc::now();
-        let url1 = Url::parse("https://url1.com").unwrap();
-        let url2 = Url::parse("https://url2.com").unwrap();
-        let url3 = Url::parse("https://url3.com").unwrap();
-        let ignored_urls = vec![url1.clone(), url3.clone()];
-        let mut target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
-            (
-                url1.clone(),
-                TargetBookmarkBuilder::new(url1.clone(), now).build(),
-            ),
-            (
-                url2.clone(),
-                TargetBookmarkBuilder::new(url2.clone(), now).build(),
-            ),
-            (
-                url3.clone(),
-                TargetBookmarkBuilder::new(url3.clone(), now).build(),
-            ),
-        ]));
-
-        target_bookmarks.ignore_urls(&ignored_urls);
-        assert!(target_bookmarks.get(&url1).unwrap().action == Action::Remove);
-        assert!(target_bookmarks.get(&url2).unwrap().action == Action::None);
-        assert!(target_bookmarks.get(&url3).unwrap().action == Action::Remove);
-    }
 
     #[test]
     fn test_read_target_bookmarks() {

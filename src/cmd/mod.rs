@@ -12,7 +12,7 @@ pub use add::add;
 pub use clean::clean;
 pub use configure::configure;
 pub use fetch::{fetch, fetch_diff};
-pub use import::import;
+pub use import::{import, import_and_process_bookmarks};
 pub use init::init;
 pub use remove::remove;
 pub use search::search;

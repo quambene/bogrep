@@ -1,7 +1,8 @@
 use crate::{
     args::RemoveArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    Config, TargetBookmarks,
+    bookmarks::{BookmarkManager, RunConfig, RunMode},
+    Config,
 };
 use anyhow::anyhow;
 use log::debug;
@@ -21,7 +22,10 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
+        let config = RunConfig::new(RunMode::None, false, vec![], vec![]);
+
         remove_urls(
+            config,
             &urls,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
@@ -35,25 +39,21 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
     Ok(())
 }
 
+// TODO: Use `BookmarkProcessor`.
 fn remove_urls(
+    config: RunConfig,
     urls: &[Url],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
-    let mut counter = 0;
-    let mut target_bookmarks = TargetBookmarks::default();
+    let mut bookmark_manager = BookmarkManager::new(config);
 
-    target_reader.read(&mut target_bookmarks)?;
+    target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
-    for url in urls {
-        if target_bookmarks.remove(url).is_some() {
-            counter += 1;
-        }
-    }
+    bookmark_manager.remove_urls(urls);
+    bookmark_manager.finish();
 
-    target_writer.write(&target_bookmarks)?;
-
-    println!("Removed {} bookmarks", counter);
+    target_writer.write(bookmark_manager.target_bookmarks())?;
 
     Ok(())
 }
@@ -61,7 +61,9 @@ fn remove_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::TargetBookmarkBuilder, json, JsonBookmarks, SourceType};
+    use crate::{
+        bookmarks::TargetBookmarkBuilder, json, JsonBookmarks, SourceType, TargetBookmarks,
+    };
     use chrono::Utc;
     use std::{
         collections::HashSet,
@@ -102,10 +104,10 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
-
         let urls = vec![url2, url3];
+        let run_config = RunConfig::default();
 
-        let res = remove_urls(&urls, &mut target_reader, &mut target_writer);
+        let res = remove_urls(run_config, &urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();

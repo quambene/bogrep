@@ -4,7 +4,7 @@ mod source_bookmarks;
 mod target_bookmarks;
 
 use crate::{bookmark_reader::SourceReader, CacheMode};
-pub use bookmark_manager::BookmarkManager;
+pub use bookmark_manager::{BookmarkManager, RunConfig};
 pub use bookmark_processor::BookmarkProcessor;
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
@@ -113,6 +113,20 @@ impl From<&Url> for UnderlyingType {
             UnderlyingType::None
         }
     }
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub enum RunMode {
+    /// Import bookmarks, but don't fetch them.
+    Import,
+    /// Fetch new bookmarks.
+    Fetch,
+    /// Fetch all bookmarks.
+    FetchAll,
+    /// Run in dry mode.
+    DryRun,
+    #[default]
+    None,
 }
 
 /// The source of bookmarks.
