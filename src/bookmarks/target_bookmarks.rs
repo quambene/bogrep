@@ -147,7 +147,6 @@ pub struct TargetBookmarkBuilder {
     id: String,
     url: Url,
     underlying_url: Option<Url>,
-    underlying_type: UnderlyingType,
     last_imported: DateTime<Utc>,
     last_cached: Option<DateTime<Utc>>,
     sources: HashSet<SourceType>,
@@ -162,7 +161,6 @@ impl TargetBookmarkBuilder {
             id: Uuid::new_v4().to_string(),
             url,
             underlying_url: None,
-            underlying_type: UnderlyingType::None,
             last_imported,
             last_cached: None,
             sources: HashSet::new(),
@@ -181,7 +179,6 @@ impl TargetBookmarkBuilder {
             id,
             url,
             underlying_url: None,
-            underlying_type: UnderlyingType::None,
             last_imported,
             last_cached: None,
             sources: HashSet::new(),
@@ -189,14 +186,6 @@ impl TargetBookmarkBuilder {
             status: Status::None,
             action: Action::None,
         }
-    }
-
-    pub fn with_underlying_type(
-        mut self,
-        underlying_type: UnderlyingType,
-    ) -> TargetBookmarkBuilder {
-        self.underlying_type = underlying_type;
-        self
     }
 
     pub fn with_status(mut self, status: Status) -> TargetBookmarkBuilder {
@@ -225,11 +214,13 @@ impl TargetBookmarkBuilder {
     }
 
     pub fn build(self) -> TargetBookmark {
+        let underlying_type = UnderlyingType::from(&self.url);
+
         TargetBookmark {
             id: self.id,
             url: self.url,
             underlying_url: self.underlying_url,
-            underlying_type: self.underlying_type,
+            underlying_type,
             last_imported: self.last_imported.timestamp_millis(),
             last_cached: self
                 .last_cached
