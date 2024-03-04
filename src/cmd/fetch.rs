@@ -27,21 +27,21 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
-    let fetch_urls = args
-        .urls
-        .iter()
-        .map(|url| Url::parse(url))
-        .collect::<Result<Vec<_>, _>>()?;
-    let run_mode = if args.all {
-        RunMode::FetchAll
-    } else if !args.all {
-        RunMode::Fetch
-    } else if args.dry_run {
+    let run_mode = if args.dry_run {
         RunMode::DryRun
+    } else if !args.urls.is_empty() {
+        let fetch_urls = args
+            .urls
+            .iter()
+            .map(|url| Url::parse(url))
+            .collect::<Result<Vec<_>, _>>()?;
+        RunMode::FetchUrls(fetch_urls)
+    } else if args.all {
+        RunMode::FetchAll
     } else {
-        RunMode::None
+        RunMode::Fetch
     };
-    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![], fetch_urls);
+    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![]);
 
     import_and_process_bookmarks(
         &config.settings,

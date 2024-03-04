@@ -22,7 +22,7 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
-        let config = RunConfig::new(RunMode::None, false, vec![], vec![]);
+        let config = RunConfig::new(RunMode::None, false, vec![]);
 
         remove_urls(
             config,

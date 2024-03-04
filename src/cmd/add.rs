@@ -23,7 +23,7 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
-        let config = RunConfig::new(RunMode::None, false, vec![], vec![]);
+        let config = RunConfig::new(RunMode::None, false, vec![]);
 
         add_urls(
             config,

@@ -71,7 +71,7 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
     } else {
         RunMode::Import
     };
-    let run_config = RunConfig::new(run_mode, cache.is_empty(), ignored_urls, vec![]);
+    let run_config = RunConfig::new(run_mode, cache.is_empty(), ignored_urls);
 
     import_and_process_bookmarks(
         &config.settings,
@@ -271,7 +271,7 @@ mod tests {
         } else {
             RunMode::Import
         };
-        let config = RunConfig::new(run_mode, cache.is_empty(), ignored_urls, vec![]);
+        let config = RunConfig::new(run_mode, cache.is_empty(), ignored_urls);
 
         let res = import_and_process_bookmarks(
             &settings,
@@ -320,7 +320,7 @@ mod tests {
             Box::new(source_reader_writer.clone()),
             source_reader,
         );
-        let config = RunConfig::new(RunMode::Import, cache.is_empty(), vec![], vec![]);
+        let config = RunConfig::new(RunMode::Import, cache.is_empty(), vec![]);
 
         let res = import_and_process_bookmarks(
             &settings,

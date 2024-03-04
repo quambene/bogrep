@@ -119,10 +119,18 @@ impl From<&Url> for UnderlyingType {
 pub enum RunMode {
     /// Import bookmarks, but don't fetch them.
     Import,
+    /// Add provided bookmark urls.
+    AddUrls(Vec<Url>),
+    /// Remove provided bookmark urls.
+    RemoveUrls(Vec<Url>),
+    /// Import and fetch provided bookmark urls.
+    FetchUrls(Vec<Url>),
     /// Fetch new bookmarks.
     Fetch,
     /// Fetch all bookmarks.
     FetchAll,
+    /// Import bookmarks and fetch new bookmarks.
+    Update,
     /// Run in dry mode.
     DryRun,
     #[default]

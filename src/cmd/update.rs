@@ -36,7 +36,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     } else {
         RunMode::FetchAll
     };
-    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![], vec![]);
+    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![]);
 
     import_and_process_bookmarks(
         &config.settings,
