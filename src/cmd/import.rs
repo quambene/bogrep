@@ -1,7 +1,7 @@
 use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
-    bookmarks::{BookmarkManager, RunConfig, RunMode},
+    bookmarks::{BookmarkManager, BookmarkService, RunConfig, RunMode},
     errors::BogrepError,
     json, utils, BookmarkProcessor, Cache, CacheMode, Caching, Client, Config, Fetch,
     ProcessReport, Settings,
@@ -66,23 +66,28 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
+
+    let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
     } else {
         RunMode::Import
     };
-    let run_config = RunConfig::new(run_mode, cache.is_empty(), ignored_urls);
+    let run_config = RunConfig::new(run_mode.clone(), cache.is_empty(), ignored_urls);
+    let bookmark_manager = BookmarkManager::new(run_config);
+    let report = ProcessReport::init(bookmark_manager.is_dry_run());
+    let bookmark_processor =
+        BookmarkProcessor::new(client, cache, config.settings.to_owned(), report);
+    let mut bookmark_service = BookmarkService::new(run_mode, bookmark_manager, bookmark_processor);
 
-    import_and_process_bookmarks(
-        &config.settings,
-        run_config,
-        client,
-        cache,
-        &mut source_readers,
-        &mut target_reader_writer.reader(),
-        &mut target_reader_writer.writer(),
-    )
-    .await?;
+    bookmark_service
+        .run(
+            now,
+            &mut source_readers,
+            &mut target_reader_writer.reader(),
+            &mut target_reader_writer.writer(),
+        )
+        .await?;
 
     target_reader_writer.close()?;
 

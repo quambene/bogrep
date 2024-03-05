@@ -1,11 +1,12 @@
 use crate::{
     bookmark_reader::{ReadTarget, TargetReaderWriter},
-    bookmarks::{RunConfig, RunMode},
+    bookmarks::{BookmarkManager, BookmarkService, RunConfig, RunMode},
     cache::CacheMode,
-    cmd::import_and_process_bookmarks,
     errors::BogrepError,
-    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmarks,
+    html, utils, BookmarkProcessor, Cache, Caching, Client, Config, Fetch, FetchArgs,
+    ProcessReport, TargetBookmarks,
 };
+use chrono::Utc;
 use colored::Colorize;
 use log::{debug, trace, warn};
 use similar::{ChangeTag, TextDiff};
@@ -27,6 +28,8 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
+
+    let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
     } else if !args.urls.is_empty() {
@@ -41,18 +44,21 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     } else {
         RunMode::Fetch
     };
-    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![]);
+    let run_config = RunConfig::new(run_mode.clone(), cache.is_empty(), vec![]);
+    let bookmark_manager = BookmarkManager::new(run_config);
+    let report = ProcessReport::init(bookmark_manager.is_dry_run());
+    let bookmark_processor =
+        BookmarkProcessor::new(client, cache, config.settings.to_owned(), report);
+    let mut bookmark_service = BookmarkService::new(run_mode, bookmark_manager, bookmark_processor);
 
-    import_and_process_bookmarks(
-        &config.settings,
-        run_config,
-        client,
-        cache,
-        &mut source_readers,
-        &mut target_reader_writer.reader(),
-        &mut target_reader_writer.writer(),
-    )
-    .await?;
+    bookmark_service
+        .run(
+            now,
+            &mut source_readers,
+            &mut target_reader_writer.reader(),
+            &mut target_reader_writer.writer(),
+        )
+        .await?;
 
     target_reader_writer.close()?;
 
@@ -60,7 +66,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 }
 
 /// Fetch difference between cached and fetched website, and display changes.
-// TODO: refactor to use `BookmarkManager`.
+// TODO: refactor to use `BookmarkService`.
 pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepError> {
     debug!("Diff content for urls: {:#?}", args.diff);
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
