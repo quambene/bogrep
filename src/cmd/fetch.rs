@@ -1,6 +1,6 @@
 use crate::{
     bookmark_reader::{ReadTarget, TargetReaderWriter},
-    bookmarks::{BookmarkManager, BookmarkService, RunConfig, RunMode},
+    bookmarks::{BookmarkManager, BookmarkService, RunMode, ServiceConfig},
     cache::CacheMode,
     errors::BogrepError,
     html, utils, BookmarkProcessor, Cache, Caching, Client, Config, Fetch, FetchArgs,
@@ -44,19 +44,20 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     } else {
         RunMode::Fetch
     };
-    let run_config = RunConfig::new(run_mode.clone(), cache.is_empty(), vec![]);
-    let bookmark_manager = BookmarkManager::new(run_config);
-    let report = ProcessReport::init(bookmark_manager.is_dry_run());
+    let service_config = ServiceConfig::new(run_mode, vec![]);
+    let bookmark_manager = BookmarkManager::new();
+    let report = ProcessReport::init(service_config.run_mode() == &RunMode::DryRun);
     let bookmark_processor =
         BookmarkProcessor::new(client, cache, config.settings.to_owned(), report);
-    let mut bookmark_service = BookmarkService::new(run_mode, bookmark_manager, bookmark_processor);
+    let mut bookmark_service =
+        BookmarkService::new(service_config, bookmark_manager, bookmark_processor);
 
     bookmark_service
         .run(
-            now,
             &mut source_readers,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
+            now,
         )
         .await?;
 

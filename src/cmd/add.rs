@@ -1,8 +1,8 @@
 use crate::{
     args::AddArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::{BookmarkManager, RunConfig, RunMode},
-    Config, SourceType,
+    bookmarks::{BookmarkManager, RunMode, ServiceConfig},
+    Config,
 };
 use anyhow::anyhow;
 use chrono::Utc;
@@ -23,7 +23,7 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
-        let config = RunConfig::new(RunMode::None, false, vec![]);
+        let config = ServiceConfig::new(RunMode::None, vec![]);
 
         add_urls(
             config,
@@ -40,20 +40,20 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-// TODO: Use `BookmarkProcessor`.
+// TODO: Use `BookmarkService`.
 fn add_urls(
-    config: RunConfig,
+    config: ServiceConfig,
     urls: &[Url],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
     let now = Utc::now();
-    let mut bookmark_manager = BookmarkManager::new(config);
+    let mut bookmark_manager = BookmarkManager::new();
 
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
-    bookmark_manager.add_urls(urls, &SourceType::Internal, now);
-    bookmark_manager.print_report(&vec![]);
+    bookmark_manager.add_urls(urls, now)?;
+    bookmark_manager.print_report(&vec![], config.run_mode());
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;
@@ -64,7 +64,9 @@ fn add_urls(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::TargetBookmarkBuilder, json, Action, JsonBookmarks, TargetBookmarks};
+    use crate::{
+        bookmarks::TargetBookmarkBuilder, json, Action, JsonBookmarks, SourceType, TargetBookmarks,
+    };
     use std::{
         collections::HashSet,
         io::{Cursor, Write},
@@ -89,9 +91,9 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
         let urls = vec![url1, url2];
-        let run_mode = RunConfig::default();
+        let config = ServiceConfig::default();
 
-        let res = add_urls(run_mode, &urls, &mut target_reader, &mut target_writer);
+        let res = add_urls(config, &urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();
@@ -148,9 +150,9 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
         let urls = vec![url1.to_owned(), url2.to_owned()];
-        let run_mode = RunConfig::default();
+        let config = ServiceConfig::default();
 
-        let res = add_urls(run_mode, &urls, &mut target_reader, &mut target_writer);
+        let res = add_urls(config, &urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual = target_writer.get_ref();

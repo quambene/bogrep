@@ -1,10 +1,10 @@
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{SourceReader, TargetReaderWriter},
-    bookmarks::{RunConfig, RunMode},
+    bookmarks::{RunMode, ServiceConfig},
     cache::CacheMode,
     cmd::import_and_process_bookmarks,
-    Cache, Caching, Client, Config,
+    Cache, Client, Config,
 };
 use log::debug;
 
@@ -36,11 +36,11 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     } else {
         RunMode::FetchAll
     };
-    let run_config = RunConfig::new(run_mode, cache.is_empty(), vec![]);
+    let service_config = ServiceConfig::new(run_mode, vec![]);
 
     import_and_process_bookmarks(
         &config.settings,
-        run_config,
+        service_config,
         client,
         cache,
         &mut source_readers,

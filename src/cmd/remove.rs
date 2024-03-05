@@ -1,7 +1,7 @@
 use crate::{
     args::RemoveArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
-    bookmarks::{BookmarkManager, RunConfig, RunMode},
+    bookmarks::{BookmarkManager, RunMode, ServiceConfig},
     Config,
 };
 use anyhow::anyhow;
@@ -22,10 +22,10 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
         .collect::<Result<Vec<_>, _>>()?;
 
     if !urls.is_empty() {
-        let config = RunConfig::new(RunMode::None, false, vec![]);
+        let service_config = ServiceConfig::new(RunMode::RemoveUrls(urls.clone()), vec![]);
 
         remove_urls(
-            config,
+            service_config,
             &urls,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
@@ -39,19 +39,19 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
     Ok(())
 }
 
-// TODO: Use `BookmarkProcessor`.
+// TODO: Use `BookmarkService`.
 fn remove_urls(
-    config: RunConfig,
+    config: ServiceConfig,
     urls: &[Url],
     target_reader: &mut impl ReadTarget,
     target_writer: &mut impl WriteTarget,
 ) -> Result<(), anyhow::Error> {
-    let mut bookmark_manager = BookmarkManager::new(config);
+    let mut bookmark_manager = BookmarkManager::new();
 
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
-    bookmark_manager.remove_urls(urls);
-    bookmark_manager.print_report(&vec![]);
+    bookmark_manager.remove_urls(urls)?;
+    bookmark_manager.print_report(&vec![], config.run_mode());
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;
@@ -106,7 +106,7 @@ mod tests {
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
         let urls = vec![url2, url3];
-        let run_config = RunConfig::default();
+        let run_config = ServiceConfig::default();
 
         let res = remove_urls(run_config, &urls, &mut target_reader, &mut target_writer);
         assert!(res.is_ok(), "{}", res.unwrap_err());

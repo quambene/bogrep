@@ -37,6 +37,10 @@ where
         }
     }
 
+    pub fn cache(&self) -> &impl Caching {
+        &self.cache
+    }
+
     pub fn underlying_bookmarks(&self) -> Vec<TargetBookmark> {
         let underlying_bookmarks = self.underlying_bookmarks.lock();
         underlying_bookmarks.clone()
