@@ -2,7 +2,7 @@ use crate::{
     args::AddArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
     bookmarks::{BookmarkManager, RunMode, ServiceConfig},
-    Config,
+    utils, Config,
 };
 use anyhow::anyhow;
 use chrono::Utc;
@@ -16,11 +16,7 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
-    let urls = args
-        .urls
-        .iter()
-        .map(|url| Url::parse(url))
-        .collect::<Result<Vec<_>, _>>()?;
+    let urls = utils::parse_urls(&args.urls)?;
 
     if !urls.is_empty() {
         let config = ServiceConfig::new(RunMode::None, vec![]);

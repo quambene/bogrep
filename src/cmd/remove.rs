@@ -2,7 +2,7 @@ use crate::{
     args::RemoveArgs,
     bookmark_reader::{ReadTarget, TargetReaderWriter, WriteTarget},
     bookmarks::{BookmarkManager, RunMode, ServiceConfig},
-    Config,
+    utils, Config,
 };
 use anyhow::anyhow;
 use log::debug;
@@ -15,11 +15,7 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
-    let urls = args
-        .urls
-        .iter()
-        .map(|url| Url::parse(url))
-        .collect::<Result<Vec<_>, _>>()?;
+    let urls = utils::parse_urls(&args.urls)?;
 
     if !urls.is_empty() {
         let service_config = ServiceConfig::new(RunMode::RemoveUrls(urls.clone()), vec![]);

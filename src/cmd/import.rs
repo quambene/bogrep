@@ -14,7 +14,6 @@ use std::{
     io::{self, Write},
     path::Path,
 };
-use url::Url;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
@@ -50,12 +49,7 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
     let cache_mode = CacheMode::new(&None, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(&config)?;
-    let ignored_urls = config
-        .settings
-        .ignored_urls
-        .iter()
-        .map(|url| Url::parse(url))
-        .collect::<Result<Vec<_>, _>>()?;
+    let ignored_urls = utils::parse_urls(&config.settings.ignored_urls)?;
     let mut source_readers = config
         .settings
         .sources

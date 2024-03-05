@@ -6,6 +6,15 @@ use std::{
     path::Path,
 };
 use tokio::io::AsyncWriteExt;
+use url::Url;
+
+pub fn parse_urls(urls: &[String]) -> Result<Vec<Url>, BogrepError> {
+    let parsed_urls = urls
+        .iter()
+        .map(|url| Url::parse(url))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(parsed_urls)
+}
 
 /// Helper function to read a file that logs the path of the file in case of an
 /// error.
