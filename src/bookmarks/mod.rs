@@ -331,7 +331,7 @@ impl<'a> Iterator for JsonBookmarksIterator<'a> {
 }
 
 #[derive(Debug, Default)]
-pub struct ProcessReport {
+pub struct ServiceReport {
     total: usize,
     processed: i32,
     cached: i32,
@@ -341,7 +341,7 @@ pub struct ProcessReport {
     dry_run: bool,
 }
 
-impl ProcessReport {
+impl ServiceReport {
     pub fn new(
         total: usize,
         processed: i32,

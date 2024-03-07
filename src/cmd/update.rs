@@ -1,11 +1,12 @@
 use crate::{
     args::UpdateArgs,
     bookmark_reader::{SourceReader, TargetReaderWriter},
-    bookmarks::{RunMode, ServiceConfig},
+    bookmarks::{BookmarkManager, BookmarkService, RunMode, ServiceConfig},
     cache::CacheMode,
-    cmd::import_and_process_bookmarks,
+    client::ClientConfig,
     Cache, Client, Config,
 };
+use chrono::Utc;
 use log::debug;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
@@ -19,7 +20,8 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
-    let client = Client::new(config)?;
+    let client_config = ClientConfig::new(&config.settings);
+    let client = Client::new(&client_config)?;
 
     let mut source_readers = config
         .settings
@@ -31,23 +33,26 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
+    let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
     } else {
-        RunMode::FetchAll
+        RunMode::Update
     };
-    let service_config = ServiceConfig::new(run_mode, vec![]);
+    let service_config =
+        ServiceConfig::new(run_mode, vec![], config.settings.max_concurrent_requests);
+    let mut bookmark_manager = BookmarkManager::new();
+    let bookmark_service = BookmarkService::new(service_config, client, cache);
 
-    import_and_process_bookmarks(
-        &config.settings,
-        service_config,
-        client,
-        cache,
-        &mut source_readers,
-        &mut target_reader_writer.reader(),
-        &mut target_reader_writer.writer(),
-    )
-    .await?;
+    bookmark_service
+        .run(
+            &mut bookmark_manager,
+            &mut source_readers,
+            &mut target_reader_writer.reader(),
+            &mut target_reader_writer.writer(),
+            now,
+        )
+        .await?;
 
     target_reader_writer.close()?;
 

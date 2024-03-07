@@ -1,6 +1,6 @@
 use bogrep::{
     errors::BogrepError, html, Action, BookmarkProcessor, Cache, CacheMode, Caching, Fetch,
-    MockClient, ProcessReport, Settings, TargetBookmark, TargetBookmarkBuilder, TargetBookmarks,
+    MockClient, ServiceReport, Settings, TargetBookmark, TargetBookmarkBuilder, TargetBookmarks,
 };
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -74,7 +74,7 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
         client.clone(),
         cache.clone(),
         settings,
-        ProcessReport::default(),
+        ServiceReport::default(),
     );
     bookmark_processor
         .process_bookmarks(bookmarks.values_mut().collect())

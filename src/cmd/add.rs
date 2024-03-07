@@ -19,7 +19,11 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     let urls = utils::parse_urls(&args.urls)?;
 
     if !urls.is_empty() {
-        let config = ServiceConfig::new(RunMode::None, vec![]);
+        let config = ServiceConfig::new(
+            RunMode::None,
+            vec![],
+            config.settings.max_concurrent_requests,
+        );
 
         add_urls(
             config,
@@ -49,7 +53,7 @@ fn add_urls(
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
     bookmark_manager.add_urls(urls, now)?;
-    bookmark_manager.print_report(&vec![], config.run_mode());
+    bookmark_manager.print_report(&[], config.run_mode());
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;

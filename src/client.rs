@@ -1,4 +1,4 @@
-use crate::{bookmarks::TargetBookmark, errors::BogrepError, Config};
+use crate::{bookmarks::TargetBookmark, errors::BogrepError, Settings};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -18,6 +18,29 @@ pub trait Fetch: Clone {
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError>;
 }
 
+#[derive(Debug, Clone)]
+pub struct ClientConfig {
+    /// The request timeout in milliseconds.
+    pub request_timeout: u64,
+    /// The throttling between requests in milliseconds.
+    pub request_throttling: u64,
+    /// The maximum number of idle connections allowed in the connection pool.
+    pub max_idle_connections_per_host: usize,
+    /// The timeout for idle connections to be kept alive in milliseconds.
+    pub idle_connections_timeout: u64,
+}
+
+impl ClientConfig {
+    pub fn new(settings: &Settings) -> Self {
+        Self {
+            request_timeout: settings.request_timeout,
+            request_throttling: settings.request_throttling,
+            max_idle_connections_per_host: settings.max_idle_connections_per_host,
+            idle_connections_timeout: settings.idle_connections_timeout,
+        }
+    }
+}
+
 /// A client to fetch websites.
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -26,18 +49,16 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(config: &Config) -> Result<Self, BogrepError> {
-        let request_timeout = config.settings.request_timeout;
-        let request_throttling = config.settings.request_throttling;
+    pub fn new(config: &ClientConfig) -> Result<Self, BogrepError> {
+        let request_timeout = config.request_timeout;
+        let request_throttling = config.request_throttling;
         let client = ReqwestClient::builder()
             .timeout(Duration::from_millis(request_timeout))
             // Fix "Too many open files" and DNS errors (rate limit for DNS
             // server) by choosing a sensible value for `pool_idle_timeout()`
             // and `pool_max_idle_per_host()`.
-            .pool_idle_timeout(Duration::from_millis(
-                config.settings.idle_connections_timeout,
-            ))
-            .pool_max_idle_per_host(config.settings.max_idle_connections_per_host)
+            .pool_idle_timeout(Duration::from_millis(config.idle_connections_timeout))
+            .pool_max_idle_per_host(config.max_idle_connections_per_host)
             .build()
             .map_err(BogrepError::CreateClient)?;
         let throttler = Some(Throttler::new(request_throttling));
@@ -194,7 +215,7 @@ impl MockClient {
 impl Fetch for MockClient {
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError> {
         let html = self
-            .get(&bookmark.url())
+            .get(bookmark.url())
             .ok_or(anyhow!("Can't fetch bookmark"))?;
         Ok(html)
     }

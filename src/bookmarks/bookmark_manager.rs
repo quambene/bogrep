@@ -27,6 +27,14 @@ impl BookmarkManager {
         }
     }
 
+    pub fn target_bookmarks(&self) -> &TargetBookmarks {
+        &self.target_bookmarks
+    }
+
+    pub fn target_bookmarks_mut(&mut self) -> &mut TargetBookmarks {
+        &mut self.target_bookmarks
+    }
+
     /// Import bookmarks from sources.
     pub fn import(&mut self, source_readers: &mut [SourceReader]) -> Result<(), BogrepError> {
         let source_bookmarks = &mut self.source_bookmarks;
@@ -36,14 +44,6 @@ impl BookmarkManager {
         }
 
         Ok(())
-    }
-
-    pub fn target_bookmarks(&self) -> &TargetBookmarks {
-        &self.target_bookmarks
-    }
-
-    pub fn target_bookmarks_mut(&mut self) -> &mut TargetBookmarks {
-        &mut self.target_bookmarks
     }
 
     pub fn add_urls(&mut self, urls: &[Url], now: DateTime<Utc>) -> Result<(), anyhow::Error> {
@@ -164,7 +164,7 @@ impl BookmarkManager {
         );
 
         for source_bookmark in bookmarks_to_add {
-            let url = Url::parse(&source_bookmark.url())?;
+            let url = Url::parse(source_bookmark.url())?;
             let target_bookmark = TargetBookmarkBuilder::new(url, now)
                 .with_sources(source_bookmark.sources().to_owned())
                 .build();

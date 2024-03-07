@@ -53,7 +53,7 @@ pub use bookmark_reader::{
     ChromiumReader, FirefoxReader, ReadBookmark, SafariReader, SimpleReader,
 };
 pub use bookmarks::{
-    Action, BookmarkProcessor, JsonBookmark, JsonBookmarks, ProcessReport, Source, SourceBookmark,
+    Action, BookmarkProcessor, JsonBookmark, JsonBookmarks, ServiceReport, Source, SourceBookmark,
     SourceBookmarks, SourceType, Status, TargetBookmark, TargetBookmarkBuilder, TargetBookmarks,
     UnderlyingType,
 };

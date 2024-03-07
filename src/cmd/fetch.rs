@@ -2,9 +2,9 @@ use crate::{
     bookmark_reader::{ReadTarget, TargetReaderWriter},
     bookmarks::{BookmarkManager, BookmarkService, RunMode, ServiceConfig},
     cache::CacheMode,
+    client::ClientConfig,
     errors::BogrepError,
-    html, utils, BookmarkProcessor, Cache, Caching, Client, Config, Fetch, FetchArgs,
-    ProcessReport, TargetBookmarks,
+    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmarks,
 };
 use chrono::Utc;
 use colored::Colorize;
@@ -22,7 +22,8 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
-    let client = Client::new(config)?;
+    let client_config = ClientConfig::new(&config.settings);
+    let client = Client::new(&client_config)?;
     let mut source_readers = vec![];
     let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
@@ -44,16 +45,14 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     } else {
         RunMode::Fetch
     };
-    let service_config = ServiceConfig::new(run_mode, vec![]);
-    let bookmark_manager = BookmarkManager::new();
-    let report = ProcessReport::init(service_config.run_mode() == &RunMode::DryRun);
-    let bookmark_processor =
-        BookmarkProcessor::new(client, cache, config.settings.to_owned(), report);
-    let mut bookmark_service =
-        BookmarkService::new(service_config, bookmark_manager, bookmark_processor);
+    let service_config =
+        ServiceConfig::new(run_mode, vec![], config.settings.max_concurrent_requests);
+    let mut bookmark_manager = BookmarkManager::new();
+    let bookmark_service = BookmarkService::new(service_config, client, cache);
 
     bookmark_service
         .run(
+            &mut bookmark_manager,
             &mut source_readers,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
@@ -72,7 +71,8 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
     debug!("Diff content for urls: {:#?}", args.diff);
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
-    let client = Client::new(config)?;
+    let client_config = ClientConfig::new(&config.settings);
+    let client = Client::new(&client_config)?;
     let urls = args
         .diff
         .iter()
@@ -125,7 +125,7 @@ pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepEr
 mod tests {
     use super::*;
     use crate::{
-        bookmarks::ProcessReport, Action, BookmarkProcessor, MockCache, MockClient, Settings,
+        bookmarks::ServiceReport, Action, BookmarkProcessor, MockCache, MockClient, Settings,
         TargetBookmark,
     };
     use chrono::Utc;
@@ -176,7 +176,7 @@ mod tests {
             client.clone(),
             cache.clone(),
             settings,
-            ProcessReport::default(),
+            ServiceReport::default(),
         );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
@@ -241,7 +241,7 @@ mod tests {
             client.clone(),
             cache.clone(),
             settings,
-            ProcessReport::default(),
+            ServiceReport::default(),
         );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
@@ -314,7 +314,7 @@ mod tests {
             client.clone(),
             cache.clone(),
             settings,
-            ProcessReport::default(),
+            ServiceReport::default(),
         );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())
@@ -389,7 +389,7 @@ mod tests {
             client.clone(),
             cache.clone(),
             settings,
-            ProcessReport::default(),
+            ServiceReport::default(),
         );
         let res = bookmark_processor
             .process_bookmarks(target_bookmarks.values_mut().collect())

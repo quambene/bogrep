@@ -2,9 +2,10 @@ use crate::{
     args::ImportArgs,
     bookmark_reader::{ReadTarget, SourceOs, SourceReader, TargetReaderWriter, WriteTarget},
     bookmarks::{BookmarkManager, BookmarkService, RunMode, ServiceConfig},
+    client::ClientConfig,
     errors::BogrepError,
     json, utils, BookmarkProcessor, Cache, CacheMode, Caching, Client, Config, Fetch,
-    ProcessReport, Settings,
+    ServiceReport, Settings,
 };
 use anyhow::anyhow;
 use chrono::Utc;
@@ -48,7 +49,8 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
 
     let cache_mode = CacheMode::new(&None, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
-    let client = Client::new(&config)?;
+    let client_config = ClientConfig::new(&config.settings);
+    let client = Client::new(&client_config)?;
     let ignored_urls = utils::parse_urls(&config.settings.ignored_urls)?;
     let mut source_readers = config
         .settings
@@ -67,16 +69,17 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
     } else {
         RunMode::Import
     };
-    let service_config = ServiceConfig::new(run_mode, ignored_urls);
-    let bookmark_manager = BookmarkManager::new();
-    let report = ProcessReport::init(service_config.run_mode() == &RunMode::DryRun);
-    let bookmark_processor =
-        BookmarkProcessor::new(client, cache, config.settings.to_owned(), report);
-    let mut bookmark_service =
-        BookmarkService::new(service_config, bookmark_manager, bookmark_processor);
+    let service_config = ServiceConfig::new(
+        run_mode,
+        ignored_urls,
+        config.settings.max_concurrent_requests,
+    );
+    let mut bookmark_manager = BookmarkManager::new();
+    let bookmark_service = BookmarkService::new(service_config, client, cache);
 
     bookmark_service
         .run(
+            &mut bookmark_manager,
             &mut source_readers,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
@@ -100,10 +103,10 @@ pub async fn import_and_process_bookmarks(
 ) -> Result<(), anyhow::Error> {
     let now = Utc::now();
     let mut bookmark_manager = BookmarkManager::new();
-    let report = ProcessReport::init(service_config.run_mode() == &RunMode::DryRun);
+    let report = ServiceReport::init(service_config.run_mode() == &RunMode::DryRun);
     let bookmark_processor = BookmarkProcessor::new(client, cache, settings.to_owned(), report);
 
-    target_reader.read(&mut bookmark_manager.target_bookmarks_mut())?;
+    target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
     bookmark_manager.import(source_readers)?;
     bookmark_manager.add_bookmarks(now)?;
@@ -119,7 +122,7 @@ pub async fn import_and_process_bookmarks(
         )
         .await?;
 
-    bookmark_manager.print_report(&source_readers, service_config.run_mode());
+    bookmark_manager.print_report(source_readers, service_config.run_mode());
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;
@@ -271,7 +274,7 @@ mod tests {
         } else {
             RunMode::Import
         };
-        let config = ServiceConfig::new(run_mode, ignored_urls);
+        let config = ServiceConfig::new(run_mode, ignored_urls, settings.max_concurrent_requests);
 
         let res = import_and_process_bookmarks(
             &settings,
@@ -320,7 +323,7 @@ mod tests {
             Box::new(source_reader_writer.clone()),
             source_reader,
         );
-        let config = ServiceConfig::new(RunMode::Import, vec![]);
+        let config = ServiceConfig::new(RunMode::Import, vec![], settings.max_concurrent_requests);
 
         let res = import_and_process_bookmarks(
             &settings,

@@ -18,7 +18,11 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
     let urls = utils::parse_urls(&args.urls)?;
 
     if !urls.is_empty() {
-        let service_config = ServiceConfig::new(RunMode::RemoveUrls(urls.clone()), vec![]);
+        let service_config = ServiceConfig::new(
+            RunMode::RemoveUrls(urls.clone()),
+            vec![],
+            config.settings.max_concurrent_requests,
+        );
 
         remove_urls(
             service_config,
@@ -47,7 +51,7 @@ fn remove_urls(
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
     bookmark_manager.remove_urls(urls)?;
-    bookmark_manager.print_report(&vec![], config.run_mode());
+    bookmark_manager.print_report(&[], config.run_mode());
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;

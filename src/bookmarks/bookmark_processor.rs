@@ -1,4 +1,4 @@
-use super::ProcessReport;
+use super::ServiceReport;
 use crate::{
     bookmarks::TargetBookmarkBuilder, errors::BogrepError, html, Action, Caching, Fetch, Settings,
     SourceType, TargetBookmark, TargetBookmarks,
@@ -15,7 +15,7 @@ pub struct BookmarkProcessor<C: Caching, F: Fetch> {
     cache: C,
     settings: Settings,
     underlying_bookmarks: Rc<Mutex<Vec<TargetBookmark>>>,
-    report: Mutex<ProcessReport>,
+    report: Mutex<ServiceReport>,
 }
 
 impl<C, F> BookmarkProcessor<C, F>
@@ -23,7 +23,7 @@ where
     F: Fetch,
     C: Caching,
 {
-    pub fn new(client: F, cache: C, settings: Settings, report: ProcessReport) -> Self
+    pub fn new(client: F, cache: C, settings: Settings, report: ServiceReport) -> Self
     where
         F: Fetch,
         C: Caching,
@@ -200,7 +200,7 @@ where
         debug!("Add underlying");
 
         if bookmark.underlying_url().is_none() {
-            let underlying_url = html::select_underlying(website, &bookmark.underlying_type())?;
+            let underlying_url = html::select_underlying(website, bookmark.underlying_type())?;
 
             if let Some(underlying_url) = underlying_url {
                 bookmark.set_underlying_url(underlying_url.clone());
@@ -238,7 +238,7 @@ mod tests {
         let client = MockClient::new();
         let cache = MockCache::new(CacheMode::Text);
         let bookmark_processor =
-            BookmarkProcessor::new(client, cache, settings, ProcessReport::default());
+            BookmarkProcessor::new(client, cache, settings, ServiceReport::default());
         let url = Url::parse("https://news.ycombinator.com").unwrap();
         let website = r#"
             <html>

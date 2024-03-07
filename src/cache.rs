@@ -155,7 +155,7 @@ impl Caching for Cache {
     }
 
     fn open(&self, bookmark: &TargetBookmark) -> Result<Option<impl Read>, BogrepError> {
-        let cache_path = self.bookmark_path(&bookmark.id());
+        let cache_path = self.bookmark_path(bookmark.id());
         debug!("Open website: {}", cache_path.display());
 
         if cache_path.exists() {
@@ -170,7 +170,7 @@ impl Caching for Cache {
         if let Some(mut cache_file) = self.open(bookmark)? {
             debug!(
                 "Get website from cache: {}",
-                self.bookmark_path(&bookmark.id()).display()
+                self.bookmark_path(bookmark.id()).display()
             );
             let mut buf = String::new();
             cache_file
@@ -187,11 +187,11 @@ impl Caching for Cache {
         html: String,
         bookmark: &mut TargetBookmark,
     ) -> Result<String, BogrepError> {
-        let cache_path = self.bookmark_path(&bookmark.id());
+        let cache_path = self.bookmark_path(bookmark.id());
 
         let content = match self.mode {
             CacheMode::Html => html,
-            CacheMode::Text => html::convert_to_text(&html, &bookmark.url())?,
+            CacheMode::Text => html::convert_to_text(&html, bookmark.url())?,
         };
 
         if !cache_path.exists() {
@@ -210,12 +210,12 @@ impl Caching for Cache {
         html: String,
         bookmark: &mut TargetBookmark,
     ) -> Result<String, BogrepError> {
-        let cache_path = self.bookmark_path(&bookmark.id());
+        let cache_path = self.bookmark_path(bookmark.id());
         debug!("Replace website in cache: {}", cache_path.display());
 
         let content = match self.mode {
             CacheMode::Html => html,
-            CacheMode::Text => html::convert_to_text(&html, &bookmark.url())?,
+            CacheMode::Text => html::convert_to_text(&html, bookmark.url())?,
         };
 
         utils::write_file_async(&cache_path, content.as_bytes()).await?;
@@ -227,7 +227,7 @@ impl Caching for Cache {
     }
 
     async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
-        let cache_path = self.bookmark_path(&bookmark.id());
+        let cache_path = self.bookmark_path(bookmark.id());
 
         if bookmark.last_cached().is_some() && cache_path.exists() {
             debug!("Remove website from cache: {}", cache_path.display());
@@ -242,7 +242,7 @@ impl Caching for Cache {
     async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         debug!("Remove all cached websites");
         for bookmark in bookmarks.values_mut() {
-            let cache_path = self.bookmark_path(&bookmark.id());
+            let cache_path = self.bookmark_path(bookmark.id());
 
             if cache_path.exists() {
                 debug!("Remove website from cache: {}", cache_path.display());
@@ -265,7 +265,7 @@ impl Caching for Cache {
 
         for bookmark in bookmarks.values_mut() {
             for cache_mode in &cache_modes {
-                let cache_path = self.bookmark_path_by_cache_mode(&bookmark.id(), cache_mode);
+                let cache_path = self.bookmark_path_by_cache_mode(bookmark.id(), cache_mode);
 
                 if cache_path.exists() {
                     debug!("Remove website from cache: {}", cache_path.display());
@@ -343,7 +343,7 @@ impl Caching for MockCache {
         let mut cache_map = self.cache_map.lock();
         let content = match self.mode {
             CacheMode::Html => html,
-            CacheMode::Text => html::convert_to_text(&html, &bookmark.url())?,
+            CacheMode::Text => html::convert_to_text(&html, bookmark.url())?,
         };
         cache_map.insert(bookmark.id().to_owned(), content.clone());
 
@@ -361,7 +361,7 @@ impl Caching for MockCache {
         let mut cache_map = self.cache_map.lock();
         let content = match self.mode {
             CacheMode::Html => html,
-            CacheMode::Text => html::convert_to_text(&html, &bookmark.url())?,
+            CacheMode::Text => html::convert_to_text(&html, bookmark.url())?,
         };
         cache_map.insert(bookmark.id().to_owned(), content.clone());
 
