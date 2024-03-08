@@ -14,25 +14,26 @@ use uuid::Uuid;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TargetBookmark {
     /// Unique id of the bookmark used for caching.
-    id: String,
+    pub id: String,
     /// The url of the bookmark.
-    url: Url,
+    pub url: Url,
     /// The url of the underlying for supported `UnderlyingType`s.
-    underlying_url: Option<Url>,
+    pub underlying_url: Option<Url>,
     /// The type of the underlying.
-    underlying_type: UnderlyingType,
+    pub underlying_type: UnderlyingType,
     /// The timestamp in milliseconds when the bookmark was imported from the source.
-    last_imported: i64,
+    pub last_imported: i64,
     /// The timestamp in milliseconds when the bookmark was added to the cache.
-    last_cached: Option<i64>,
+    pub last_cached: Option<i64>,
     /// The source or sources this bookmark was imported from.
-    sources: HashSet<SourceType>,
+    pub sources: HashSet<SourceType>,
     /// The file format for the cached bookmark.
-    cache_modes: HashSet<CacheMode>,
-    status: Status,
+    pub cache_modes: HashSet<CacheMode>,
+    /// The status of an imported bookmark.
+    pub status: Status,
     /// The action performed when processing [`TargetBookmark`] in
     /// `BookmarkProcessor`.
-    action: Action,
+    pub action: Action,
 }
 
 impl TargetBookmark {

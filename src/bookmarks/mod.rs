@@ -117,7 +117,7 @@ impl From<&Url> for UnderlyingType {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub enum RunMode {
     /// Import bookmarks, but don't fetch them.
     Import,

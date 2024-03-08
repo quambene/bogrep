@@ -39,8 +39,11 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
     } else {
         RunMode::Update
     };
-    let service_config =
-        ServiceConfig::new(run_mode, vec![], config.settings.max_concurrent_requests);
+    let service_config = ServiceConfig::new(
+        run_mode,
+        &config.settings.ignored_urls,
+        config.settings.max_concurrent_requests,
+    )?;
     let mut bookmark_manager = BookmarkManager::new();
     let bookmark_service = BookmarkService::new(service_config, client, cache);
 

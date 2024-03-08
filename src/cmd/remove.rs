@@ -20,9 +20,9 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
     if !urls.is_empty() {
         let service_config = ServiceConfig::new(
             RunMode::RemoveUrls(urls.clone()),
-            vec![],
+            &[],
             config.settings.max_concurrent_requests,
-        );
+        )?;
 
         remove_urls(
             service_config,

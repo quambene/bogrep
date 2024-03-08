@@ -51,7 +51,6 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client_config = ClientConfig::new(&config.settings);
     let client = Client::new(&client_config)?;
-    let ignored_urls = utils::parse_urls(&config.settings.ignored_urls)?;
     let mut source_readers = config
         .settings
         .sources
@@ -71,9 +70,9 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
     };
     let service_config = ServiceConfig::new(
         run_mode,
-        ignored_urls,
+        &config.settings.ignored_urls,
         config.settings.max_concurrent_requests,
-    );
+    )?;
     let mut bookmark_manager = BookmarkManager::new();
     let bookmark_service = BookmarkService::new(service_config, client, cache);
 
@@ -122,7 +121,13 @@ pub async fn import_and_process_bookmarks(
         )
         .await?;
 
-    bookmark_manager.print_report(source_readers, service_config.run_mode());
+    bookmark_manager.print_report(
+        &source_readers
+            .iter()
+            .map(|source_reader| source_reader.source().to_owned())
+            .collect::<Vec<_>>(),
+        service_config.run_mode(),
+    );
     bookmark_manager.finish();
 
     target_writer.write(bookmark_manager.target_bookmarks())?;
@@ -264,7 +269,7 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         let mut target_writer = Cursor::new(Vec::new());
-        let ignored_urls = vec![];
+        let ignored_urls = &[];
         let mut source_readers = sources
             .iter()
             .map(|source| SourceReader::init(source).unwrap())
@@ -274,7 +279,8 @@ mod tests {
         } else {
             RunMode::Import
         };
-        let config = ServiceConfig::new(run_mode, ignored_urls, settings.max_concurrent_requests);
+        let config =
+            ServiceConfig::new(run_mode, ignored_urls, settings.max_concurrent_requests).unwrap();
 
         let res = import_and_process_bookmarks(
             &settings,
@@ -323,7 +329,8 @@ mod tests {
             Box::new(source_reader_writer.clone()),
             source_reader,
         );
-        let config = ServiceConfig::new(RunMode::Import, vec![], settings.max_concurrent_requests);
+        let config =
+            ServiceConfig::new(RunMode::Import, &[], settings.max_concurrent_requests).unwrap();
 
         let res = import_and_process_bookmarks(
             &settings,

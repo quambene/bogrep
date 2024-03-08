@@ -2,7 +2,7 @@ use super::{BookmarkManager, RunMode};
 use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     errors::BogrepError,
-    html, Action, Caching, Fetch, ServiceReport, SourceType, Status, TargetBookmark,
+    html, utils, Action, Caching, Fetch, ServiceReport, Source, SourceType, Status, TargetBookmark,
     TargetBookmarkBuilder,
 };
 use chrono::{DateTime, Utc};
@@ -20,12 +20,18 @@ pub struct ServiceConfig {
 }
 
 impl ServiceConfig {
-    pub fn new(run_mode: RunMode, ignored_urls: Vec<Url>, max_concurrent_requests: usize) -> Self {
-        Self {
+    pub fn new(
+        run_mode: RunMode,
+        ignored_urls: &[String],
+        max_concurrent_requests: usize,
+    ) -> Result<Self, BogrepError> {
+        let ignored_urls = utils::parse_urls(ignored_urls)?;
+
+        Ok(Self {
             run_mode,
             ignored_urls,
             max_concurrent_requests,
-        }
+        })
     }
 
     pub fn run_mode(&self) -> &RunMode {
@@ -74,40 +80,85 @@ where
         target_writer: &mut impl WriteTarget,
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
-        let config = &self.config;
-        let cache = &self.cache;
+        let sources = source_readers
+            .iter()
+            .map(|source_reader| source_reader.source().clone())
+            .collect::<Vec<_>>();
 
-        target_reader.read(bookmark_manager.target_bookmarks_mut())?;
+        self.import(bookmark_manager, source_readers, target_reader)?;
 
-        self.set_actions(bookmark_manager, config, cache, source_readers, now)?;
-        self.execute_actions(bookmark_manager).await?;
+        self.process(bookmark_manager, &sources, now).await?;
 
-        // TODO: execute underlyings
-
-        bookmark_manager.print_report(source_readers, self.config.run_mode());
-        bookmark_manager.finish();
-
-        target_writer.write(bookmark_manager.target_bookmarks_mut())?;
+        self.export(target_writer, bookmark_manager)?;
 
         Ok(())
     }
 
-    pub fn set_actions(
+    /// Import bookmarks from source and target files.
+    fn import(
         &self,
         bookmark_manager: &mut BookmarkManager,
-        config: &ServiceConfig,
-        cache: &impl Caching,
         source_readers: &mut [SourceReader],
+        target_reader: &mut impl ReadTarget,
+    ) -> Result<(), BogrepError> {
+        target_reader.read(bookmark_manager.target_bookmarks_mut())?;
+
+        match self.config.run_mode {
+            RunMode::Import | RunMode::Update => {
+                for source_reader in source_readers.iter_mut() {
+                    source_reader.import(bookmark_manager.source_bookmarks_mut())?;
+                }
+            }
+            _ => (),
+        }
+
+        Ok(())
+    }
+
+    /// Export bookmarks to target file.
+    fn export(
+        &self,
+        target_writer: &mut impl WriteTarget,
+        bookmark_manager: &mut BookmarkManager,
+    ) -> Result<(), BogrepError> {
+        target_writer.write(bookmark_manager.target_bookmarks_mut())?;
+        Ok(())
+    }
+
+    /// Process all imported bookmarks.
+    async fn process(
+        &self,
+        bookmark_manager: &mut BookmarkManager,
+        sources: &[Source],
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
-        if cache.is_empty() {
+        self.set_actions(bookmark_manager, now)?;
+        self.execute_actions(bookmark_manager).await?;
+        self.add_underlyings(bookmark_manager);
+
+        if !self.underlying_bookmarks.lock().is_empty() {
+            println!("Processing underlying bookmarks");
+            self.execute_actions(bookmark_manager).await?;
+        }
+
+        bookmark_manager.print_report(sources, self.config.run_mode());
+        bookmark_manager.finish();
+
+        Ok(())
+    }
+
+    fn set_actions(
+        &self,
+        bookmark_manager: &mut BookmarkManager,
+        now: DateTime<Utc>,
+    ) -> Result<(), BogrepError> {
+        if self.cache.is_empty() {
             debug!("Cache is empty");
             bookmark_manager.target_bookmarks_mut().reset_cache_status();
         }
 
-        match &config.run_mode() {
+        match self.config.run_mode() {
             RunMode::Import => {
-                bookmark_manager.import(source_readers)?;
                 bookmark_manager.add_bookmarks(now)?;
                 bookmark_manager.remove_bookmarks();
                 bookmark_manager
@@ -115,7 +166,7 @@ where
                     .set_action(&Action::None);
             }
             RunMode::AddUrls(urls) => {
-                bookmark_manager.add_urls(urls, now)?;
+                bookmark_manager.add_urls(urls, self.cache.mode(), now)?;
             }
             RunMode::RemoveUrls(urls) => {
                 bookmark_manager.remove_urls(urls)?;
@@ -137,7 +188,6 @@ where
                 todo!()
             }
             RunMode::Update => {
-                bookmark_manager.import(source_readers)?;
                 bookmark_manager.add_bookmarks(now)?;
                 bookmark_manager.remove_bookmarks();
                 bookmark_manager
@@ -164,7 +214,7 @@ where
         }
 
         // TODO: fix ignored urls for same hosts
-        for url in config.ignored_urls() {
+        for url in self.config.ignored_urls() {
             if let Some(target_bookmark) = bookmark_manager.target_bookmarks_mut().get_mut(url) {
                 target_bookmark.set_status(Status::Removed);
                 target_bookmark.set_action(Action::Remove);
@@ -175,7 +225,7 @@ where
     }
 
     /// Execute `Action`s for provided bookmarks.
-    pub async fn execute_actions(
+    async fn execute_actions(
         &self,
         bookmark_manager: &mut BookmarkManager,
     ) -> Result<(), BogrepError> {
@@ -326,5 +376,136 @@ where
         }
 
         Ok(())
+    }
+
+    fn add_underlyings(&self, bookmark_manager: &mut BookmarkManager) {
+        let target_bookmarks = bookmark_manager.target_bookmarks_mut();
+        let underlying_bookmarks = self.underlying_bookmarks.lock();
+
+        for underlying_bookmark in underlying_bookmarks.iter() {
+            target_bookmarks.insert(underlying_bookmark.clone());
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        json, CacheMode, JsonBookmarks, MockCache, MockClient, Settings, TargetBookmarks,
+        UnderlyingType,
+    };
+    use std::io::Cursor;
+
+    fn create_mock_service(
+        run_mode: &RunMode,
+        settings: &Settings,
+    ) -> BookmarkService<MockCache, MockClient> {
+        let client = MockClient::new();
+        let cache_mode = CacheMode::new(&None, &settings.cache_mode);
+        let cache = MockCache::new(cache_mode);
+        let service_config = ServiceConfig::new(
+            run_mode.to_owned(),
+            &settings.ignored_urls,
+            settings.max_concurrent_requests,
+        )
+        .unwrap();
+        let service = BookmarkService::new(service_config, client, cache);
+        service
+    }
+
+    fn create_target_reader() -> impl ReadTarget {
+        let target_bookmarks = TargetBookmarks::default();
+        let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
+        let buf = json::serialize(bookmarks_json).unwrap();
+
+        let mut target_reader: Cursor<Vec<u8>> = Cursor::new(Vec::new());
+        target_reader.write_all(&buf).unwrap();
+        // Set cursor position to the start again to prepare cursor for reading.
+        target_reader.set_position(0);
+        target_reader
+    }
+
+    #[tokio::test]
+    async fn test_add_urls() {
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let now = Utc::now();
+        let settings = Settings::default();
+        let service = create_mock_service(
+            &RunMode::AddUrls(vec![url1.clone(), url2.clone()]),
+            &settings,
+        );
+        let sources = vec![];
+        let mut bookmark_manager = BookmarkManager::new();
+
+        let res = service.process(&mut bookmark_manager, &sources, now).await;
+        assert!(res.is_ok());
+
+        let bookmark = bookmark_manager.target_bookmarks().get(&url1).unwrap();
+        assert_eq!(bookmark.url, url1);
+        assert_eq!(bookmark.underlying_url, None);
+        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
+        assert_eq!(bookmark.last_imported, now.timestamp_millis());
+        assert_eq!(bookmark.last_cached, None);
+        assert!(bookmark.sources.contains(&SourceType::Internal));
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
+        assert_eq!(bookmark.status, Status::Added);
+        assert_eq!(bookmark.action, Action::None);
+
+        let bookmark = bookmark_manager.target_bookmarks().get(&url2).unwrap();
+        assert_eq!(bookmark.url, url2);
+        assert_eq!(bookmark.underlying_url, None);
+        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
+        assert_eq!(bookmark.last_imported, now.timestamp_millis());
+        assert_eq!(bookmark.last_cached, None);
+        assert!(bookmark.sources.contains(&SourceType::Internal));
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
+        assert_eq!(bookmark.status, Status::Added);
+        assert_eq!(bookmark.action, Action::None);
+    }
+
+    #[tokio::test]
+    async fn test_add_urls_existing() {
+        let now = Utc::now();
+        let url = Url::parse("https://url1.com").unwrap();
+        let target_bookmark = TargetBookmarkBuilder::new(url.clone(), now)
+            .add_source(SourceType::Internal)
+            .add_cache_mode(CacheMode::Text)
+            .build();
+        let settings = Settings::default();
+        let service = create_mock_service(&RunMode::AddUrls(vec![url.clone()]), &settings);
+        let sources = vec![];
+        let mut bookmark_manager = BookmarkManager::new();
+        bookmark_manager
+            .target_bookmarks_mut()
+            .insert(target_bookmark.clone());
+
+        let res = service.process(&mut bookmark_manager, &sources, now).await;
+        assert!(res.is_ok());
+
+        let bookmark = bookmark_manager.target_bookmarks().get(&url).unwrap();
+        assert_eq!(bookmark.id, target_bookmark.id);
+        assert_eq!(bookmark.url, url);
+        assert_eq!(bookmark.underlying_url, None);
+        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
+        assert_eq!(bookmark.last_imported, now.timestamp_millis());
+        assert_eq!(bookmark.last_cached, None);
+        assert!(bookmark.sources.contains(&SourceType::Internal));
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
+        assert_eq!(bookmark.status, Status::None);
+        assert_eq!(bookmark.action, Action::None);
+    }
+
+    #[tokio::test]
+    async fn test_add_urls_empty() {
+        let now = Utc::now();
+        let settings = Settings::default();
+        let service = create_mock_service(&RunMode::AddUrls(vec![]), &settings);
+        let sources = vec![];
+        let mut bookmark_manager = BookmarkManager::new();
+
+        let res = service.process(&mut bookmark_manager, &sources, now).await;
+        assert!(res.is_err());
     }
 }

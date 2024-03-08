@@ -3,7 +3,8 @@ use crate::{
     bookmark_reader::SourceReader,
     bookmarks::{target_bookmarks::TargetBookmarkBuilder, Status},
     errors::BogrepError,
-    Action, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark, TargetBookmarks,
+    Action, CacheMode, Source, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
+    TargetBookmarks,
 };
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
@@ -27,6 +28,10 @@ impl BookmarkManager {
         }
     }
 
+    pub fn source_bookmarks_mut(&mut self) -> &mut SourceBookmarks {
+        &mut self.source_bookmarks
+    }
+
     pub fn target_bookmarks(&self) -> &TargetBookmarks {
         &self.target_bookmarks
     }
@@ -46,7 +51,12 @@ impl BookmarkManager {
         Ok(())
     }
 
-    pub fn add_urls(&mut self, urls: &[Url], now: DateTime<Utc>) -> Result<(), anyhow::Error> {
+    pub fn add_urls(
+        &mut self,
+        urls: &[Url],
+        cache_mode: &CacheMode,
+        now: DateTime<Utc>,
+    ) -> Result<(), anyhow::Error> {
         if urls.is_empty() {
             return Err(anyhow!("Invalid argument: Specify the URLs to be added"));
         }
@@ -54,25 +64,13 @@ impl BookmarkManager {
         for url in urls {
             let target_bookmark = TargetBookmark::builder(url.clone(), now)
                 .add_source(SourceType::Internal)
+                .add_cache_mode(cache_mode.to_owned())
+                .with_status(Status::Added)
                 .build();
             self.target_bookmarks.upsert(target_bookmark);
         }
 
         Ok(())
-
-        // for url in urls {
-        //     if let Some(target_bookmark) = self.target_bookmarks.get_mut(url) {
-        //         target_bookmark.set_action(Action::FetchAndReplace);
-        //         target_bookmark.add_source(SourceType::Internal);
-        //     } else {
-        //         let target_bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
-        //             .add_source(SourceType::Internal)
-        //             .with_status(Status::Added)
-        //             .with_action(Action::FetchAndReplace)
-        //             .build();
-        //         self.target_bookmarks.insert(target_bookmark);
-        //     }
-        // }
     }
 
     pub fn remove_urls(&mut self, urls: &[Url]) -> Result<(), anyhow::Error> {
@@ -192,7 +190,7 @@ impl BookmarkManager {
     }
 
     /// Print summary of the imported bookmarks.
-    pub fn print_report(&self, source_readers: &[SourceReader], run_mode: &RunMode) {
+    pub fn print_report(&self, sources: &[Source], run_mode: &RunMode) {
         let added_bookmarks = self
             .target_bookmarks
             .values()
@@ -205,10 +203,10 @@ impl BookmarkManager {
             .collect::<Vec<_>>();
         let added_count = added_bookmarks.len();
         let removed_count = removed_bookmarks.len();
-        let source_count = source_readers.len();
-        let sources = source_readers
+        let source_count = sources.len();
+        let sources = sources
             .iter()
-            .map(|source_reader| source_reader.source().path.to_string_lossy())
+            .map(|source| source.path.to_string_lossy())
             .collect::<Vec<_>>()
             .join(", ");
         let source_str = if source_count == 1 {
