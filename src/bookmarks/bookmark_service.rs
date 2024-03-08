@@ -133,12 +133,18 @@ where
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
         self.set_actions(bookmark_manager, now)?;
-        self.execute_actions(bookmark_manager).await?;
-        self.add_underlyings(bookmark_manager);
 
-        if !self.underlying_bookmarks.lock().is_empty() {
-            println!("Processing underlying bookmarks");
-            self.execute_actions(bookmark_manager).await?;
+        match self.config.run_mode {
+            RunMode::Import | RunMode::RemoveUrls(_) | RunMode::Fetch | RunMode::Update => {
+                self.execute_actions(bookmark_manager).await?;
+                self.add_underlyings(bookmark_manager);
+
+                if !self.underlying_bookmarks.lock().is_empty() {
+                    println!("Processing underlying bookmarks");
+                    self.execute_actions(bookmark_manager).await?;
+                }
+            }
+            _ => (),
         }
 
         bookmark_manager.print_report(sources, self.config.run_mode());
