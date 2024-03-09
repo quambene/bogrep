@@ -97,7 +97,7 @@ where
     }
 
     /// Process all imported bookmarks.
-    async fn process(
+    pub async fn process(
         &self,
         bookmark_manager: &mut BookmarkManager,
         sources: &[Source],
@@ -111,6 +111,7 @@ where
             | RunMode::Fetch
             | RunMode::FetchAll
             | RunMode::FetchUrls(_)
+            | RunMode::FetchDiff(_)
             | RunMode::Update => {
                 self.execute_actions(bookmark_manager).await?;
                 self.add_underlyings(bookmark_manager);
@@ -399,23 +400,237 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use crate::{CacheMode, MockCache, MockClient, Settings};
 
-    fn create_mock_service(
-        run_mode: &RunMode,
-        settings: &Settings,
-    ) -> BookmarkService<MockCache, MockClient> {
+    fn create_mock_client(bookmark_manager: &BookmarkManager, content: &str) -> MockClient {
         let client = MockClient::new();
-        let cache_mode = CacheMode::new(&None, &settings.cache_mode);
+
+        for bookmark in bookmark_manager.target_bookmarks().values() {
+            client
+                .add(
+                    format!(
+                        "<html><head></head><body><img></img><p>{}</p></body></html>",
+                        content
+                    ),
+                    &bookmark.url(),
+                )
+                .unwrap();
+        }
+
+        client
+    }
+
+    async fn create_mock_cache(
+        cache_mode: CacheMode,
+        content: Option<&str>,
+        bookmark_manager: &mut BookmarkManager,
+    ) -> MockCache {
         let cache = MockCache::new(cache_mode);
+
+        if let Some(content) = content {
+            cache
+                .add(
+                    format!("<html><head></head><body><p>{}</p></body></html>", content),
+                    bookmark_manager
+                        .target_bookmarks_mut()
+                        .get_mut(&Url::parse("https://url1.com").unwrap())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+        }
+
+        cache
+    }
+
+    fn create_mock_manager() -> BookmarkManager {
+        let now = Utc::now();
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let mut bookmark_manager = BookmarkManager::new();
+        bookmark_manager.target_bookmarks_mut().insert(
+            TargetBookmark::builder_with_id(
+                "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                url1,
+                now,
+            )
+            .with_action(Action::None)
+            .build(),
+        );
+        bookmark_manager.target_bookmarks_mut().insert(
+            TargetBookmark::builder_with_id(
+                "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                url2,
+                now,
+            )
+            .with_action(Action::None)
+            .build(),
+        );
+
+        bookmark_manager
+    }
+
+    #[tokio::test]
+    async fn test_process_fetch_html() {
+        let now = Utc::now();
+        let settings = Settings::default();
         let service_config = ServiceConfig::new(
-            run_mode.to_owned(),
+            RunMode::Fetch,
             &settings.ignored_urls,
             settings.max_concurrent_requests,
         )
         .unwrap();
+        let mut bookmark_manager = create_mock_manager();
+        let client = create_mock_client(&bookmark_manager, "Test content");
+        let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
-        service
+
+        let res = service.process(&mut bookmark_manager, &[], now).await;
+        assert!(res.is_ok());
+        assert_eq!(
+            service.cache.cache_map(),
+            HashMap::from_iter(vec![
+                (
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    "<html><head></head><body><p>Test content</p></body></html>".to_owned()
+                ),
+                (
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    "<html><head></head><body><p>Test content</p></body></html>".to_owned()
+                )
+            ])
+        );
+        assert!(bookmark_manager
+            .target_bookmarks()
+            .values()
+            .all(|bookmark| bookmark.last_cached.is_some()));
+    }
+
+    #[tokio::test]
+    async fn test_process_fetch_text() {
+        let now = Utc::now();
+        let settings = Settings::default();
+        let service_config = ServiceConfig::new(
+            RunMode::Fetch,
+            &settings.ignored_urls,
+            settings.max_concurrent_requests,
+        )
+        .unwrap();
+        let mut bookmark_manager = create_mock_manager();
+        let client = create_mock_client(&bookmark_manager, "Test content");
+        let cache = create_mock_cache(CacheMode::Text, None, &mut bookmark_manager).await;
+        let service = BookmarkService::new(service_config, client, cache);
+
+        let res = service.process(&mut bookmark_manager, &[], now).await;
+        assert!(res.is_ok());
+        assert_eq!(
+            service.cache.cache_map(),
+            HashMap::from_iter(vec![
+                (
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    "Test content".to_owned()
+                ),
+                (
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    "Test content".to_owned()
+                )
+            ])
+        );
+        assert!(bookmark_manager
+            .target_bookmarks()
+            .values()
+            .all(|bookmark| bookmark.last_cached.is_some()));
+    }
+
+    #[tokio::test]
+    async fn test_process_fetch_cached_html() {
+        let now = Utc::now();
+        let settings = Settings::default();
+        let service_config = ServiceConfig::new(
+            RunMode::Fetch,
+            &settings.ignored_urls,
+            settings.max_concurrent_requests,
+        )
+        .unwrap();
+        let mut bookmark_manager = create_mock_manager();
+        let client = create_mock_client(&bookmark_manager, "Test content (fetched)");
+        let cache = create_mock_cache(
+            CacheMode::Html,
+            Some("Test content (already cached)"),
+            &mut bookmark_manager,
+        )
+        .await;
+        let service = BookmarkService::new(service_config, client, cache);
+
+        let res = service.process(&mut bookmark_manager, &[], now).await;
+        assert!(res.is_ok());
+        assert_eq!(
+            service.cache.cache_map(),
+            HashMap::from_iter(vec![
+                (
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    "<html><head></head><body><p>Test content (already cached)</p></body></html>"
+                        .to_owned()
+                ),
+                (
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    "<html><head></head><body><p>Test content (fetched)</p></body></html>"
+                        .to_owned()
+                )
+            ])
+        );
+        assert!(bookmark_manager
+            .target_bookmarks()
+            .values()
+            .all(|bookmark| bookmark.last_cached.is_some()));
+    }
+
+    #[tokio::test]
+    async fn test_process_fetch_cached_text() {
+        let now = Utc::now();
+        let settings = Settings::default();
+        let service_config = ServiceConfig::new(
+            RunMode::Fetch,
+            &settings.ignored_urls,
+            settings.max_concurrent_requests,
+        )
+        .unwrap();
+        let mut bookmark_manager = create_mock_manager();
+        let client = create_mock_client(&bookmark_manager, "Test content (fetched)");
+        let cache = create_mock_cache(
+            CacheMode::Text,
+            Some("Test content (already cached)"),
+            &mut bookmark_manager,
+        )
+        .await;
+        let service = BookmarkService::new(service_config, client, cache);
+
+        let res = service.process(&mut bookmark_manager, &[], now).await;
+        assert!(res.is_ok());
+        assert_eq!(
+            service.cache.cache_map(),
+            HashMap::from_iter(vec![
+                (
+                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
+                    "Test content (already cached)".to_owned()
+                ),
+                (
+                    "25b6357e-6eda-4367-8212-84376c6efe05".to_owned(),
+                    "Test content (fetched)".to_owned()
+                )
+            ])
+        );
+        assert!(bookmark_manager
+            .target_bookmarks()
+            .values()
+            .all(|bookmark| bookmark.last_cached.is_some()));
+    }
+
+    #[tokio::test]
+    async fn test_process_fetch_ignored_urls() {
+        todo!()
     }
 }

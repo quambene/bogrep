@@ -1,12 +1,10 @@
 mod bookmark_manager;
-mod bookmark_processor;
 mod bookmark_service;
 mod source_bookmarks;
 mod target_bookmarks;
 
 use crate::CacheMode;
 pub use bookmark_manager::BookmarkManager;
-pub use bookmark_processor::BookmarkProcessor;
 pub use bookmark_service::{BookmarkService, ServiceConfig};
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};

@@ -53,9 +53,9 @@ pub use bookmark_reader::{
     ChromiumReader, FirefoxReader, ReadBookmark, SafariReader, SimpleReader,
 };
 pub use bookmarks::{
-    Action, BookmarkProcessor, JsonBookmark, JsonBookmarks, ServiceReport, Source, SourceBookmark,
-    SourceBookmarks, SourceType, Status, TargetBookmark, TargetBookmarkBuilder, TargetBookmarks,
-    UnderlyingType,
+    Action, BookmarkManager, BookmarkService, JsonBookmark, JsonBookmarks, RunMode, ServiceConfig,
+    ServiceReport, Source, SourceBookmark, SourceBookmarks, SourceType, Status, TargetBookmark,
+    TargetBookmarkBuilder, TargetBookmarks, UnderlyingType,
 };
 pub use cache::{Cache, CacheMode, Caching, MockCache};
 pub use client::{Client, Fetch, MockClient};

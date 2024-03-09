@@ -59,49 +59,6 @@ impl BookmarkManager {
         Ok(())
     }
 
-    /// Add the difference between source and target bookmarks.
-    fn add_bookmarks(
-        &mut self,
-        source_bookmarks: &SourceBookmarks,
-        now: DateTime<Utc>,
-    ) -> Result<(), BogrepError> {
-        let bookmarks_to_add = Self::filter_to_add(source_bookmarks, &self.target_bookmarks);
-        trace!(
-            "Added bookmarks: {:#?}",
-            bookmarks_to_add
-                .iter()
-                .map(|bookmark| bookmark.url().to_owned())
-                .collect::<Vec<_>>()
-        );
-
-        for source_bookmark in bookmarks_to_add {
-            let url = Url::parse(source_bookmark.url())?;
-            let target_bookmark = TargetBookmarkBuilder::new(url, now)
-                .with_sources(source_bookmark.sources().to_owned())
-                .build();
-            self.target_bookmarks.upsert(target_bookmark);
-        }
-
-        Ok(())
-    }
-
-    /// Remove the difference between source and target bookmarks.
-    fn remove_bookmarks(&mut self, source_bookmarks: &SourceBookmarks) {
-        let bookmarks_to_remove =
-            Self::filter_to_remove(source_bookmarks, &mut self.target_bookmarks);
-        trace!(
-            "Removed bookmarks: {:#?}",
-            bookmarks_to_remove
-                .iter()
-                .map(|bookmark| bookmark.url())
-                .collect::<Vec<_>>()
-        );
-
-        for bookmark in bookmarks_to_remove {
-            bookmark.set_status(Status::Removed);
-        }
-    }
-
     pub fn add_urls(
         &mut self,
         urls: &[Url],
@@ -201,6 +158,50 @@ impl BookmarkManager {
         }
     }
 
+    /// Add the difference between source and target bookmarks.
+    fn add_bookmarks(
+        &mut self,
+        source_bookmarks: &SourceBookmarks,
+        now: DateTime<Utc>,
+    ) -> Result<(), BogrepError> {
+        let bookmarks_to_add = Self::filter_to_add(source_bookmarks, &self.target_bookmarks);
+        trace!(
+            "Added bookmarks: {:#?}",
+            bookmarks_to_add
+                .iter()
+                .map(|bookmark| bookmark.url().to_owned())
+                .collect::<Vec<_>>()
+        );
+
+        for source_bookmark in bookmarks_to_add {
+            let url = Url::parse(source_bookmark.url())?;
+            let target_bookmark = TargetBookmarkBuilder::new(url, now)
+                .with_sources(source_bookmark.sources().to_owned())
+                .build();
+            self.target_bookmarks.upsert(target_bookmark);
+        }
+
+        Ok(())
+    }
+
+    /// Remove the difference between source and target bookmarks.
+    fn remove_bookmarks(&mut self, source_bookmarks: &SourceBookmarks) {
+        let bookmarks_to_remove =
+            Self::filter_to_remove(source_bookmarks, &mut self.target_bookmarks);
+        trace!(
+            "Removed bookmarks: {:#?}",
+            bookmarks_to_remove
+                .iter()
+                .map(|bookmark| bookmark.url())
+                .collect::<Vec<_>>()
+        );
+
+        for bookmark in bookmarks_to_remove {
+            bookmark.set_status(Status::Removed);
+        }
+    }
+
+    /// Filter the `SourceBookmarks` which should be added to the `TargetBookmarks`.
     fn filter_to_add<'a>(
         source_bookmarks: &'a SourceBookmarks,
         target_bookmarks: &TargetBookmarks,
@@ -223,6 +224,7 @@ impl BookmarkManager {
             .collect()
     }
 
+    /// Filter the `SourceBookmarks` which should be removed from the `TargetBookmarks`.
     fn filter_to_remove<'a>(
         source_bookmarks: &SourceBookmarks,
         target_bookmarks: &'a mut TargetBookmarks,
@@ -309,6 +311,9 @@ mod tests {
         let mut bookmark_manager = BookmarkManager::new();
         let res = bookmark_manager.import(&mut [], &mut target_reader, now);
         assert!(res.is_ok());
+
+        assert!(bookmark_manager.target_bookmarks.contains_key(&url1));
+        assert!(bookmark_manager.target_bookmarks.contains_key(&url2));
     }
 
     #[test]
@@ -352,11 +357,6 @@ mod tests {
                 .collect::<HashSet<_>>(),
             HashSet::from_iter([url1.to_string(), url2.to_string()]),
         );
-    }
-
-    #[test]
-    fn test_import_dry_run() {
-        todo!()
     }
 
     #[test]

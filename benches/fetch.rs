@@ -1,6 +1,7 @@
 use bogrep::{
-    errors::BogrepError, html, Action, BookmarkProcessor, Cache, CacheMode, Caching, Fetch,
-    MockClient, ServiceReport, Settings, TargetBookmark, TargetBookmarkBuilder, TargetBookmarks,
+    errors::BogrepError, html, Action, BookmarkManager, BookmarkService, Cache, CacheMode, Caching,
+    Fetch, MockClient, RunMode, ServiceConfig, Settings, TargetBookmark, TargetBookmarkBuilder,
+    TargetBookmarks,
 };
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -48,36 +49,37 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
     let cache_path = temp_path.join("cache");
     fs::create_dir(&cache_path).unwrap();
     assert!(cache_path.exists(), "Missing path: {}", temp_path.display());
-    let cache = Cache::new(&cache_path, CacheMode::Text);
-    let client = MockClient::new();
-    let mut bookmarks = HashMap::new();
+
     let settings = Settings {
         max_concurrent_requests,
         ..Default::default()
     };
+    let config = ServiceConfig::new(
+        RunMode::FetchAll,
+        &settings.ignored_urls,
+        settings.max_concurrent_requests,
+    )
+    .unwrap();
+    let cache = Cache::new(&cache_path, CacheMode::Text);
+    let client = MockClient::new();
+    let mut bookmark_manager = BookmarkManager::new();
 
     for i in 0..10000 {
         let url = Url::parse(&format!("https://url{i}.com")).unwrap();
         client.add(CONTENT.to_owned(), &url).unwrap();
-        bookmarks.insert(
-            url.clone(),
+        bookmark_manager.target_bookmarks_mut().insert(
             TargetBookmarkBuilder::new(url.clone(), now)
                 .with_action(Action::FetchAndReplace)
                 .build(),
         );
     }
 
-    let mut bookmarks = TargetBookmarks::new(bookmarks);
-    assert_eq!(bookmarks.len(), 10000);
+    assert_eq!(bookmark_manager.target_bookmarks().len(), 10000);
 
-    let bookmark_processor = BookmarkProcessor::new(
-        client.clone(),
-        cache.clone(),
-        settings,
-        ServiceReport::default(),
-    );
-    bookmark_processor
-        .process_bookmarks(bookmarks.values_mut().collect())
+    let service = BookmarkService::new(config, client, cache);
+
+    service
+        .process(&mut bookmark_manager, &[], now)
         .await
         .unwrap();
 }
