@@ -50,7 +50,7 @@ fn remove_urls(
 
     target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
-    bookmark_manager.remove_urls(urls)?;
+    bookmark_manager.remove_urls(urls);
     bookmark_manager.print_report(&[], config.run_mode());
     bookmark_manager.finish();
 

@@ -6,7 +6,6 @@ use crate::{
     Action, CacheMode, Source, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
     TargetBookmarks,
 };
-use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use log::{trace, warn};
 use url::Url;
@@ -57,11 +56,7 @@ impl BookmarkManager {
         cache_mode: &CacheMode,
         action: &Action,
         now: DateTime<Utc>,
-    ) -> Result<(), anyhow::Error> {
-        if urls.is_empty() {
-            return Err(anyhow!("Invalid argument: Specify the URLs to be added"));
-        }
-
+    ) {
         for url in urls {
             let target_bookmark = TargetBookmark::builder(url.clone(), now)
                 .add_source(SourceType::Internal)
@@ -71,23 +66,15 @@ impl BookmarkManager {
                 .build();
             self.target_bookmarks.upsert(target_bookmark);
         }
-
-        Ok(())
     }
 
-    pub fn remove_urls(&mut self, urls: &[Url]) -> Result<(), anyhow::Error> {
-        if urls.is_empty() {
-            return Err(anyhow!("Invalid argument: Specify the URLs to be removed"));
-        }
-
+    pub fn remove_urls(&mut self, urls: &[Url]) {
         for url in urls {
             if let Some(target_bookmark) = self.target_bookmarks.get_mut(url) {
                 target_bookmark.set_status(Status::Removed);
                 target_bookmark.set_action(Action::Remove);
             }
         }
-
-        Ok(())
     }
 
     /// Prepare bookmarks for processing in `BookmarkProcessor`.
@@ -281,7 +268,7 @@ impl BookmarkManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmarks::SourceBookmarkBuilder;
+    use crate::{bookmarks::SourceBookmarkBuilder, Settings, UnderlyingType};
     use std::{collections::HashMap, str::FromStr};
 
     #[test]
@@ -411,5 +398,99 @@ mod tests {
                 ),
             ]))
         );
+    }
+
+    #[test]
+    fn test_add_urls() {
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let now = Utc::now();
+        let settings = Settings::default();
+        let mut bookmark_manager = BookmarkManager::new();
+
+        bookmark_manager.add_urls(
+            &[url1.clone(), url2.clone()],
+            &settings.cache_mode,
+            &Action::None,
+            now,
+        );
+
+        let bookmark = bookmark_manager.target_bookmarks().get(&url1).unwrap();
+        assert_eq!(bookmark.url, url1);
+        assert_eq!(bookmark.underlying_url, None);
+        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
+        assert_eq!(bookmark.last_imported, now.timestamp_millis());
+        assert_eq!(bookmark.last_cached, None);
+        assert!(bookmark.sources.contains(&SourceType::Internal));
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
+        assert_eq!(bookmark.status, Status::Added);
+        assert_eq!(bookmark.action, Action::None);
+
+        let bookmark = bookmark_manager.target_bookmarks().get(&url2).unwrap();
+        assert_eq!(bookmark.url, url2);
+        assert_eq!(bookmark.underlying_url, None);
+        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
+        assert_eq!(bookmark.last_imported, now.timestamp_millis());
+        assert_eq!(bookmark.last_cached, None);
+        assert!(bookmark.sources.contains(&SourceType::Internal));
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
+        assert_eq!(bookmark.status, Status::Added);
+        assert_eq!(bookmark.action, Action::None);
+    }
+
+    #[test]
+    fn test_add_urls_existing() {
+        let now = Utc::now();
+        let url = Url::parse("https://url1.com").unwrap();
+        let target_bookmark = TargetBookmarkBuilder::new(url.clone(), now)
+            .add_source(SourceType::Internal)
+            .add_cache_mode(CacheMode::Text)
+            .build();
+        let settings = Settings::default();
+        let mut bookmark_manager = BookmarkManager::new();
+        bookmark_manager
+            .target_bookmarks_mut()
+            .insert(target_bookmark.clone());
+
+        bookmark_manager.add_urls(&[url.clone()], &settings.cache_mode, &Action::None, now);
+
+        let bookmark = bookmark_manager.target_bookmarks().get(&url).unwrap();
+        assert_eq!(bookmark.id, target_bookmark.id);
+        assert_eq!(bookmark.url, url);
+        assert_eq!(bookmark.underlying_url, None);
+        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
+        assert_eq!(bookmark.last_imported, now.timestamp_millis());
+        assert_eq!(bookmark.last_cached, None);
+        assert!(bookmark.sources.contains(&SourceType::Internal));
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
+        assert_eq!(bookmark.status, Status::None);
+        assert_eq!(bookmark.action, Action::None);
+    }
+
+    #[test]
+    fn test_add_urls_empty() {
+        let now = Utc::now();
+        let settings = Settings::default();
+        let mut bookmark_manager = BookmarkManager::new();
+        assert!(bookmark_manager.target_bookmarks.is_empty());
+
+        bookmark_manager.add_urls(&[], &settings.cache_mode, &Action::None, now);
+
+        assert!(bookmark_manager.target_bookmarks.is_empty());
+    }
+
+    #[test]
+    fn test_remove_urls_empty() {
+        let now = Utc::now();
+        let url = Url::parse("https://url1.com").unwrap();
+        let settings = Settings::default();
+
+        let mut bookmark_manager = BookmarkManager::new();
+
+        bookmark_manager.add_urls(&[url], &settings.cache_mode, &Action::None, now);
+        assert_eq!(bookmark_manager.target_bookmarks.len(), 1);
+
+        bookmark_manager.remove_urls(&[]);
+        assert!(bookmark_manager.target_bookmarks.is_empty());
     }
 }

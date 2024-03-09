@@ -185,13 +185,13 @@ where
                     .set_action(&Action::None);
             }
             RunMode::AddUrls(urls) => {
-                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::None, now)?;
+                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::None, now);
             }
             RunMode::RemoveUrls(urls) => {
-                bookmark_manager.remove_urls(urls)?;
+                bookmark_manager.remove_urls(urls);
             }
             RunMode::FetchUrls(urls) => {
-                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndAdd, now)?;
+                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndAdd, now);
             }
             RunMode::Fetch => {
                 bookmark_manager
@@ -204,7 +204,7 @@ where
                     .set_action(&Action::FetchAndReplace);
             }
             RunMode::FetchDiff(urls) => {
-                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndDiff, now)?;
+                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndDiff, now);
             }
             RunMode::Update => {
                 bookmark_manager
@@ -432,10 +432,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        json, CacheMode, JsonBookmarks, MockCache, MockClient, Settings, TargetBookmarks,
-        UnderlyingType,
-    };
+    use crate::{json, CacheMode, JsonBookmarks, MockCache, MockClient, Settings, TargetBookmarks};
     use std::io::Cursor;
 
     fn create_mock_service(
@@ -465,88 +462,5 @@ mod tests {
         // Set cursor position to the start again to prepare cursor for reading.
         target_reader.set_position(0);
         target_reader
-    }
-
-    #[tokio::test]
-    async fn test_add_urls() {
-        let url1 = Url::parse("https://url1.com").unwrap();
-        let url2 = Url::parse("https://url2.com").unwrap();
-        let now = Utc::now();
-        let settings = Settings::default();
-        let service = create_mock_service(
-            &RunMode::AddUrls(vec![url1.clone(), url2.clone()]),
-            &settings,
-        );
-        let sources = vec![];
-        let mut bookmark_manager = BookmarkManager::new();
-
-        let res = service.process(&mut bookmark_manager, &sources, now).await;
-        assert!(res.is_ok());
-
-        let bookmark = bookmark_manager.target_bookmarks().get(&url1).unwrap();
-        assert_eq!(bookmark.url, url1);
-        assert_eq!(bookmark.underlying_url, None);
-        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
-        assert_eq!(bookmark.last_imported, now.timestamp_millis());
-        assert_eq!(bookmark.last_cached, None);
-        assert!(bookmark.sources.contains(&SourceType::Internal));
-        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
-        assert_eq!(bookmark.status, Status::Added);
-        assert_eq!(bookmark.action, Action::None);
-
-        let bookmark = bookmark_manager.target_bookmarks().get(&url2).unwrap();
-        assert_eq!(bookmark.url, url2);
-        assert_eq!(bookmark.underlying_url, None);
-        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
-        assert_eq!(bookmark.last_imported, now.timestamp_millis());
-        assert_eq!(bookmark.last_cached, None);
-        assert!(bookmark.sources.contains(&SourceType::Internal));
-        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
-        assert_eq!(bookmark.status, Status::Added);
-        assert_eq!(bookmark.action, Action::None);
-    }
-
-    #[tokio::test]
-    async fn test_add_urls_existing() {
-        let now = Utc::now();
-        let url = Url::parse("https://url1.com").unwrap();
-        let target_bookmark = TargetBookmarkBuilder::new(url.clone(), now)
-            .add_source(SourceType::Internal)
-            .add_cache_mode(CacheMode::Text)
-            .build();
-        let settings = Settings::default();
-        let service = create_mock_service(&RunMode::AddUrls(vec![url.clone()]), &settings);
-        let sources = vec![];
-        let mut bookmark_manager = BookmarkManager::new();
-        bookmark_manager
-            .target_bookmarks_mut()
-            .insert(target_bookmark.clone());
-
-        let res = service.process(&mut bookmark_manager, &sources, now).await;
-        assert!(res.is_ok());
-
-        let bookmark = bookmark_manager.target_bookmarks().get(&url).unwrap();
-        assert_eq!(bookmark.id, target_bookmark.id);
-        assert_eq!(bookmark.url, url);
-        assert_eq!(bookmark.underlying_url, None);
-        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
-        assert_eq!(bookmark.last_imported, now.timestamp_millis());
-        assert_eq!(bookmark.last_cached, None);
-        assert!(bookmark.sources.contains(&SourceType::Internal));
-        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
-        assert_eq!(bookmark.status, Status::None);
-        assert_eq!(bookmark.action, Action::None);
-    }
-
-    #[tokio::test]
-    async fn test_add_urls_empty() {
-        let now = Utc::now();
-        let settings = Settings::default();
-        let service = create_mock_service(&RunMode::AddUrls(vec![]), &settings);
-        let sources = vec![];
-        let mut bookmark_manager = BookmarkManager::new();
-
-        let res = service.process(&mut bookmark_manager, &sources, now).await;
-        assert!(res.is_err());
     }
 }
