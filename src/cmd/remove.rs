@@ -11,28 +11,28 @@ use url::Url;
 pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
+    let urls = utils::parse_urls(&args.urls)?;
+
+    if urls.is_empty() {
+        return Err(anyhow!("Invalid argument: Specify the URLs to be removed"));
+    }
+
     let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
-    let urls = utils::parse_urls(&args.urls)?;
+    let service_config = ServiceConfig::new(
+        RunMode::RemoveUrls(urls.clone()),
+        &[],
+        config.settings.max_concurrent_requests,
+    )?;
 
-    if !urls.is_empty() {
-        let service_config = ServiceConfig::new(
-            RunMode::RemoveUrls(urls.clone()),
-            &[],
-            config.settings.max_concurrent_requests,
-        )?;
-
-        remove_urls(
-            service_config,
-            &urls,
-            &mut target_reader_writer.reader(),
-            &mut target_reader_writer.writer(),
-        )?;
-    } else {
-        return Err(anyhow!("Invalid argument: Specify the URLs to be removed"));
-    }
+    remove_urls(
+        service_config,
+        &urls,
+        &mut target_reader_writer.reader(),
+        &mut target_reader_writer.writer(),
+    )?;
 
     target_reader_writer.close()?;
 
