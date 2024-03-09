@@ -4,6 +4,7 @@
 
 - added
 - changed
+  - Fix removing ignored urls
 - removed
 
 ### v0.8.1
