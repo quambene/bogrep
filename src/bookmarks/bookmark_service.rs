@@ -299,7 +299,7 @@ where
     async fn execute_action<'a>(
         &self,
         bookmark: &'a mut TargetBookmark,
-    ) -> Result<&'a mut TargetBookmark, BogrepError> {
+    ) -> Result<(), BogrepError> {
         let client = &self.client;
         let cache = &self.cache;
 
@@ -335,13 +335,13 @@ where
                 cache.remove(bookmark).await?;
             }
             // We don't reset the action to `Action::None` in a dry run.
-            Action::DryRun => return Ok(bookmark),
+            Action::DryRun => return Ok(()),
             Action::None => (),
         }
 
         bookmark.set_action(Action::None);
 
-        Ok(bookmark)
+        Ok(())
     }
 
     fn diff_websites(before: &str, after: &str) {
