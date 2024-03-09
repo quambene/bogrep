@@ -44,7 +44,7 @@ pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Er
         &config.settings.ignored_urls,
         config.settings.max_concurrent_requests,
     )?;
-    let mut bookmark_manager = BookmarkManager::new();
+    let mut bookmark_manager = BookmarkManager::default();
     let bookmark_service = BookmarkService::new(service_config, client, cache);
 
     bookmark_service

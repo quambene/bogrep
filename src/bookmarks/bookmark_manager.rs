@@ -15,10 +15,16 @@ pub struct BookmarkManager {
     target_bookmarks: TargetBookmarks,
 }
 
-impl BookmarkManager {
-    pub fn new() -> Self {
+impl Default for BookmarkManager {
+    fn default() -> Self {
         let target_bookmarks = TargetBookmarks::default();
 
+        Self { target_bookmarks }
+    }
+}
+
+impl BookmarkManager {
+    pub fn new(target_bookmarks: TargetBookmarks) -> Self {
         Self { target_bookmarks }
     }
 
@@ -46,8 +52,8 @@ impl BookmarkManager {
                 source_reader.import(&mut source_bookmarks)?;
             }
 
-            self.add_bookmarks(&mut source_bookmarks, now)?;
-            self.remove_bookmarks(&mut source_bookmarks);
+            self.add_bookmarks(&source_bookmarks, now)?;
+            self.remove_bookmarks(&source_bookmarks);
         }
 
         Ok(())
@@ -55,7 +61,7 @@ impl BookmarkManager {
 
     /// Export bookmarks to target file.
     pub fn export(&mut self, target_writer: &mut impl WriteTarget) -> Result<(), BogrepError> {
-        target_writer.write(&mut self.target_bookmarks)?;
+        target_writer.write(&self.target_bookmarks)?;
         Ok(())
     }
 
@@ -273,7 +279,7 @@ mod tests {
             .map(|source| SourceReader::init(source).unwrap())
             .collect::<Vec<_>>();
         let mut target_reader = create_target_reader(&TargetBookmarks::default());
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
 
         let res = bookmark_manager.import(&mut source_readers, &mut target_reader, now);
         assert!(res.is_ok());
@@ -308,7 +314,7 @@ mod tests {
         );
         let mut target_reader = create_target_reader(&target_bookmarks);
 
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
         let res = bookmark_manager.import(&mut [], &mut target_reader, now);
         assert!(res.is_ok());
 
@@ -321,7 +327,7 @@ mod tests {
         let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
         bookmark_manager.target_bookmarks.insert(
             TargetBookmarkBuilder::new(url1.clone(), now)
                 .add_source(SourceType::Internal)
@@ -492,7 +498,7 @@ mod tests {
         let url2 = Url::parse("https://url2.com").unwrap();
         let now = Utc::now();
         let settings = Settings::default();
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
 
         bookmark_manager.add_urls(
             &[url1.clone(), url2.clone()],
@@ -533,7 +539,7 @@ mod tests {
             .add_cache_mode(CacheMode::Text)
             .build();
         let settings = Settings::default();
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
         bookmark_manager
             .target_bookmarks_mut()
             .insert(target_bookmark.clone());
@@ -557,7 +563,7 @@ mod tests {
     fn test_add_urls_empty() {
         let now = Utc::now();
         let settings = Settings::default();
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
         assert!(bookmark_manager.target_bookmarks.is_empty());
 
         bookmark_manager.add_urls(&[], &settings.cache_mode, &Action::None, now);
@@ -571,7 +577,7 @@ mod tests {
         let url = Url::parse("https://url1.com").unwrap();
         let settings = Settings::default();
 
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
 
         bookmark_manager.add_urls(&[url.clone()], &settings.cache_mode, &Action::None, now);
         assert_eq!(bookmark_manager.target_bookmarks.len(), 1);

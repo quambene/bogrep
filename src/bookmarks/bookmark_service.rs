@@ -451,7 +451,7 @@ mod tests {
 
     fn create_mock_manager(urls: &[Url]) -> BookmarkManager {
         let now = Utc::now();
-        let mut bookmark_manager = BookmarkManager::new();
+        let mut bookmark_manager = BookmarkManager::default();
         bookmark_manager.target_bookmarks_mut().insert(
             TargetBookmark::builder_with_id(
                 "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),

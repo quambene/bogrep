@@ -32,7 +32,7 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     )?;
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(&client_config)?;
-    let mut bookmark_manager = BookmarkManager::new();
+    let mut bookmark_manager = BookmarkManager::default();
     let bookmark_service = BookmarkService::new(service_config, client, cache);
 
     bookmark_service

@@ -32,7 +32,7 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
     let cache_mode = CacheMode::new(&None, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(&client_config)?;
-    let mut bookmark_manager = BookmarkManager::new();
+    let mut bookmark_manager = BookmarkManager::default();
     let bookmark_service = BookmarkService::new(service_config, client, cache);
 
     bookmark_service
