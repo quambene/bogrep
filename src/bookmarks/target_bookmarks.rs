@@ -356,7 +356,11 @@ impl TargetBookmarks {
                 // We are keeping the existing id and url, but overwriting all other fields.
                 target_bookmark.last_imported = bookmark.last_imported;
                 target_bookmark.last_cached = bookmark.last_cached;
-                target_bookmark.sources = bookmark.sources;
+
+                for source in bookmark.sources {
+                    target_bookmark.sources.insert(source);
+                }
+
                 target_bookmark.cache_modes = bookmark.cache_modes;
                 target_bookmark.action = bookmark.action;
             }

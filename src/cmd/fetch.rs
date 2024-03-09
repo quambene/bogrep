@@ -1,16 +1,12 @@
 use crate::{
-    bookmark_reader::{ReadTarget, TargetReaderWriter},
+    bookmark_reader::TargetReaderWriter,
     bookmarks::{BookmarkManager, BookmarkService, RunMode, ServiceConfig},
     cache::CacheMode,
     client::ClientConfig,
-    errors::BogrepError,
-    html, utils, Cache, Caching, Client, Config, Fetch, FetchArgs, TargetBookmarks,
+    utils, Cache, Client, Config, FetchArgs,
 };
 use chrono::Utc;
-use colored::Colorize;
-use log::{debug, trace, warn};
-use similar::{ChangeTag, TextDiff};
-use url::Url;
+use log::debug;
 
 /// Fetch and cache bookmarks.
 pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
@@ -24,7 +20,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client_config = ClientConfig::new(&config.settings);
     let client = Client::new(&client_config)?;
-    let mut source_readers = vec![];
+    let mut source_readers = [];
     let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
@@ -33,12 +29,11 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
+    } else if !args.diff.is_empty() {
+        let diff_urls = utils::parse_urls(&args.diff)?;
+        RunMode::FetchDiff(diff_urls)
     } else if !args.urls.is_empty() {
-        let fetch_urls = args
-            .urls
-            .iter()
-            .map(|url| Url::parse(url))
-            .collect::<Result<Vec<_>, _>>()?;
+        let fetch_urls = utils::parse_urls(&args.urls)?;
         RunMode::FetchUrls(fetch_urls)
     } else if args.all {
         RunMode::FetchAll
@@ -65,68 +60,12 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     Ok(())
 }
 
-/// Fetch difference between cached and fetched website, and display changes.
-// TODO: refactor to use `BookmarkService`.
-pub async fn fetch_diff(config: &Config, args: FetchArgs) -> Result<(), BogrepError> {
-    debug!("Diff content for urls: {:#?}", args.diff);
-    let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
-    let cache = Cache::new(&config.cache_path, cache_mode);
-    let client_config = ClientConfig::new(&config.settings);
-    let client = Client::new(&client_config)?;
-    let urls = args
-        .diff
-        .iter()
-        .map(|url| Url::parse(url))
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
-    target_reader.read(&mut target_bookmarks)?;
-
-    for url in urls {
-        let bookmark = target_bookmarks.get_mut(&url);
-
-        if let Some(bookmark) = bookmark {
-            if let Some(cached_website_before) = cache.get(bookmark)? {
-                let fetched_website = client.fetch(bookmark).await?;
-                trace!("Fetched website: {fetched_website}");
-                let html = html::filter_html(&fetched_website)?;
-
-                // Cache fetched website
-                let cached_website_after = cache.replace(html, bookmark).await?;
-
-                let diff = TextDiff::from_lines(&cached_website_before, &cached_website_after);
-
-                for change in diff.iter_all_changes() {
-                    match change.tag() {
-                        ChangeTag::Delete => {
-                            if let Some(change) = change.as_str() {
-                                print!("{}{}", "-".red(), change.red());
-                            }
-                        }
-                        ChangeTag::Insert => {
-                            if let Some(change) = change.as_str() {
-                                print!("{}{}", "+".green(), change.green());
-                            }
-                        }
-                        ChangeTag::Equal => continue,
-                    }
-                }
-            }
-        } else {
-            warn!("Bookmark missing: add bookmark first before running `bogrep fetch --diff`");
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        bookmarks::ServiceReport, Action, BookmarkProcessor, MockCache, MockClient, Settings,
-        TargetBookmark,
+        bookmarks::ServiceReport, Action, BookmarkProcessor, Caching, MockCache, MockClient,
+        Settings, TargetBookmark, TargetBookmarks,
     };
     use chrono::Utc;
     use std::collections::HashMap;

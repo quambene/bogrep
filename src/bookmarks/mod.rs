@@ -78,6 +78,9 @@ pub enum Status {
 }
 
 /// The action to be performed on the bookmark.
+///
+/// `Actions`s includes external resources, like cache and fetching bookmarks
+/// from the web.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Action {
     /// Fetch and cache the bookmark, even if it is cached already. The cached
@@ -85,6 +88,9 @@ pub enum Action {
     FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
     FetchAndAdd,
+    /// Fetch a bookmark and diff the fetched content with the cached content.#
+    FetchAndDiff,
+    /// Remove a bookmark from the cache.
     Remove,
     /// No actions to be performed.
     None,
@@ -132,7 +138,7 @@ pub enum RunMode {
     /// Fetch all bookmarks.
     FetchAll,
     /// Fetch diff for provided bookmark urls.
-    FetchDiff,
+    FetchDiff(Vec<Url>),
     /// Import bookmarks and fetch new bookmarks.
     Update,
     /// Run in dry mode.

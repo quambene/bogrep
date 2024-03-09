@@ -6,9 +6,11 @@ use crate::{
     TargetBookmarkBuilder,
 };
 use chrono::{DateTime, Utc};
+use colored::Colorize;
 use futures::{stream, StreamExt};
 use log::{debug, trace, warn};
 use parking_lot::Mutex;
+use similar::{ChangeTag, TextDiff};
 use std::{error::Error, io::Write, rc::Rc};
 use url::Url;
 
@@ -85,7 +87,7 @@ where
             .map(|source_reader| source_reader.source().clone())
             .collect::<Vec<_>>();
 
-        self.import(bookmark_manager, source_readers, target_reader)?;
+        self.import(bookmark_manager, source_readers, target_reader, now)?;
 
         self.process(bookmark_manager, &sources, now).await?;
 
@@ -100,16 +102,17 @@ where
         bookmark_manager: &mut BookmarkManager,
         source_readers: &mut [SourceReader],
         target_reader: &mut impl ReadTarget,
+        now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
         target_reader.read(bookmark_manager.target_bookmarks_mut())?;
 
-        match self.config.run_mode {
-            RunMode::Import | RunMode::Update => {
-                for source_reader in source_readers.iter_mut() {
-                    source_reader.import(bookmark_manager.source_bookmarks_mut())?;
-                }
+        if !source_readers.is_empty() {
+            for source_reader in source_readers.iter_mut() {
+                source_reader.import(bookmark_manager.source_bookmarks_mut())?;
             }
-            _ => (),
+
+            bookmark_manager.add_bookmarks(now)?;
+            bookmark_manager.remove_bookmarks();
         }
 
         Ok(())
@@ -135,7 +138,12 @@ where
         self.set_actions(bookmark_manager, now)?;
 
         match self.config.run_mode {
-            RunMode::Import | RunMode::RemoveUrls(_) | RunMode::Fetch | RunMode::Update => {
+            RunMode::Import
+            | RunMode::RemoveUrls(_)
+            | RunMode::Fetch
+            | RunMode::FetchAll
+            | RunMode::FetchUrls(_)
+            | RunMode::Update => {
                 self.execute_actions(bookmark_manager).await?;
                 self.add_underlyings(bookmark_manager);
 
@@ -163,22 +171,27 @@ where
             bookmark_manager.target_bookmarks_mut().reset_cache_status();
         }
 
+        for target_bookmark in bookmark_manager.target_bookmarks_mut().values_mut() {
+            match target_bookmark.status() {
+                Status::Removed => target_bookmark.set_action(Action::Remove),
+                Status::Added | Status::None => (),
+            }
+        }
+
         match self.config.run_mode() {
             RunMode::Import => {
-                bookmark_manager.add_bookmarks(now)?;
-                bookmark_manager.remove_bookmarks();
                 bookmark_manager
                     .target_bookmarks_mut()
                     .set_action(&Action::None);
             }
             RunMode::AddUrls(urls) => {
-                bookmark_manager.add_urls(urls, self.cache.mode(), now)?;
+                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::None, now)?;
             }
             RunMode::RemoveUrls(urls) => {
                 bookmark_manager.remove_urls(urls)?;
             }
-            RunMode::FetchUrls(_urls) => {
-                todo!()
+            RunMode::FetchUrls(urls) => {
+                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndAdd, now)?;
             }
             RunMode::Fetch => {
                 bookmark_manager
@@ -190,12 +203,10 @@ where
                     .target_bookmarks_mut()
                     .set_action(&Action::FetchAndReplace);
             }
-            RunMode::FetchDiff => {
-                todo!()
+            RunMode::FetchDiff(urls) => {
+                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndDiff, now)?;
             }
             RunMode::Update => {
-                bookmark_manager.add_bookmarks(now)?;
-                bookmark_manager.remove_bookmarks();
                 bookmark_manager
                     .target_bookmarks_mut()
                     .set_action(&Action::FetchAndReplace);
@@ -209,13 +220,6 @@ where
                 bookmark_manager
                     .target_bookmarks_mut()
                     .set_action(&Action::None);
-            }
-        }
-
-        for target_bookmark in bookmark_manager.target_bookmarks_mut().values_mut() {
-            match target_bookmark.status() {
-                Status::Removed => target_bookmark.set_action(Action::Remove),
-                Status::Added | Status::None => (),
             }
         }
 
@@ -343,6 +347,17 @@ where
                     cache.add(html, bookmark).await?;
                 }
             }
+            //  Fetch difference between cached and fetched website, and display
+            //  changes.
+            Action::FetchAndDiff => {
+                if let Some(website_before) = cache.get(bookmark)? {
+                    let fetched_website = client.fetch(bookmark).await?;
+                    trace!("Fetched website: {fetched_website}");
+                    let html = html::filter_html(&fetched_website)?;
+                    let website_after = cache.replace(html, bookmark).await?;
+                    Self::diff_websites(&website_before, &website_after);
+                }
+            }
             Action::Remove => {
                 cache.remove(bookmark).await?;
             }
@@ -354,6 +369,26 @@ where
         bookmark.set_action(Action::None);
 
         Ok(bookmark)
+    }
+
+    fn diff_websites(before: &str, after: &str) {
+        let diff = TextDiff::from_lines(before, after);
+
+        for change in diff.iter_all_changes() {
+            match change.tag() {
+                ChangeTag::Delete => {
+                    if let Some(change) = change.as_str() {
+                        print!("{}{}", "-".red(), change.red());
+                    }
+                }
+                ChangeTag::Insert => {
+                    if let Some(change) = change.as_str() {
+                        print!("{}{}", "+".green(), change.green());
+                    }
+                }
+                ChangeTag::Equal => continue,
+            }
+        }
     }
 
     fn add_underlying(

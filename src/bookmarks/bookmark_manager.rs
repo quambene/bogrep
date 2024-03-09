@@ -55,6 +55,7 @@ impl BookmarkManager {
         &mut self,
         urls: &[Url],
         cache_mode: &CacheMode,
+        action: &Action,
         now: DateTime<Utc>,
     ) -> Result<(), anyhow::Error> {
         if urls.is_empty() {
@@ -66,6 +67,7 @@ impl BookmarkManager {
                 .add_source(SourceType::Internal)
                 .add_cache_mode(cache_mode.to_owned())
                 .with_status(Status::Added)
+                .with_action(action.to_owned())
                 .build();
             self.target_bookmarks.upsert(target_bookmark);
         }
@@ -116,7 +118,7 @@ impl BookmarkManager {
             RunMode::FetchAll => {
                 self.target_bookmarks.set_action(&Action::FetchAndReplace);
             }
-            RunMode::FetchDiff => {
+            RunMode::FetchDiff(_) => {
                 todo!()
             }
             RunMode::Update => {

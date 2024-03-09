@@ -35,13 +35,7 @@ async fn run_app(args: Args, config: Config) -> Result<(), anyhow::Error> {
             Subcommands::Config(args) => cmd::configure(config, args)?,
             Subcommands::Import(args) => cmd::import(config, args).await?,
             Subcommands::Update(args) => cmd::update(&config, &args).await?,
-            Subcommands::Fetch(args) => {
-                if !args.diff.is_empty() {
-                    cmd::fetch_diff(&config, args).await?;
-                } else {
-                    cmd::fetch(&config, &args).await?;
-                }
-            }
+            Subcommands::Fetch(args) => cmd::fetch(&config, &args).await?,
             Subcommands::Clean(args) => cmd::clean(&config, &args).await?,
             Subcommands::Add(args) => cmd::add(config, args).await?,
             Subcommands::Remove(args) => cmd::remove(config, args).await?,

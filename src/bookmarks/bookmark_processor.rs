@@ -171,6 +171,11 @@ where
                     cache.add(html, bookmark).await?;
                 }
             }
+            Action::FetchAndDiff => {
+                if let Some(website_before) = cache.get(bookmark)? {
+                    todo!()
+                }
+            }
             Action::Remove => {
                 cache.remove(bookmark).await?;
             }
