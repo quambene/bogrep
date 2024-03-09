@@ -404,10 +404,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
     use crate::{CacheMode, MockCache, MockClient, Settings};
+    use std::collections::HashMap;
 
     fn create_mock_client(urls: &[Url], content: &str) -> MockClient {
         let client = MockClient::new();
