@@ -140,13 +140,6 @@ where
             bookmark_manager.target_bookmarks_mut().reset_cache_status();
         }
 
-        for target_bookmark in bookmark_manager.target_bookmarks_mut().values_mut() {
-            match target_bookmark.status() {
-                Status::Removed => target_bookmark.set_action(Action::Remove),
-                Status::Added | Status::None => (),
-            }
-        }
-
         match self.config.run_mode() {
             RunMode::Import => {
                 bookmark_manager
@@ -189,6 +182,13 @@ where
                 bookmark_manager
                     .target_bookmarks_mut()
                     .set_action(&Action::None);
+            }
+        }
+
+        for target_bookmark in bookmark_manager.target_bookmarks_mut().values_mut() {
+            match target_bookmark.status() {
+                Status::Removed => target_bookmark.set_action(Action::Remove),
+                Status::Added | Status::None => (),
             }
         }
 
