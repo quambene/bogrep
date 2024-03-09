@@ -1,6 +1,6 @@
 use super::RunMode;
 use crate::{
-    bookmark_reader::SourceReader,
+    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     bookmarks::{target_bookmarks::TargetBookmarkBuilder, Status},
     errors::BogrepError,
     Action, CacheMode, Source, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
@@ -12,23 +12,14 @@ use url::Url;
 
 #[derive(Debug)]
 pub struct BookmarkManager {
-    source_bookmarks: SourceBookmarks,
     target_bookmarks: TargetBookmarks,
 }
 
 impl BookmarkManager {
     pub fn new() -> Self {
-        let source_bookmarks = SourceBookmarks::default();
         let target_bookmarks = TargetBookmarks::default();
 
-        Self {
-            source_bookmarks,
-            target_bookmarks,
-        }
-    }
-
-    pub fn source_bookmarks_mut(&mut self) -> &mut SourceBookmarks {
-        &mut self.source_bookmarks
+        Self { target_bookmarks }
     }
 
     pub fn target_bookmarks(&self) -> &TargetBookmarks {
@@ -39,15 +30,76 @@ impl BookmarkManager {
         &mut self.target_bookmarks
     }
 
-    /// Import bookmarks from sources.
-    pub fn import(&mut self, source_readers: &mut [SourceReader]) -> Result<(), BogrepError> {
-        let source_bookmarks = &mut self.source_bookmarks;
+    /// Import bookmarks from source and target files.
+    pub fn import(
+        &mut self,
+        source_readers: &mut [SourceReader],
+        target_reader: &mut impl ReadTarget,
+        now: DateTime<Utc>,
+    ) -> Result<(), BogrepError> {
+        target_reader.read(&mut self.target_bookmarks)?;
 
-        for source_reader in source_readers.iter_mut() {
-            source_reader.import(source_bookmarks)?;
+        if !source_readers.is_empty() {
+            let mut source_bookmarks = SourceBookmarks::default();
+
+            for source_reader in source_readers.iter_mut() {
+                source_reader.import(&mut source_bookmarks)?;
+            }
+
+            self.add_bookmarks(&mut source_bookmarks, now)?;
+            self.remove_bookmarks(&mut source_bookmarks);
         }
 
         Ok(())
+    }
+
+    /// Export bookmarks to target file.
+    pub fn export(&mut self, target_writer: &mut impl WriteTarget) -> Result<(), BogrepError> {
+        target_writer.write(&mut self.target_bookmarks)?;
+        Ok(())
+    }
+
+    /// Add the difference between source and target bookmarks.
+    fn add_bookmarks(
+        &mut self,
+        source_bookmarks: &SourceBookmarks,
+        now: DateTime<Utc>,
+    ) -> Result<(), BogrepError> {
+        let bookmarks_to_add = Self::filter_to_add(source_bookmarks, &self.target_bookmarks);
+        trace!(
+            "Added bookmarks: {:#?}",
+            bookmarks_to_add
+                .iter()
+                .map(|bookmark| bookmark.url().to_owned())
+                .collect::<Vec<_>>()
+        );
+
+        for source_bookmark in bookmarks_to_add {
+            let url = Url::parse(source_bookmark.url())?;
+            let target_bookmark = TargetBookmarkBuilder::new(url, now)
+                .with_sources(source_bookmark.sources().to_owned())
+                .build();
+            self.target_bookmarks.upsert(target_bookmark);
+        }
+
+        Ok(())
+    }
+
+    /// Remove the difference between source and target bookmarks.
+    fn remove_bookmarks(&mut self, source_bookmarks: &SourceBookmarks) {
+        let bookmarks_to_remove =
+            Self::filter_to_remove(source_bookmarks, &mut self.target_bookmarks);
+        trace!(
+            "Removed bookmarks: {:#?}",
+            bookmarks_to_remove
+                .iter()
+                .map(|bookmark| bookmark.url())
+                .collect::<Vec<_>>()
+        );
+
+        for bookmark in bookmarks_to_remove {
+            bookmark.set_status(Status::Removed);
+        }
     }
 
     pub fn add_urls(
@@ -77,49 +129,6 @@ impl BookmarkManager {
         }
     }
 
-    /// Prepare bookmarks for processing in `BookmarkProcessor`.
-    pub fn set_actions(&mut self, run_mode: &RunMode, _now: DateTime<Utc>) {
-        for target_bookmark in self.target_bookmarks.values_mut() {
-            match target_bookmark.status() {
-                Status::Removed => target_bookmark.set_action(Action::Remove),
-                Status::Added | Status::None => (),
-            }
-        }
-
-        match &run_mode {
-            RunMode::Import => {
-                self.target_bookmarks.set_action(&Action::None);
-            }
-            RunMode::AddUrls(_) => {
-                todo!()
-            }
-            RunMode::RemoveUrls(_) => {
-                todo!()
-            }
-            RunMode::FetchUrls(_) => {
-                todo!()
-            }
-            RunMode::Fetch => {
-                self.target_bookmarks.set_action(&Action::FetchAndAdd);
-            }
-            RunMode::FetchAll => {
-                self.target_bookmarks.set_action(&Action::FetchAndReplace);
-            }
-            RunMode::FetchDiff(_) => {
-                todo!()
-            }
-            RunMode::Update => {
-                todo!()
-            }
-            RunMode::DryRun => {
-                self.target_bookmarks.set_action(&Action::DryRun);
-            }
-            RunMode::None => {
-                self.target_bookmarks.set_action(&Action::None);
-            }
-        }
-    }
-
     /// Remove bookmarks which are marked as [`Status::Removed`].
     pub fn finish(&mut self) {
         let urls_to_remove = self
@@ -136,45 +145,6 @@ impl BookmarkManager {
 
         for url in urls_to_remove {
             self.target_bookmarks.remove(&url);
-        }
-    }
-
-    /// Add the difference between source and target bookmarks.
-    pub fn add_bookmarks(&mut self, now: DateTime<Utc>) -> Result<(), BogrepError> {
-        let bookmarks_to_add = Self::filter_to_add(&self.source_bookmarks, &self.target_bookmarks);
-        trace!(
-            "Added bookmarks: {:#?}",
-            bookmarks_to_add
-                .iter()
-                .map(|bookmark| bookmark.url().to_owned())
-                .collect::<Vec<_>>()
-        );
-
-        for source_bookmark in bookmarks_to_add {
-            let url = Url::parse(source_bookmark.url())?;
-            let target_bookmark = TargetBookmarkBuilder::new(url, now)
-                .with_sources(source_bookmark.sources().to_owned())
-                .build();
-            self.target_bookmarks.upsert(target_bookmark);
-        }
-
-        Ok(())
-    }
-
-    /// Remove the difference between source and target bookmarks.
-    pub fn remove_bookmarks(&mut self) {
-        let bookmarks_to_remove =
-            Self::filter_to_remove(&self.source_bookmarks, &mut self.target_bookmarks);
-        trace!(
-            "Removed bookmarks: {:#?}",
-            bookmarks_to_remove
-                .iter()
-                .map(|bookmark| bookmark.url())
-                .collect::<Vec<_>>()
-        );
-
-        for bookmark in bookmarks_to_remove {
-            bookmark.set_status(Status::Removed);
         }
     }
 
@@ -268,8 +238,126 @@ impl BookmarkManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bookmarks::SourceBookmarkBuilder, Settings, UnderlyingType};
-    use std::{collections::HashMap, str::FromStr};
+    use crate::{
+        bookmarks::{RawSource, SourceBookmarkBuilder},
+        json, JsonBookmarks, Settings, UnderlyingType,
+    };
+    use std::{
+        collections::{HashMap, HashSet},
+        io::{Cursor, Write},
+        path::Path,
+        str::FromStr,
+    };
+
+    fn create_target_reader(target_bookmarks: &TargetBookmarks) -> impl ReadTarget {
+        let bookmarks_json = JsonBookmarks::from(target_bookmarks);
+        let buf = json::serialize(bookmarks_json).unwrap();
+
+        let mut target_reader: Cursor<Vec<u8>> = Cursor::new(Vec::new());
+        target_reader.write_all(&buf).unwrap();
+        // Set cursor position to the start again to prepare cursor for reading.
+        target_reader.set_position(0);
+        target_reader
+    }
+
+    #[test]
+    fn test_import_source() {
+        let now = Utc::now();
+        let source_path = Path::new("test_data/bookmarks_simple.txt");
+        let source_folders = vec![];
+        let sources = vec![RawSource::new(source_path, source_folders)];
+        let mut source_readers = sources
+            .iter()
+            .map(|source| SourceReader::init(source).unwrap())
+            .collect::<Vec<_>>();
+        let mut target_reader = create_target_reader(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new();
+
+        let res = bookmark_manager.import(&mut source_readers, &mut target_reader, now);
+        assert!(res.is_ok());
+
+        assert!(bookmark_manager
+            .target_bookmarks
+            .contains_key(&Url::from_str("https://www.deepl.com/translator").unwrap()));
+        assert!(bookmark_manager.target_bookmarks.contains_key(&Url::from_str("https://www.quantamagazine.org/how-mathematical-curves-power-cryptography-20220919/").unwrap()));
+        assert!(bookmark_manager.target_bookmarks.contains_key(
+            &Url::from_str("https://en.wikipedia.org/wiki/Design_Patterns").unwrap()
+        ));
+        assert!(bookmark_manager.target_bookmarks.contains_key(
+            &Url::from_str("https://doc.rust-lang.org/book/title-page.html").unwrap()
+        ));
+    }
+
+    #[test]
+    fn test_import() {
+        let now = Utc::now();
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let mut target_bookmarks = TargetBookmarks::default();
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url1.clone(), now)
+                .add_source(SourceType::Internal)
+                .build(),
+        );
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url2.clone(), now)
+                .add_source(SourceType::Internal)
+                .build(),
+        );
+        let mut target_reader = create_target_reader(&target_bookmarks);
+
+        let mut bookmark_manager = BookmarkManager::new();
+        let res = bookmark_manager.import(&mut [], &mut target_reader, now);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_export() {
+        let now = Utc::now();
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let mut bookmark_manager = BookmarkManager::new();
+        bookmark_manager.target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url1.clone(), now)
+                .add_source(SourceType::Internal)
+                .build(),
+        );
+        bookmark_manager.target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url2.clone(), now)
+                .add_source(SourceType::Internal)
+                .build(),
+        );
+
+        let mut target_writer = Cursor::new(Vec::new());
+        let res = bookmark_manager.export(&mut target_writer);
+        assert!(res.is_ok());
+
+        let actual = target_writer.get_ref();
+        let actual_bookmarks = json::deserialize::<JsonBookmarks>(actual);
+        assert!(
+            actual_bookmarks.is_ok(),
+            "{}\n{}",
+            actual_bookmarks.unwrap_err(),
+            String::from_utf8(actual.to_owned()).unwrap()
+        );
+
+        let actual_bookmarks = actual_bookmarks.unwrap();
+        assert!(actual_bookmarks
+            .iter()
+            .all(|bookmark| bookmark.last_cached.is_none()));
+        assert_eq!(
+            actual_bookmarks
+                .iter()
+                .map(|bookmark| bookmark.url.clone())
+                .collect::<HashSet<_>>(),
+            HashSet::from_iter([url1.to_string(), url2.to_string()]),
+        );
+    }
+
+    #[test]
+    fn test_import_dry_run() {
+        todo!()
+    }
 
     #[test]
     fn test_add_and_remove_bookmarks() {
@@ -313,13 +401,11 @@ mod tests {
                 .build(),
             ),
         ]));
+        let mut bookmark_manager = BookmarkManager { target_bookmarks };
 
-        let mut bookmark_manager = BookmarkManager {
-            source_bookmarks,
-            target_bookmarks,
-        };
-
-        bookmark_manager.add_bookmarks(now).unwrap();
+        bookmark_manager
+            .add_bookmarks(&source_bookmarks, now)
+            .unwrap();
         let actual_bookmarks = bookmark_manager.target_bookmarks();
         assert_eq!(
             actual_bookmarks,
@@ -358,7 +444,7 @@ mod tests {
             ]))
         );
 
-        bookmark_manager.remove_bookmarks();
+        bookmark_manager.remove_bookmarks(&source_bookmarks);
         let actual_bookmarks = bookmark_manager.target_bookmarks();
         assert_eq!(
             actual_bookmarks,

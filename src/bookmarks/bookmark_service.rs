@@ -87,44 +87,12 @@ where
             .map(|source_reader| source_reader.source().clone())
             .collect::<Vec<_>>();
 
-        self.import(bookmark_manager, source_readers, target_reader, now)?;
+        bookmark_manager.import(source_readers, target_reader, now)?;
 
         self.process(bookmark_manager, &sources, now).await?;
 
-        self.export(target_writer, bookmark_manager)?;
+        bookmark_manager.export(target_writer)?;
 
-        Ok(())
-    }
-
-    /// Import bookmarks from source and target files.
-    fn import(
-        &self,
-        bookmark_manager: &mut BookmarkManager,
-        source_readers: &mut [SourceReader],
-        target_reader: &mut impl ReadTarget,
-        now: DateTime<Utc>,
-    ) -> Result<(), BogrepError> {
-        target_reader.read(bookmark_manager.target_bookmarks_mut())?;
-
-        if !source_readers.is_empty() {
-            for source_reader in source_readers.iter_mut() {
-                source_reader.import(bookmark_manager.source_bookmarks_mut())?;
-            }
-
-            bookmark_manager.add_bookmarks(now)?;
-            bookmark_manager.remove_bookmarks();
-        }
-
-        Ok(())
-    }
-
-    /// Export bookmarks to target file.
-    fn export(
-        &self,
-        target_writer: &mut impl WriteTarget,
-        bookmark_manager: &mut BookmarkManager,
-    ) -> Result<(), BogrepError> {
-        target_writer.write(bookmark_manager.target_bookmarks_mut())?;
         Ok(())
     }
 
@@ -432,8 +400,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{json, CacheMode, JsonBookmarks, MockCache, MockClient, Settings, TargetBookmarks};
-    use std::io::Cursor;
+    use crate::{CacheMode, MockCache, MockClient, Settings};
 
     fn create_mock_service(
         run_mode: &RunMode,
@@ -450,17 +417,5 @@ mod tests {
         .unwrap();
         let service = BookmarkService::new(service_config, client, cache);
         service
-    }
-
-    fn create_target_reader() -> impl ReadTarget {
-        let target_bookmarks = TargetBookmarks::default();
-        let bookmarks_json = JsonBookmarks::from(&target_bookmarks);
-        let buf = json::serialize(bookmarks_json).unwrap();
-
-        let mut target_reader: Cursor<Vec<u8>> = Cursor::new(Vec::new());
-        target_reader.write_all(&buf).unwrap();
-        // Set cursor position to the start again to prepare cursor for reading.
-        target_reader.set_position(0);
-        target_reader
     }
 }
