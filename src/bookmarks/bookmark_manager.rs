@@ -480,17 +480,27 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_urls_empty() {
+    fn test_remove_urls() {
         let now = Utc::now();
         let url = Url::parse("https://url1.com").unwrap();
         let settings = Settings::default();
 
         let mut bookmark_manager = BookmarkManager::new();
 
-        bookmark_manager.add_urls(&[url], &settings.cache_mode, &Action::None, now);
+        bookmark_manager.add_urls(&[url.clone()], &settings.cache_mode, &Action::None, now);
         assert_eq!(bookmark_manager.target_bookmarks.len(), 1);
 
-        bookmark_manager.remove_urls(&[]);
-        assert!(bookmark_manager.target_bookmarks.is_empty());
+        bookmark_manager.remove_urls(&[url.clone()]);
+
+        let bookmark = bookmark_manager.target_bookmarks().get(&url).unwrap();
+        assert_eq!(bookmark.url, url);
+        assert_eq!(bookmark.underlying_url, None);
+        assert_eq!(bookmark.underlying_type, UnderlyingType::None);
+        assert_eq!(bookmark.last_imported, now.timestamp_millis());
+        assert_eq!(bookmark.last_cached, None);
+        assert!(bookmark.sources.contains(&SourceType::Internal));
+        assert!(bookmark.cache_modes.contains(&CacheMode::Text));
+        assert_eq!(bookmark.status, Status::Removed);
+        assert_eq!(bookmark.action, Action::Remove);
     }
 }
