@@ -3,6 +3,7 @@
 ### Unreleased
 
 - added
+  - Select sources for `bogrep configure` if no sources are configured
 - changed
   - Fix removing ignored urls
 - removed
@@ -15,10 +16,10 @@
 ### v0.8.0
 
 - added
+  - Select sources for `bogrep import` if no sources are configured
   - Implement running in dry mode
   - Select sources from user input
 - changed
-  - Select sources for `bogrep import` if no sources are configured
   - Update rust toolchain to 1.76
   - Fix `settings.json` for `bogrep config --ignore` and `bogrep config --underlying` if run
     multiple times

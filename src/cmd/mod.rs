@@ -9,7 +9,7 @@ mod update;
 
 pub use add::add;
 pub use clean::clean;
-pub use configure::configure;
+pub use configure::{configure, configure_sources};
 pub use fetch::fetch;
 pub use import::import;
 pub use remove::remove;

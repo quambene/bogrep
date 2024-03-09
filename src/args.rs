@@ -48,6 +48,9 @@ pub enum Subcommands {
 /// Describes the arguments for the `config` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct ConfigArgs {
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
     #[command(flatten)]
     pub set_source: SetSource,
     #[command(flatten)]

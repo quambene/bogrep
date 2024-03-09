@@ -1,4 +1,4 @@
-use crate::errors::BogrepError;
+use crate::{bookmark_reader::SourceOs, errors::BogrepError};
 use log::debug;
 use std::{
     fs::{self, File, OpenOptions},
@@ -7,6 +7,17 @@ use std::{
 };
 use tokio::io::AsyncWriteExt;
 use url::Url;
+
+pub fn get_supported_os() -> Option<SourceOs> {
+    let source_os = match std::env::consts::OS {
+        "linux" => Some(SourceOs::Linux),
+        "macos" => Some(SourceOs::Macos),
+        "windows" => Some(SourceOs::Windows),
+        _ => None,
+    };
+    debug!("Source OS: {:?}", source_os);
+    source_os
+}
 
 pub fn parse_urls(urls: &[String]) -> Result<Vec<Url>, BogrepError> {
     let parsed_urls = urls
