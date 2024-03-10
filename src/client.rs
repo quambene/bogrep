@@ -1,4 +1,4 @@
-use crate::{bookmarks::TargetBookmark, errors::BogrepError, Settings};
+use crate::{bookmarks::TargetBookmark, errors::BogrepError, utils, Settings};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -120,6 +120,7 @@ impl Fetch for Client {
 #[derive(Debug, Clone)]
 struct Throttler {
     last_fetched: Arc<Mutex<HashMap<String, DateTime<Utc>>>>,
+    /// The throttling between requests in milliseconds.
     request_throttling: u64,
 }
 
@@ -138,16 +139,13 @@ impl Throttler {
 
         if let Some(last_fetched) = self.last_fetched(bookmark, now)? {
             let duration_since_last_fetched = now - last_fetched;
+            let throttling = utils::convert_to_duration(self.request_throttling as i64)?;
 
-            if duration_since_last_fetched
-                < chrono::Duration::milliseconds(self.request_throttling as i64 / 2)
-            {
+            if duration_since_last_fetched < throttling / 2 {
                 debug!("Wait for bookmark ({})", bookmark.url());
                 time::sleep(Duration::from_millis(self.request_throttling)).await;
-            } else if chrono::Duration::milliseconds(self.request_throttling as i64 / 2)
-                < duration_since_last_fetched
-                && duration_since_last_fetched
-                    < chrono::Duration::milliseconds(self.request_throttling as i64)
+            } else if throttling / 2 < duration_since_last_fetched
+                && duration_since_last_fetched < throttling
             {
                 debug!("Wait for bookmark ({})", bookmark.url());
                 time::sleep(Duration::from_millis(self.request_throttling / 2)).await;
