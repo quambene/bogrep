@@ -10,8 +10,7 @@ use tokio::io::AsyncWriteExt;
 use url::Url;
 
 pub fn convert_to_duration(millis: i64) -> Result<chrono::Duration, anyhow::Error> {
-    chrono::Duration::try_milliseconds(millis as i64 / 2)
-        .ok_or(anyhow!("Can't convert i64 to Duration"))
+    chrono::Duration::try_milliseconds(millis).ok_or(anyhow!("Can't convert i64 to Duration"))
 }
 
 pub fn get_supported_os() -> Option<SourceOs> {
