@@ -1,4 +1,5 @@
 use crate::{bookmark_reader::SourceOs, errors::BogrepError};
+use anyhow::anyhow;
 use log::debug;
 use std::{
     fs::{self, File, OpenOptions},
@@ -7,6 +8,11 @@ use std::{
 };
 use tokio::io::AsyncWriteExt;
 use url::Url;
+
+pub fn convert_to_duration(millis: i64) -> Result<chrono::Duration, anyhow::Error> {
+    chrono::Duration::try_milliseconds(millis as i64 / 2)
+        .ok_or(anyhow!("Can't convert i64 to Duration"))
+}
 
 pub fn get_supported_os() -> Option<SourceOs> {
     let source_os = match std::env::consts::OS {
