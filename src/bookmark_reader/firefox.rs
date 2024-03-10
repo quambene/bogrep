@@ -396,6 +396,8 @@ mod tests {
     #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_source_file_linux() {
+        use std::{thread, time::Duration};
+
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -404,6 +406,7 @@ mod tests {
             temp_path.join("snap/firefox/common/.mozilla/firefox/profile1.default/bookmarkbackups");
         fs::create_dir_all(&bookmark_dir).unwrap();
         utils::create_file(&bookmark_dir.join("bookmarks1.jsonlz4")).unwrap();
+        thread::sleep(Duration::from_millis(10));
         utils::create_file(&bookmark_dir.join("bookmarks2.jsonlz4")).unwrap();
 
         let selector = FirefoxSelector;
@@ -421,6 +424,8 @@ mod tests {
     #[cfg(not(any(target_os = "windows")))]
     #[test]
     fn test_find_source_file_macos() {
+        use std::{thread, time::Duration};
+
         let temp_dir = tempdir().unwrap();
         let temp_path = temp_dir.path();
         assert!(temp_path.exists(), "Missing path: {}", temp_path.display());
@@ -429,6 +434,7 @@ mod tests {
             .join("Library/Application Support/Firefox/Profiles/profile1.default/bookmarkbackups");
         fs::create_dir_all(&bookmark_dir).unwrap();
         utils::create_file(&bookmark_dir.join("bookmarks1.jsonlz4")).unwrap();
+        thread::sleep(Duration::from_millis(10));
         utils::create_file(&bookmark_dir.join("bookmarks2.jsonlz4")).unwrap();
 
         let selector = FirefoxSelector;
