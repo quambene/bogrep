@@ -68,7 +68,7 @@ async fn test_fetch() {
     }
 
     // Truncate file and simulate change of source bookmarks.
-    let mut source_file = utils::open_and_truncate_file(&source_path).unwrap();
+    let mut source_file = utils::open_and_truncate_file(source_path).unwrap();
     for url in mocks.keys().take(1) {
         writeln!(source_file, "{}", url).unwrap();
     }
@@ -94,7 +94,7 @@ async fn test_fetch() {
     let mut bookmarks_before = bookmarks_before;
     bookmarks_before
         .bookmarks
-        .retain(|bookmark| !bookmarks_after.bookmarks.contains(&bookmark));
+        .retain(|bookmark| !bookmarks_after.bookmarks.contains(bookmark));
 
     // Bookmarks are removed from cache
     for bookmark in &bookmarks_before {

@@ -483,7 +483,7 @@ mod tests {
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::Fetch,
-            &vec!["https://url.com".to_owned()],
+            &["https://url.com".to_owned()],
             settings.max_concurrent_requests,
         )
         .unwrap();
