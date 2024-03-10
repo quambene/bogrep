@@ -6,6 +6,7 @@
   - Select sources for `bogrep configure` if no sources are configured
 - changed
   - Fix removing ignored urls
+  - Update dependencies
 - removed
 
 ### v0.8.1
