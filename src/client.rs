@@ -1,4 +1,4 @@
-use crate::{bookmarks::TargetBookmark, errors::BogrepError, Config};
+use crate::{bookmarks::TargetBookmark, errors::BogrepError, Settings};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -18,6 +18,29 @@ pub trait Fetch: Clone {
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError>;
 }
 
+#[derive(Debug, Clone)]
+pub struct ClientConfig {
+    /// The request timeout in milliseconds.
+    pub request_timeout: u64,
+    /// The throttling between requests in milliseconds.
+    pub request_throttling: u64,
+    /// The maximum number of idle connections allowed in the connection pool.
+    pub max_idle_connections_per_host: usize,
+    /// The timeout for idle connections to be kept alive in milliseconds.
+    pub idle_connections_timeout: u64,
+}
+
+impl ClientConfig {
+    pub fn new(settings: &Settings) -> Self {
+        Self {
+            request_timeout: settings.request_timeout,
+            request_throttling: settings.request_throttling,
+            max_idle_connections_per_host: settings.max_idle_connections_per_host,
+            idle_connections_timeout: settings.idle_connections_timeout,
+        }
+    }
+}
+
 /// A client to fetch websites.
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -26,18 +49,16 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(config: &Config) -> Result<Self, BogrepError> {
-        let request_timeout = config.settings.request_timeout;
-        let request_throttling = config.settings.request_throttling;
+    pub fn new(config: &ClientConfig) -> Result<Self, BogrepError> {
+        let request_timeout = config.request_timeout;
+        let request_throttling = config.request_throttling;
         let client = ReqwestClient::builder()
             .timeout(Duration::from_millis(request_timeout))
             // Fix "Too many open files" and DNS errors (rate limit for DNS
             // server) by choosing a sensible value for `pool_idle_timeout()`
             // and `pool_max_idle_per_host()`.
-            .pool_idle_timeout(Duration::from_millis(
-                config.settings.idle_connections_timeout,
-            ))
-            .pool_max_idle_per_host(config.settings.max_idle_connections_per_host)
+            .pool_idle_timeout(Duration::from_millis(config.idle_connections_timeout))
+            .pool_max_idle_per_host(config.max_idle_connections_per_host)
             .build()
             .map_err(BogrepError::CreateClient)?;
         let throttler = Some(Throttler::new(request_throttling));
@@ -48,7 +69,7 @@ impl Client {
 #[async_trait]
 impl Fetch for Client {
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError> {
-        debug!("Fetch bookmark ({})", bookmark.url);
+        debug!("Fetch bookmark ({})", bookmark.url());
 
         if let Some(throttler) = &self.throttler {
             throttler.throttle(bookmark).await?;
@@ -56,7 +77,7 @@ impl Fetch for Client {
 
         let response = self
             .client
-            .get(bookmark.url.clone())
+            .get(bookmark.url().to_owned())
             .send()
             .await
             .map_err(BogrepError::HttpResponse)?;
@@ -78,18 +99,18 @@ impl Fetch for Client {
                     if !html.is_empty() {
                         Ok(html)
                     } else {
-                        Err(BogrepError::EmptyResponse(bookmark.url.to_string()))
+                        Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
                     }
                 } else {
-                    Err(BogrepError::BinaryResponse(bookmark.url.to_string()))
+                    Err(BogrepError::BinaryResponse(bookmark.url().to_string()))
                 }
             } else {
-                Err(BogrepError::BinaryResponse(bookmark.url.to_string()))
+                Err(BogrepError::BinaryResponse(bookmark.url().to_string()))
             }
         } else {
             Err(BogrepError::HttpStatus {
                 status: response.status().to_string(),
-                url: bookmark.url.to_string(),
+                url: bookmark.url().to_string(),
             })
         }
     }
@@ -112,7 +133,7 @@ impl Throttler {
 
     /// Wait some time before fetching bookmarks for the same host to prevent rate limiting.
     pub async fn throttle(&self, bookmark: &TargetBookmark) -> Result<(), BogrepError> {
-        debug!("Throttle bookmark ({})", bookmark.url);
+        debug!("Throttle bookmark ({})", bookmark.url());
         let now = Utc::now();
 
         if let Some(last_fetched) = self.last_fetched(bookmark, now)? {
@@ -121,14 +142,14 @@ impl Throttler {
             if duration_since_last_fetched
                 < chrono::Duration::milliseconds(self.request_throttling as i64 / 2)
             {
-                debug!("Wait for bookmark ({})", bookmark.url);
+                debug!("Wait for bookmark ({})", bookmark.url());
                 time::sleep(Duration::from_millis(self.request_throttling)).await;
             } else if chrono::Duration::milliseconds(self.request_throttling as i64 / 2)
                 < duration_since_last_fetched
                 && duration_since_last_fetched
                     < chrono::Duration::milliseconds(self.request_throttling as i64)
             {
-                debug!("Wait for bookmark ({})", bookmark.url);
+                debug!("Wait for bookmark ({})", bookmark.url());
                 time::sleep(Duration::from_millis(self.request_throttling / 2)).await;
             }
         }
@@ -143,9 +164,9 @@ impl Throttler {
         now: DateTime<Utc>,
     ) -> Result<Option<DateTime<Utc>>, BogrepError> {
         let bookmark_host = bookmark
-            .url
+            .url()
             .host_str()
-            .ok_or(BogrepError::ConvertHost(bookmark.url.to_string()))?;
+            .ok_or(BogrepError::ConvertHost(bookmark.url().to_string()))?;
 
         let mut map = self.last_fetched.lock();
         let entry = map.entry(bookmark_host.to_string());
@@ -194,7 +215,7 @@ impl MockClient {
 impl Fetch for MockClient {
     async fn fetch(&self, bookmark: &TargetBookmark) -> Result<String, BogrepError> {
         let html = self
-            .get(&bookmark.url)
+            .get(bookmark.url())
             .ok_or(anyhow!("Can't fetch bookmark"))?;
         Ok(html)
     }
@@ -203,8 +224,6 @@ impl Fetch for MockClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bookmarks::Action;
-    use std::collections::HashSet;
     use tokio::time::Instant;
 
     #[tokio::test]
@@ -215,24 +234,8 @@ mod tests {
         let url1 = Url::parse("https://url/path1.com").unwrap();
         let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
-        let bookmark1 = TargetBookmark::new(
-            url1,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Action::None,
-        );
-        let bookmark2 = TargetBookmark::new(
-            url2,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Action::None,
-        );
+        let bookmark1 = TargetBookmark::new(url1, now);
+        let bookmark2 = TargetBookmark::new(url2, now);
 
         let start_instant = Instant::now();
         throttler.throttle(&bookmark1).await.unwrap();
@@ -253,24 +256,8 @@ mod tests {
         let url1 = Url::parse("https://url/path1.com").unwrap();
         let url2 = Url::parse("https://url/path2.com").unwrap();
         let throttler = Throttler::new(request_throttling);
-        let bookmark1 = TargetBookmark::new(
-            url1,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Action::None,
-        );
-        let bookmark2 = TargetBookmark::new(
-            url2,
-            None,
-            now,
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            Action::None,
-        );
+        let bookmark1 = TargetBookmark::new(url1, now);
+        let bookmark2 = TargetBookmark::new(url2, now);
 
         let last_fetched = throttler.last_fetched(&bookmark1, now).unwrap();
         assert!(last_fetched.is_none());

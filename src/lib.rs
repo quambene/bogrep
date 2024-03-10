@@ -48,13 +48,14 @@ pub mod test_utils;
 /// Utilities to work with files (create, open, read, write).
 pub mod utils;
 
-pub use args::{Args, ConfigArgs, FetchArgs, InitArgs, Subcommands};
+pub use args::{Args, ConfigArgs, FetchArgs, Subcommands};
 pub use bookmark_reader::{
     ChromiumReader, FirefoxReader, ReadBookmark, SafariReader, SimpleReader,
 };
 pub use bookmarks::{
-    Action, BookmarkProcessor, JsonBookmark, JsonBookmarks, ProcessReport, Source, SourceBookmark,
-    SourceBookmarks, SourceType, TargetBookmark, TargetBookmarks, UnderlyingType,
+    Action, BookmarkManager, BookmarkService, JsonBookmark, JsonBookmarks, RunMode, ServiceConfig,
+    ServiceReport, Source, SourceBookmark, SourceBookmarks, SourceType, Status, TargetBookmark,
+    TargetBookmarkBuilder, TargetBookmarks, UnderlyingType,
 };
 pub use cache::{Cache, CacheMode, Caching, MockCache};
 pub use client::{Client, Fetch, MockClient};

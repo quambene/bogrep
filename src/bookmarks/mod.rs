@@ -1,9 +1,11 @@
-mod bookmark_processor;
+mod bookmark_manager;
+mod bookmark_service;
 mod source_bookmarks;
 mod target_bookmarks;
 
-use crate::{bookmark_reader::SourceReader, CacheMode};
-pub use bookmark_processor::BookmarkProcessor;
+use crate::CacheMode;
+pub use bookmark_manager::BookmarkManager;
+pub use bookmark_service::{BookmarkService, ServiceConfig};
 use serde::{Deserialize, Serialize};
 pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
 use std::{
@@ -13,7 +15,7 @@ use std::{
     path::{Path, PathBuf},
     slice::Iter,
 };
-pub use target_bookmarks::{TargetBookmark, TargetBookmarks};
+pub use target_bookmarks::{TargetBookmark, TargetBookmarkBuilder, TargetBookmarks};
 use url::Url;
 use uuid::Uuid;
 
@@ -64,7 +66,19 @@ impl fmt::Display for SourceType {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Status {
+    /// Bookmark added to state.
+    Added,
+    /// Bookmark removed from state.
+    Removed,
+    None,
+}
+
 /// The action to be performed on the bookmark.
+///
+/// `Actions`s includes external resources, like cache and fetching bookmarks
+/// from the web.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Action {
     /// Fetch and cache the bookmark, even if it is cached already. The cached
@@ -72,10 +86,13 @@ pub enum Action {
     FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
     FetchAndAdd,
+    /// Fetch a bookmark and diff the fetched content with the cached content.#
+    FetchAndDiff,
+    /// Remove a bookmark from the cache.
     Remove,
     /// No actions to be performed.
     None,
-    /// Skip fetching and caching.
+    /// Skip fetching, caching, and writing to file.
     DryRun,
 }
 
@@ -102,6 +119,30 @@ impl From<&Url> for UnderlyingType {
             UnderlyingType::None
         }
     }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub enum RunMode {
+    /// Import bookmarks, but don't fetch them.
+    Import,
+    /// Add provided bookmark urls.
+    AddUrls(Vec<Url>),
+    /// Remove provided bookmark urls.
+    RemoveUrls(Vec<Url>),
+    /// Import and fetch provided bookmark urls.
+    FetchUrls(Vec<Url>),
+    /// Fetch new bookmarks.
+    Fetch,
+    /// Fetch all bookmarks.
+    FetchAll,
+    /// Fetch diff for provided bookmark urls.
+    FetchDiff(Vec<Url>),
+    /// Import bookmarks and fetch new bookmarks.
+    Update,
+    /// Run in dry mode.
+    DryRun,
+    #[default]
+    None,
 }
 
 /// The source of bookmarks.
@@ -149,7 +190,7 @@ impl Source {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, PartialEq, Deserialize)]
 pub struct JsonBookmark {
     pub id: String,
     pub url: String,
@@ -181,12 +222,12 @@ impl JsonBookmark {
 impl From<TargetBookmark> for JsonBookmark {
     fn from(value: TargetBookmark) -> Self {
         Self {
-            id: value.id,
-            url: value.url.to_string(),
-            last_imported: value.last_imported,
-            last_cached: value.last_cached,
-            sources: value.sources,
-            cache_modes: value.cache_modes,
+            id: value.id().to_owned(),
+            url: value.url().to_string(),
+            last_imported: value.last_imported(),
+            last_cached: value.last_cached(),
+            sources: value.sources().to_owned(),
+            cache_modes: value.cache_modes().to_owned(),
         }
     }
 }
@@ -194,17 +235,17 @@ impl From<TargetBookmark> for JsonBookmark {
 impl From<&TargetBookmark> for JsonBookmark {
     fn from(value: &TargetBookmark) -> Self {
         Self {
-            id: value.id.clone(),
-            url: value.url.to_string(),
-            last_imported: value.last_imported,
-            last_cached: value.last_cached,
-            sources: value.sources.clone(),
-            cache_modes: value.cache_modes.clone(),
+            id: value.id().to_owned(),
+            url: value.url().to_string(),
+            last_imported: value.last_imported(),
+            last_cached: value.last_cached(),
+            sources: value.sources().clone(),
+            cache_modes: value.cache_modes().clone(),
         }
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct JsonBookmarks {
     pub bookmarks: Vec<JsonBookmark>,
 }
@@ -253,7 +294,7 @@ impl From<&TargetBookmarks> for JsonBookmarks {
     fn from(target_bookmarks: &TargetBookmarks) -> Self {
         let mut bookmarks = target_bookmarks
             .values()
-            .filter(|bookmark| bookmark.action != Action::DryRun)
+            .filter(|bookmark| bookmark.action() != &Action::DryRun)
             .map(JsonBookmark::from)
             .collect::<Vec<_>>();
         bookmarks.sort_by(Self::compare);
@@ -293,70 +334,8 @@ impl<'a> Iterator for JsonBookmarksIterator<'a> {
     }
 }
 
-/// Summary of imported bookmarks.
-#[derive(Debug)]
-pub struct ImportReport {
-    import_count: usize,
-    source_count: usize,
-    sources: String,
-    dry_run: bool,
-}
-
-impl ImportReport {
-    pub fn new(
-        source_reader: &[SourceReader],
-        target_bookmarks: &TargetBookmarks,
-        dry_run: bool,
-    ) -> Self {
-        let import_count = target_bookmarks
-            .values()
-            .filter(|bookmark| {
-                bookmark.action == Action::FetchAndReplace
-                    || bookmark.action == Action::FetchAndAdd
-                    || bookmark.action == Action::DryRun
-            })
-            .collect::<Vec<_>>()
-            .len();
-        let source_count = source_reader.len();
-        let sources = source_reader
-            .iter()
-            .map(|source_reader| source_reader.source().path.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        Self {
-            import_count,
-            source_count,
-            sources,
-            dry_run,
-        }
-    }
-
-    pub fn print(&self) {
-        let import_count = self.import_count;
-        let source_count = self.source_count;
-        let sources = &self.sources;
-        let source_str = if self.source_count == 1 {
-            "source"
-        } else {
-            "sources"
-        };
-        let dry_run_str = if self.dry_run { " (dry run)" } else { "" };
-
-        if self.source_count == 0 {
-            println!(
-                "Imported {import_count} bookmarks from {source_count} {source_str}{dry_run_str}"
-            );
-        } else {
-            println!(
-                "Imported {import_count} bookmarks from {source_count} {source_str}{dry_run_str}: {sources}",
-            );
-        }
-    }
-}
-
 #[derive(Debug, Default)]
-pub struct ProcessReport {
+pub struct ServiceReport {
     total: usize,
     processed: i32,
     cached: i32,
@@ -366,7 +345,7 @@ pub struct ProcessReport {
     dry_run: bool,
 }
 
-impl ProcessReport {
+impl ServiceReport {
     pub fn new(
         total: usize,
         processed: i32,

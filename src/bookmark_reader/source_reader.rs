@@ -32,6 +32,7 @@ impl SourceSelectors {
 }
 
 /// Reader for txt files.
+#[derive(Debug)]
 pub struct TextReader;
 
 impl ReadSource for TextReader {
@@ -52,6 +53,7 @@ impl ReadSource for TextReader {
 }
 
 /// Reader for json files.
+#[derive(Debug)]
 pub struct JsonReader;
 
 impl ReadSource for JsonReader {
@@ -74,6 +76,7 @@ impl ReadSource for JsonReader {
 }
 
 /// Reader for json files.
+#[derive(Debug)]
 pub struct JsonReaderNoExtension;
 
 impl ReadSource for JsonReaderNoExtension {
@@ -112,6 +115,7 @@ impl ReadSource for JsonReaderNoExtension {
 }
 
 /// Reader for compressed json files with a Firefox-specific, non-standard header.
+#[derive(Debug)]
 pub struct CompressedJsonReader;
 
 impl ReadSource for CompressedJsonReader {
@@ -137,6 +141,7 @@ impl ReadSource for CompressedJsonReader {
 }
 
 /// Reader for plist files in binary format.
+#[derive(Debug)]
 pub struct PlistReader;
 
 impl ReadSource for PlistReader {
@@ -173,6 +178,7 @@ impl ReadSource for PlistReader {
 
 /// A reader of source files to abstract the file system through the `Read`
 /// trait.
+#[derive(Debug)]
 pub struct SourceReader {
     source: Source,
     reader: Box<dyn SeekRead>,

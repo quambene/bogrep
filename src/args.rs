@@ -30,8 +30,6 @@ pub struct Args {
 pub enum Subcommands {
     /// Configure the source files to import the bookmarks.
     Config(ConfigArgs),
-    /// Import bookmarks, fetch bookmarks from url, and save fetched website in cache.
-    Init(InitArgs),
     /// Determine diff of source and target bookmarks. Fetch and cache websites
     /// for new bookmarks; delete cache for removed bookmarks.
     Update(UpdateArgs),
@@ -41,7 +39,7 @@ pub enum Subcommands {
     Fetch(FetchArgs),
     /// Clean up cache for removed bookmarks.
     Clean(CleanArgs),
-    /// Add a new bookmark.
+    /// Add a bookmark.
     Add(AddArgs),
     /// Remove a bookmark.
     Remove(RemoveArgs),
@@ -50,6 +48,9 @@ pub enum Subcommands {
 /// Describes the arguments for the `config` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct ConfigArgs {
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
     #[command(flatten)]
     pub set_source: SetSource,
     #[command(flatten)]
@@ -133,17 +134,6 @@ pub struct FetchArgs {
     pub dry_run: bool,
 }
 
-/// Describes the arguments for the `init` subcommand.
-#[derive(ClapArgs, Debug)]
-pub struct InitArgs {
-    /// Cache the fetched bookmarks as text, HTML or markdown file.
-    #[arg(short, long, value_enum)]
-    pub mode: Option<CacheMode>,
-    /// Run command in dry mode.
-    #[arg(short = 'n', long = "dry-run")]
-    pub dry_run: bool,
-}
-
 /// Describes the arguments for the `update` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct UpdateArgs {
@@ -174,6 +164,9 @@ pub struct AddArgs {
     /// Multiple URLs are separated by a whitespace.
     #[arg(num_args = 0.., value_name = "URLs", value_delimiter = ' ')]
     pub urls: Vec<String>,
+    /// Run command in dry mode.
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
 }
 
 /// Describes the arguments for the `remove` subcommand.

@@ -67,10 +67,10 @@ fn search_bookmarks(
 
             if matched_lines.len() == 1 {
                 matches += 1;
-                println!("Match in bookmark: {}", bookmark.url.to_string().blue());
+                println!("Match in bookmark: {}", bookmark.url().to_string().blue());
             } else if matched_lines.len() > 1 {
                 matches += 1;
-                println!("Matches in bookmark: {}", bookmark.url.to_string().blue());
+                println!("Matches in bookmark: {}", bookmark.url().to_string().blue());
             }
 
             if !args.files_with_matches {

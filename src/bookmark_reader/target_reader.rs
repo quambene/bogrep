@@ -35,7 +35,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
         .values()
         .filter_map(|bookmark| {
             if bookmark
-                .sources
+                .sources()
                 .iter()
                 .any(|source| matches!(source, SourceType::Underlying(_)))
             {
@@ -48,7 +48,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
 
     for underlying_bookmark in underlying_bookmarks {
         let underlying_source = underlying_bookmark
-            .sources
+            .sources()
             .iter()
             .find(|source| matches!(source, SourceType::Underlying(_)));
         let underlying_url = match underlying_source {
@@ -61,7 +61,7 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
 
         if let Some(underlying_url) = underlying_url {
             if let Some(bookmark) = target_bookmarks.get_mut(&underlying_url) {
-                bookmark.underlying_url = Some(underlying_bookmark.url.clone())
+                bookmark.set_underlying_url(underlying_bookmark.url().clone());
             }
         }
     }
@@ -72,37 +72,29 @@ fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), Bog
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Action, CacheMode, TargetBookmark, UnderlyingType};
+    use crate::{bookmarks::TargetBookmarkBuilder, CacheMode, UnderlyingType};
     use chrono::Utc;
-    use std::collections::HashSet;
 
     #[test]
     fn test_convert_underlyings() {
+        let now = Utc::now();
         let mut target_bookmarks = TargetBookmarks::default();
         let url1 = Url::parse("https://news.ycombinator.com/item?id=00000000").unwrap();
-        let underlying_url1 = None;
-        target_bookmarks.insert(TargetBookmark::new(
-            url1.clone(),
-            underlying_url1,
-            Utc::now(),
-            None,
-            HashSet::from_iter([SourceType::Internal]),
-            HashSet::from_iter([CacheMode::Text]),
-            Action::None,
-        ));
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url1.clone(), now)
+                .add_source(SourceType::Internal)
+                .add_cache_mode(CacheMode::Text)
+                .build(),
+        );
         let url2 = Url::parse("https://github.com/some_project").unwrap();
-        let underlying_url2 = None;
-        target_bookmarks.insert(TargetBookmark::new(
-            url2.clone(),
-            underlying_url2,
-            Utc::now(),
-            None,
-            HashSet::from_iter([SourceType::Underlying(
-                "https://news.ycombinator.com/item?id=00000000".to_owned(),
-            )]),
-            HashSet::from_iter([CacheMode::Text]),
-            Action::None,
-        ));
+        target_bookmarks.insert(
+            TargetBookmarkBuilder::new(url2.clone(), now)
+                .add_source(SourceType::Underlying(
+                    "https://news.ycombinator.com/item?id=00000000".to_owned(),
+                ))
+                .add_cache_mode(CacheMode::Text)
+                .build(),
+        );
 
         let res = convert_underlyings(&mut target_bookmarks);
         assert!(
@@ -112,10 +104,10 @@ mod tests {
         );
 
         let bookmark1 = target_bookmarks.get(&url1).unwrap();
-        assert_eq!(bookmark1.underlying_url, Some(url2.clone()));
-        assert_eq!(bookmark1.underlying_type, UnderlyingType::HackerNews);
+        assert_eq!(bookmark1.underlying_url(), Some(&url2));
+        assert_eq!(bookmark1.underlying_type(), &UnderlyingType::HackerNews);
         let bookmark2 = target_bookmarks.get(&url2).unwrap();
-        assert!(bookmark2.underlying_url.is_none());
-        assert_eq!(bookmark2.underlying_type, UnderlyingType::None);
+        assert!(bookmark2.underlying_url().is_none());
+        assert_eq!(bookmark2.underlying_type(), &UnderlyingType::None);
     }
 }

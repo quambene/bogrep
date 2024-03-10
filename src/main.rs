@@ -20,7 +20,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             }
 
-            Err(anyhow!("Aborting ..."))
+            println!("Aborting ...");
+            Ok(())
         },
         res = run_app(args, config) => {
             res
@@ -32,16 +33,9 @@ async fn run_app(args: Args, config: Config) -> Result<(), anyhow::Error> {
     if let Some(subcommands) = args.subcommands {
         match subcommands {
             Subcommands::Config(args) => cmd::configure(config, args)?,
-            Subcommands::Import(args) => cmd::import(config, args)?,
-            Subcommands::Init(args) => cmd::init(&config, &args).await?,
+            Subcommands::Import(args) => cmd::import(config, args).await?,
             Subcommands::Update(args) => cmd::update(&config, &args).await?,
-            Subcommands::Fetch(args) => {
-                if !args.diff.is_empty() {
-                    cmd::fetch_diff(&config, args).await?;
-                } else {
-                    cmd::fetch(&config, &args).await?;
-                }
-            }
+            Subcommands::Fetch(args) => cmd::fetch(&config, &args).await?,
             Subcommands::Clean(args) => cmd::clean(&config, &args).await?,
             Subcommands::Add(args) => cmd::add(config, args).await?,
             Subcommands::Remove(args) => cmd::remove(config, args).await?,
