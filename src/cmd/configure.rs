@@ -147,16 +147,57 @@ pub fn configure_sources(
         );
     }
 
-    let selected_sources = selected_indices
-        .iter()
-        .filter_map(|&i| sources.get(i - 1))
+    let mut selected_sources = selected_indices
+        .into_iter()
+        .filter_map(|i| sources.get(i - 1).cloned())
         .collect::<Vec<_>>();
 
-    for source in selected_sources {
+    println!("Select bookmark folders for source: folder names separated by whitespaces, or press enter to select all folders");
+
+    for source in selected_sources.iter_mut() {
+        configure_source_folders(source)?;
         config.settings.sources.push(source.to_owned());
     }
 
     Ok(())
+}
+
+fn configure_source_folders(source: &mut RawSource) -> Result<(), anyhow::Error> {
+    println!("Select folders for source: {}", source.path.display());
+
+    let selected_folders = loop {
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_lowercase();
+        match select_source_folders_from_input(&input) {
+            Ok(selected_fodlers) => {
+                break selected_fodlers
+                    .into_iter()
+                    .map(|folder| folder.to_owned())
+                    .collect();
+            }
+            Err(_) => {
+                println!("Invalid input. Please try again");
+                continue;
+            }
+        }
+    };
+
+    source.folders = selected_folders;
+
+    Ok(())
+}
+
+fn select_source_folders_from_input(input: &str) -> Result<Vec<&str>, BogrepError> {
+    let choices: Vec<&str> = input.split_whitespace().collect();
+
+    if choices.is_empty() {
+        println!("Selecting all folders");
+    } else {
+        println!("Selected folders: {:?}", choices)
+    }
+
+    Ok(choices)
 }
 
 fn select_sources_from_input(
