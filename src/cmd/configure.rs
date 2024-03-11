@@ -171,10 +171,7 @@ fn configure_source_folders(source: &mut RawSource) -> Result<(), anyhow::Error>
         let input = input.trim().to_lowercase();
         match select_source_folders_from_input(&input) {
             Ok(selected_fodlers) => {
-                break selected_fodlers
-                    .into_iter()
-                    .map(|folder| folder.to_owned())
-                    .collect();
+                break selected_fodlers;
             }
             Err(_) => {
                 println!("Invalid input. Please try again");
@@ -188,7 +185,7 @@ fn configure_source_folders(source: &mut RawSource) -> Result<(), anyhow::Error>
     Ok(())
 }
 
-fn select_source_folders_from_input(input: &str) -> Result<Vec<&str>, BogrepError> {
+fn select_source_folders_from_input(input: &str) -> Result<Vec<String>, BogrepError> {
     let choices: Vec<&str> = input.split_whitespace().collect();
 
     if choices.is_empty() {
@@ -197,7 +194,10 @@ fn select_source_folders_from_input(input: &str) -> Result<Vec<&str>, BogrepErro
         println!("Selected folders: {:?}", choices)
     }
 
-    Ok(choices)
+    Ok(choices
+        .into_iter()
+        .map(|folder| folder.trim().to_owned())
+        .collect())
 }
 
 fn select_sources_from_input(
@@ -248,6 +248,18 @@ fn select_sources_from_input(
 mod tests {
     use super::*;
     use std::{io::Cursor, path::PathBuf};
+
+    #[test]
+    fn test_select_source_folders_from_input() {
+        let selected_folders = select_source_folders_from_input("").unwrap();
+        assert_eq!(selected_folders, Vec::<String>::new());
+
+        let selected_folders = select_source_folders_from_input("dev science").unwrap();
+        assert_eq!(
+            selected_folders,
+            vec!["dev".to_owned(), "science".to_owned()]
+        );
+    }
 
     #[test]
     fn test_select_sources_from_input() {
