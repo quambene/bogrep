@@ -116,6 +116,10 @@ pub fn configure_sources(
 
     let mut selected_sources = configure_source_path(&sources)?;
 
+    if selected_sources.is_empty() {
+        return Ok(());
+    }
+
     println!("Select bookmark folders: yes (y), no (n), or folder names separated by whitespaces");
 
     for source in selected_sources.iter_mut() {
@@ -127,6 +131,7 @@ pub fn configure_sources(
             source.folders = folders;
             config.settings.sources.push(source.to_owned());
         } else {
+            config.settings.sources.clear();
             break;
         }
     }
