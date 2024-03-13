@@ -120,7 +120,7 @@ pub fn configure_sources(
         return Ok(());
     }
 
-    println!("Select bookmark folders: yes (y), no (n), or folder names separated by whitespaces");
+    println!("Select bookmark folders: yes (y), no (n), or specify folder names separated by whitespaces");
 
     for source in selected_sources.iter_mut() {
         println!("Select folders for source: {}", source.path.display());
@@ -132,6 +132,7 @@ pub fn configure_sources(
             config.settings.sources.push(source.to_owned());
         } else {
             config.settings.sources.clear();
+            println!("No folders selected. Aborting ...");
             break;
         }
     }
