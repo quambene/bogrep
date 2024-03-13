@@ -249,7 +249,7 @@ fn configure_source_folders() -> Result<Option<Vec<String>>, anyhow::Error> {
 fn select_source_folders_from_input(input: &str) -> Result<Option<Vec<String>>, BogrepError> {
     let choices: Vec<&str> = input.split_whitespace().collect();
 
-    if choices.len() == 0 {
+    if choices.is_empty() {
         Err(BogrepError::InvalidInput)
     } else if choices.len() == 1 {
         match choices[0] {
