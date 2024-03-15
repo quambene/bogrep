@@ -8,6 +8,7 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use log::{trace, warn};
+use std::collections::HashSet;
 use url::Url;
 
 #[derive(Debug)]
@@ -181,8 +182,15 @@ impl BookmarkManager {
 
         for source_bookmark in bookmarks_to_add {
             let url = Url::parse(source_bookmark.url())?;
+            let bookmark_sources = source_bookmark.sources();
+            let mut sources = HashSet::new();
+
+            for bookmark_source in bookmark_sources {
+                sources.insert(bookmark_source.source_type().to_owned());
+            }
+
             let target_bookmark = TargetBookmarkBuilder::new(url, now)
-                .with_sources(source_bookmark.sources().to_owned())
+                .with_sources(sources)
                 .build();
             self.target_bookmarks.upsert(target_bookmark);
         }
@@ -375,13 +383,13 @@ mod tests {
             (
                 url1.to_string(),
                 SourceBookmarkBuilder::new(url1.as_str())
-                    .add_source(&SourceType::Simple)
+                    .add_source_type(&SourceType::Simple)
                     .build(),
             ),
             (
                 url3.to_string(),
                 SourceBookmarkBuilder::new(url3.as_str())
-                    .add_source(&SourceType::Simple)
+                    .add_source_type(&SourceType::Simple)
                     .build(),
             ),
         ]));

@@ -1,5 +1,8 @@
 use super::{ReadBookmark, SelectSource, SourceOs};
-use crate::{bookmarks::SourceBookmarkBuilder, utils, Source, SourceBookmarks, SourceType};
+use crate::{
+    bookmarks::{BookmarkSource, SourceBookmarkBuilder},
+    utils, Source, SourceBookmarks, SourceType,
+};
 use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
@@ -153,15 +156,24 @@ impl FirefoxReader {
         Box::new(Self)
     }
 
-    fn select_bookmark(obj: &Map<String, Value>, source: &Source, bookmarks: &mut SourceBookmarks) {
+    fn select_bookmark(
+        obj: &Map<String, Value>,
+        source: &Source,
+        bookmarks: &mut SourceBookmarks,
+        bookmark_folder: &mut Option<String>,
+    ) {
         trace!("json object: {obj:#?}");
 
         if let Some(Value::String(type_value)) = obj.get("type") {
             if type_value == "text/x-moz-place" {
                 if let Some(Value::String(uri_value)) = obj.get("uri") {
                     if uri_value.contains("http") {
+                        let source = BookmarkSource::new(
+                            source.source_type.to_owned(),
+                            bookmark_folder.to_owned(),
+                        );
                         let source_bookmark = SourceBookmarkBuilder::new(uri_value)
-                            .add_source(&source.source_type)
+                            .add_source(source)
                             .build();
                         bookmarks.insert(source_bookmark);
                     }
@@ -171,10 +183,12 @@ impl FirefoxReader {
     }
 
     pub fn traverse_json(value: &Value, source: &Source, bookmarks: &mut SourceBookmarks) {
+        let mut bookmark_folder = None;
+
         match value {
             Value::Object(obj) => {
                 if source.folders.is_empty() {
-                    Self::select_bookmark(obj, source, bookmarks);
+                    Self::select_bookmark(obj, source, bookmarks, &mut bookmark_folder);
 
                     for (_, val) in obj {
                         Self::traverse_json(val, source, bookmarks);
@@ -183,9 +197,16 @@ impl FirefoxReader {
                     if let Some(Value::String(type_value)) = obj.get("type") {
                         if type_value == "text/x-moz-place-container" {
                             if let Some(Value::String(title_value)) = obj.get("title") {
+                                bookmark_folder = Some(title_value.to_owned());
+
                                 if source.folders.contains(title_value) {
                                     for (_, val) in obj {
-                                        Self::traverse_children(val, source, bookmarks);
+                                        Self::traverse_children(
+                                            val,
+                                            source,
+                                            bookmarks,
+                                            &mut bookmark_folder,
+                                        );
                                     }
                                 }
                             }
@@ -209,18 +230,23 @@ impl FirefoxReader {
         }
     }
 
-    fn traverse_children(value: &Value, source: &Source, bookmarks: &mut SourceBookmarks) {
+    fn traverse_children(
+        value: &Value,
+        source: &Source,
+        bookmarks: &mut SourceBookmarks,
+        bookmark_folder: &mut Option<String>,
+    ) {
         match value {
             Value::Object(obj) => {
-                Self::select_bookmark(obj, source, bookmarks);
+                Self::select_bookmark(obj, source, bookmarks, bookmark_folder);
 
                 for (_, val) in obj {
-                    Self::traverse_children(val, source, bookmarks);
+                    Self::traverse_children(val, source, bookmarks, bookmark_folder);
                 }
             }
             Value::Array(arr) => {
                 for val in arr {
-                    Self::traverse_children(val, source, bookmarks);
+                    Self::traverse_children(val, source, bookmarks, bookmark_folder);
                 }
             }
             Value::String(_) => (),
@@ -501,25 +527,25 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::Firefox)
+                        .add_source_type(&SourceType::Firefox)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::Firefox)
+                        .add_source_type(&SourceType::Firefox)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source(&SourceType::Firefox)
+                        .add_source_type(&SourceType::Firefox)
                         .build()
                 ),
                 (
                     url4.to_owned(),
                     SourceBookmarkBuilder::new(url4)
-                        .add_source(&SourceType::Firefox)
+                        .add_source_type(&SourceType::Firefox)
                         .build()
                 )
             ])
@@ -552,13 +578,19 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::Firefox)
+                        .add_source(BookmarkSource::new(
+                            SourceType::Firefox,
+                            Some("dev".to_owned())
+                        ))
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::Firefox)
+                        .add_source(BookmarkSource::new(
+                            SourceType::Firefox,
+                            Some("dev".to_owned())
+                        ))
                         .build()
                 ),
             ])

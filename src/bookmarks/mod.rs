@@ -7,7 +7,9 @@ use crate::CacheMode;
 pub use bookmark_manager::BookmarkManager;
 pub use bookmark_service::{BookmarkService, ServiceConfig};
 use serde::{Deserialize, Serialize};
-pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
+pub use source_bookmarks::{
+    BookmarkSource, SourceBookmark, SourceBookmarkBuilder, SourceBookmarks,
+};
 use std::{
     cmp::Ordering,
     collections::HashSet,

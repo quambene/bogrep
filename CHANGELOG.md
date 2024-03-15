@@ -4,6 +4,7 @@
 
 - added
   - Select sources for `bogrep configure` if no sources are configured
+  - Add bookmark folder to `SourceBookmark`
 - changed
   - Fix removing ignored urls
   - Update dependencies

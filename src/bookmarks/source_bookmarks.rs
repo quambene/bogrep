@@ -5,11 +5,30 @@ use std::collections::{
     HashMap, HashSet,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BookmarkSource {
+    source_type: SourceType,
+    source_folder: Option<String>,
+}
+
+impl BookmarkSource {
+    pub fn new(source_type: SourceType, source_folder: Option<String>) -> Self {
+        Self {
+            source_type,
+            source_folder,
+        }
+    }
+
+    pub fn source_type(&self) -> &SourceType {
+        &self.source_type
+    }
+}
+
 /// A bookmark from a specific source, like Firefox or Chrome.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceBookmark {
     url: String,
-    sources: HashSet<SourceType>,
+    sources: HashSet<BookmarkSource>,
 }
 
 impl SourceBookmark {
@@ -24,22 +43,22 @@ impl SourceBookmark {
         self.url.as_ref()
     }
 
-    pub fn sources(&self) -> &HashSet<SourceType> {
+    pub fn sources(&self) -> &HashSet<BookmarkSource> {
         &self.sources
     }
 
-    pub fn sources_owned(self) -> HashSet<SourceType> {
+    pub fn sources_owned(self) -> HashSet<BookmarkSource> {
         self.sources
     }
 
-    pub fn add_source(&mut self, source: SourceType) {
+    pub fn add_source(&mut self, source: BookmarkSource) {
         self.sources.insert(source);
     }
 }
 
 pub struct SourceBookmarkBuilder {
     url: String,
-    sources: HashSet<SourceType>,
+    sources: HashSet<BookmarkSource>,
 }
 
 impl SourceBookmarkBuilder {
@@ -50,7 +69,13 @@ impl SourceBookmarkBuilder {
         }
     }
 
-    pub fn add_source(mut self, source: &SourceType) -> Self {
+    pub fn add_source(mut self, source: BookmarkSource) -> Self {
+        self.sources.insert(source);
+        self
+    }
+
+    pub fn add_source_type(mut self, source_type: &SourceType) -> Self {
+        let source = BookmarkSource::new(source_type.to_owned(), None);
         self.sources.insert(source.to_owned());
         self
     }

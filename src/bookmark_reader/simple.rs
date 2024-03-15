@@ -55,7 +55,7 @@ impl<'a> ReadBookmark<'a> for SimpleReader {
 
             if !url.is_empty() {
                 let source_bookmark = SourceBookmarkBuilder::new(&url)
-                    .add_source(&source.source_type)
+                    .add_source_type(&source.source_type)
                     .build();
                 source_bookmarks.insert(source_bookmark);
             }
@@ -118,25 +118,25 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::Simple)
+                        .add_source_type(&SourceType::Simple)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::Simple)
+                        .add_source_type(&SourceType::Simple)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source(&SourceType::Simple)
+                        .add_source_type(&SourceType::Simple)
                         .build()
                 ),
                 (
                     url4.to_owned(),
                     SourceBookmarkBuilder::new(url4)
-                        .add_source(&SourceType::Simple)
+                        .add_source_type(&SourceType::Simple)
                         .build()
                 )
             ])

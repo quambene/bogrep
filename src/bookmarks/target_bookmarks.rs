@@ -394,8 +394,15 @@ impl TryFrom<SourceBookmarks> for TargetBookmarks {
 
         for source_bookmark in source_bookmarks.into_iter() {
             let url = Url::parse(&source_bookmark.0)?;
+            let bookmark_sources = source_bookmark.1.sources();
+            let mut sources = HashSet::new();
+
+            for bookmark_source in bookmark_sources {
+                sources.insert(bookmark_source.source_type().to_owned());
+            }
+
             let target_bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
-                .with_sources(source_bookmark.1.sources_owned())
+                .with_sources(sources)
                 .build();
             target_bookmarks.insert(target_bookmark);
         }

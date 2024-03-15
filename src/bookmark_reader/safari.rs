@@ -69,7 +69,7 @@ impl SafariReader {
                 if let Some(Value::String(url_value)) = obj.get("URLString") {
                     if url_value.contains("http") {
                         let source_bookmark = SourceBookmarkBuilder::new(url_value)
-                            .add_source(&source.source_type)
+                            .add_source_type(&source.source_type)
                             .build();
                         source_bookmarks.insert(source_bookmark);
                     }
@@ -327,19 +327,19 @@ mod test {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::Safari)
+                        .add_source_type(&SourceType::Safari)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::Safari)
+                        .add_source_type(&SourceType::Safari)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source(&SourceType::Safari)
+                        .add_source_type(&SourceType::Safari)
                         .build()
                 )
             ])
@@ -371,7 +371,7 @@ mod test {
             HashMap::from_iter([(
                 url1.to_owned(),
                 SourceBookmarkBuilder::new(url1)
-                    .add_source(&SourceType::Safari)
+                    .add_source_type(&SourceType::Safari)
                     .build()
             )])
         );
