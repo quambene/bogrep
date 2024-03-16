@@ -183,12 +183,12 @@ impl FirefoxReader {
     }
 
     pub fn traverse_json(value: &Value, source: &Source, bookmarks: &mut SourceBookmarks) {
-        let mut bookmark_folder = None;
+        let mut parent_folder = None;
 
         match value {
             Value::Object(obj) => {
                 if source.folders.is_empty() {
-                    Self::select_bookmark(obj, source, bookmarks, &mut bookmark_folder);
+                    Self::select_bookmark(obj, source, bookmarks, &mut parent_folder);
 
                     for (_, val) in obj {
                         Self::traverse_json(val, source, bookmarks);
@@ -197,7 +197,7 @@ impl FirefoxReader {
                     if let Some(Value::String(type_value)) = obj.get("type") {
                         if type_value == "text/x-moz-place-container" {
                             if let Some(Value::String(title_value)) = obj.get("title") {
-                                bookmark_folder = Some(title_value.to_owned());
+                                parent_folder = Some(title_value.to_owned());
 
                                 if source.folders.contains(title_value) {
                                     for (_, val) in obj {
@@ -205,7 +205,7 @@ impl FirefoxReader {
                                             val,
                                             source,
                                             bookmarks,
-                                            &mut bookmark_folder,
+                                            &mut parent_folder,
                                         );
                                     }
                                 }
@@ -234,19 +234,29 @@ impl FirefoxReader {
         value: &Value,
         source: &Source,
         bookmarks: &mut SourceBookmarks,
-        bookmark_folder: &mut Option<String>,
+        parent_folder: &mut Option<String>,
     ) {
+        let mut folder = None;
+
         match value {
             Value::Object(obj) => {
-                Self::select_bookmark(obj, source, bookmarks, bookmark_folder);
+                Self::select_bookmark(obj, source, bookmarks, parent_folder);
+
+                if let Some(Value::String(type_value)) = obj.get("type") {
+                    if type_value == "text/x-moz-place-container" {
+                        if let Some(Value::String(title_value)) = obj.get("title") {
+                            folder = Some(title_value.to_owned());
+                        }
+                    }
+                }
 
                 for (_, val) in obj {
-                    Self::traverse_children(val, source, bookmarks, bookmark_folder);
+                    Self::traverse_children(val, source, bookmarks, &mut folder);
                 }
             }
             Value::Array(arr) => {
                 for val in arr {
-                    Self::traverse_children(val, source, bookmarks, bookmark_folder);
+                    Self::traverse_children(val, source, bookmarks, parent_folder);
                 }
             }
             Value::String(_) => (),
@@ -589,7 +599,7 @@ mod tests {
                     SourceBookmarkBuilder::new(url2)
                         .add_source(BookmarkSource::new(
                             SourceType::Firefox,
-                            Some("dev".to_owned())
+                            Some("rust".to_owned())
                         ))
                         .build()
                 ),
