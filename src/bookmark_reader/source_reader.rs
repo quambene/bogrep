@@ -74,7 +74,7 @@ impl SourceReader {
     pub fn init(raw_source: &RawSource) -> Result<Self, anyhow::Error> {
         debug!("Init source: {raw_source:?}");
         let source_path = &raw_source.path;
-        let names = &raw_source.folders;
+        let folders = &raw_source.folders;
 
         if source_path.is_dir() {
             let source_selectors = SourceSelectors::new();
@@ -86,7 +86,7 @@ impl SourceReader {
 
                     if bookmarks_path.is_file() && source_selector.extension() == source_extension {
                         let source =
-                            Source::new(source_selector.name(), &bookmarks_path, names.clone());
+                            Source::new(source_selector.name(), &bookmarks_path, folders.clone());
                         let bookmark_file = utils::open_file(&bookmarks_path)?;
                         let reader = Box::new(bookmark_file);
                         let source_reader = Self::select(source_extension)?;
@@ -96,7 +96,7 @@ impl SourceReader {
             }
         } else if source_path.is_file() {
             let source_extension = source_path.extension().and_then(|path| path.to_str());
-            let source = Source::new(SourceType::Unknown, source_path, names.clone());
+            let source = Source::new(SourceType::Unknown, source_path, folders.clone());
             let bookmark_file = utils::open_file(&raw_source.path)?;
             let reader = Box::new(bookmark_file);
             let source_reader = Self::select(source_extension)?;
@@ -116,7 +116,7 @@ impl SourceReader {
     pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
         let raw_source = self.source().clone();
         let source_path = &raw_source.path;
-        let names = &raw_source.folders;
+        let folders = &raw_source.folders;
         let parsed_bookmarks = self.read_and_parse()?;
 
         match parsed_bookmarks {
@@ -124,7 +124,7 @@ impl SourceReader {
                 let bookmark_readers: Vec<TextBookmarkReader> = vec![SimpleReader::new()];
                 Self::import_by_source(
                     source_path,
-                    names,
+                    folders,
                     source_bookmarks,
                     parsed_bookmarks,
                     bookmark_readers,
@@ -135,7 +135,7 @@ impl SourceReader {
                     vec![FirefoxReader::new(), ChromiumReader::new()];
                 Self::import_by_source(
                     source_path,
-                    names,
+                    folders,
                     source_bookmarks,
                     parsed_bookmarks,
                     bookmark_readers,
@@ -145,7 +145,7 @@ impl SourceReader {
                 let bookmark_readers: Vec<PlistBookmarkReader> = vec![SafariReader::new()];
                 Self::import_by_source(
                     source_path,
-                    names,
+                    folders,
                     source_bookmarks,
                     parsed_bookmarks,
                     bookmark_readers,
@@ -166,7 +166,7 @@ impl SourceReader {
 
     fn import_by_source<P>(
         source_path: &Path,
-        names: &[String],
+        folders: &[String],
         source_bookmarks: &mut SourceBookmarks,
         parsed_bookmarks: P,
         bookmark_readers: Vec<BookmarkReader<P>>,
@@ -175,7 +175,7 @@ impl SourceReader {
             if let Some(source_type) =
                 bookmark_reader.select_source(source_path, &parsed_bookmarks)?
             {
-                let source = Source::new(source_type, source_path, names.to_vec());
+                let source = Source::new(source_type, source_path, folders.to_vec());
                 bookmark_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
                 break;
             }
@@ -251,8 +251,8 @@ mod tests {
     fn test_init_safari_binary() {
         let source_path = Path::new("test_data/bookmarks_safari_binary.plist");
         test_utils::create_binary_plist_file(source_path).unwrap();
-        let names = vec![];
-        let raw_source = RawSource::new(source_path, names);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -264,8 +264,8 @@ mod tests {
     #[test]
     fn test_init_safari_xml() {
         let source_path = Path::new("test_data/bookmarks_safari_xml.plist");
-        let names = vec![];
-        let raw_source = RawSource::new(source_path, names);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -277,8 +277,8 @@ mod tests {
     #[test]
     fn test_init_firefox() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
-        let names = vec![];
-        let raw_source = RawSource::new(source_path, names);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -291,8 +291,8 @@ mod tests {
     fn test_init_firefox_compressed() {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         test_utils::create_compressed_json_file(source_path).unwrap();
-        let names = vec![];
-        let raw_source = RawSource::new(source_path, names);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -304,8 +304,8 @@ mod tests {
     #[test]
     fn test_init_chrome() {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
-        let names = vec![];
-        let raw_source = RawSource::new(source_path, names);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -317,8 +317,8 @@ mod tests {
     #[test]
     fn test_init_chrome_no_extension() {
         let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
-        let names = vec![];
-        let raw_source = RawSource::new(source_path, names);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -330,8 +330,8 @@ mod tests {
     #[test]
     fn test_init_simple() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
-        let names = vec![];
-        let raw_source = RawSource::new(source_path, names);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
