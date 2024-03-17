@@ -1,3 +1,4 @@
+use super::SourceFolder;
 use crate::SourceType;
 use log::debug;
 use std::collections::{
@@ -10,6 +11,7 @@ use std::collections::{
 pub struct SourceBookmark {
     url: String,
     sources: HashSet<SourceType>,
+    folders: HashSet<SourceFolder>,
 }
 
 impl SourceBookmark {
@@ -17,6 +19,7 @@ impl SourceBookmark {
         SourceBookmarkBuilder {
             url: url.to_owned(),
             sources: HashSet::new(),
+            folders: HashSet::new(),
         }
     }
 
@@ -32,14 +35,27 @@ impl SourceBookmark {
         self.sources
     }
 
+    pub fn folders(&self) -> &HashSet<SourceFolder> {
+        &self.folders
+    }
+
+    pub fn folders_owned(self) -> HashSet<SourceFolder> {
+        self.folders
+    }
+
     pub fn add_source(&mut self, source: SourceType) {
         self.sources.insert(source);
+    }
+
+    pub fn add_folder(&mut self, source: SourceFolder) {
+        self.folders.insert(source);
     }
 }
 
 pub struct SourceBookmarkBuilder {
     url: String,
     sources: HashSet<SourceType>,
+    folders: HashSet<SourceFolder>,
 }
 
 impl SourceBookmarkBuilder {
@@ -47,11 +63,27 @@ impl SourceBookmarkBuilder {
         Self {
             url: url.to_owned(),
             sources: HashSet::new(),
+            folders: HashSet::new(),
         }
     }
 
-    pub fn add_source(mut self, source: &SourceType) -> Self {
-        self.sources.insert(source.to_owned());
+    pub fn add_source(mut self, source: SourceType) -> Self {
+        self.sources.insert(source);
+        self
+    }
+
+    pub fn add_folder(mut self, source: SourceType, name: impl Into<String>) -> Self {
+        let folder = SourceFolder::new(source, name.into());
+        self.folders.insert(folder);
+        self
+    }
+
+    pub fn add_folder_opt(mut self, source: SourceType, name: Option<impl Into<String>>) -> Self {
+        if let Some(name) = name {
+            let folder = SourceFolder::new(source, name.into());
+            self.folders.insert(folder);
+        }
+
         self
     }
 
@@ -59,6 +91,7 @@ impl SourceBookmarkBuilder {
         SourceBookmark {
             url: self.url,
             sources: self.sources,
+            folders: self.folders,
         }
     }
 }
@@ -99,6 +132,7 @@ impl SourceBookmarks {
     pub fn insert(&mut self, bookmark: SourceBookmark) {
         let url = &bookmark.url;
         let sources = bookmark.sources;
+        let folders = bookmark.folders;
         let entry = self.0.entry(url.to_owned());
 
         match entry {
@@ -110,11 +144,16 @@ impl SourceBookmarks {
                 for source in sources {
                     source_bookmark.add_source(source);
                 }
+
+                for folder in folders {
+                    source_bookmark.add_folder(folder);
+                }
             }
             Entry::Vacant(entry) => {
                 let source_bookmark = SourceBookmark {
                     url: url.to_owned(),
                     sources,
+                    folders,
                 };
                 entry.insert(source_bookmark);
             }

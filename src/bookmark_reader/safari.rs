@@ -1,5 +1,8 @@
 use super::{SelectSource, SourceOs};
-use crate::{bookmarks::SourceBookmarkBuilder, ReadBookmark, Source, SourceBookmarks, SourceType};
+use crate::{
+    bookmark_reader::plist_reader::traverse_plist, bookmarks::SourceBookmarkBuilder, ReadBookmark,
+    Source, SourceBookmarks, SourceType,
+};
 use log::{debug, trace};
 use plist::{Dictionary, Value};
 use std::path::{Path, PathBuf};
@@ -61,7 +64,12 @@ impl SafariReader {
         Box::new(Self)
     }
 
-    fn select_bookmark(obj: &Dictionary, source: &Source, source_bookmarks: &mut SourceBookmarks) {
+    fn select_bookmark(
+        obj: &Dictionary,
+        source: &Source,
+        source_bookmarks: &mut SourceBookmarks,
+        folder: &mut Option<String>,
+    ) {
         trace!("json object: {obj:#?}");
 
         if let Some(Value::String(type_value)) = obj.get("WebBookmarkType") {
@@ -69,7 +77,8 @@ impl SafariReader {
                 if let Some(Value::String(url_value)) = obj.get("URLString") {
                     if url_value.contains("http") {
                         let source_bookmark = SourceBookmarkBuilder::new(url_value)
-                            .add_source(&source.source_type)
+                            .add_source(source.source_type.to_owned())
+                            .add_folder_opt(source.source_type.to_owned(), folder.to_owned())
                             .build();
                         source_bookmarks.insert(source_bookmark);
                     }
@@ -78,72 +87,16 @@ impl SafariReader {
         }
     }
 
-    fn traverse_plist(value: &Value, source: &Source, source_bookmarks: &mut SourceBookmarks) {
-        match value {
-            Value::Dictionary(obj) => {
-                if source.folders.is_empty() {
-                    Self::select_bookmark(obj, source, source_bookmarks);
-
-                    for (_, val) in obj {
-                        Self::traverse_plist(val, source, source_bookmarks);
-                    }
-                } else {
-                    if let Some(Value::String(type_value)) = obj.get("WebBookmarkType") {
-                        if type_value == "WebBookmarkTypeList" {
-                            if let Some(Value::String(name_value)) = obj.get("Title") {
-                                if source.folders.contains(name_value) {
-                                    for (_, val) in obj {
-                                        Self::traverse_children(val, source, source_bookmarks);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    for (_, val) in obj {
-                        Self::traverse_plist(val, source, source_bookmarks);
-                    }
+    fn select_folder(obj: &Dictionary) -> Option<&String> {
+        if let Some(Value::String(type_value)) = obj.get("WebBookmarkType") {
+            if type_value == "WebBookmarkTypeList" {
+                if let Some(Value::String(title)) = obj.get("Title") {
+                    return Some(title);
                 }
             }
-            Value::Array(arr) => {
-                for val in arr {
-                    Self::traverse_plist(val, source, source_bookmarks);
-                }
-            }
-            Value::Boolean(_) => (),
-            Value::Data(_) => (),
-            Value::Date(_) => (),
-            Value::Real(_) => (),
-            Value::Integer(_) => (),
-            Value::String(_) => (),
-            Value::Uid(_) => (),
-            _ => (),
         }
-    }
 
-    fn traverse_children(value: &Value, source: &Source, source_bookmarks: &mut SourceBookmarks) {
-        match value {
-            Value::Dictionary(obj) => {
-                Self::select_bookmark(obj, source, source_bookmarks);
-
-                for (_, val) in obj {
-                    Self::traverse_children(val, source, source_bookmarks);
-                }
-            }
-            Value::Array(arr) => {
-                for val in arr {
-                    Self::traverse_children(val, source, source_bookmarks);
-                }
-            }
-            Value::Boolean(_) => (),
-            Value::Data(_) => (),
-            Value::Date(_) => (),
-            Value::Real(_) => (),
-            Value::Integer(_) => (),
-            Value::String(_) => (),
-            Value::Uid(_) => (),
-            _ => (),
-        }
+        None
     }
 }
 
@@ -174,7 +127,13 @@ impl<'a> ReadBookmark<'a> for SafariReader {
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Import bookmarks from {:#?}", self.name());
-        Self::traverse_plist(&parsed_bookmarks, source, source_bookmarks);
+        traverse_plist(
+            &parsed_bookmarks,
+            source,
+            source_bookmarks,
+            Self::select_bookmark,
+            Self::select_folder,
+        );
         Ok(())
     }
 }
@@ -183,7 +142,7 @@ impl<'a> ReadBookmark<'a> for SafariReader {
 mod test {
     use super::*;
     use crate::{
-        bookmark_reader::{source_reader::PlistReader, ParsedBookmarks, ReadSource, SourceReader},
+        bookmark_reader::{ParsedBookmarks, PlistReader, ReadSource, SourceReader},
         test_utils::{self, tests},
         utils,
     };
@@ -327,19 +286,19 @@ mod test {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::Safari)
+                        .add_source(SourceType::Safari)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::Safari)
+                        .add_source(SourceType::Safari)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source(&SourceType::Safari)
+                        .add_source(SourceType::Safari)
                         .build()
                 )
             ])
@@ -371,7 +330,8 @@ mod test {
             HashMap::from_iter([(
                 url1.to_owned(),
                 SourceBookmarkBuilder::new(url1)
-                    .add_source(&SourceType::Safari)
+                    .add_source(SourceType::Safari)
+                    .add_folder(SourceType::Safari, "Others")
                     .build()
             )])
         );

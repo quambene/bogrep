@@ -1,4 +1,4 @@
-use super::{Action, JsonBookmark, Status};
+use super::{Action, JsonBookmark, SourceFolder, Status};
 use crate::{cache::CacheMode, SourceBookmarks, SourceType, UnderlyingType};
 use chrono::{DateTime, Utc};
 use log::debug;
@@ -27,6 +27,8 @@ pub struct TargetBookmark {
     pub last_cached: Option<i64>,
     /// The source or sources this bookmark was imported from.
     pub sources: HashSet<SourceType>,
+    /// The folder locations from which this bookmark was imported.
+    pub source_folders: HashSet<SourceFolder>,
     /// The file format for the cached bookmark.
     pub cache_modes: HashSet<CacheMode>,
     /// The status of an imported bookmark.
@@ -60,6 +62,7 @@ impl TargetBookmark {
             last_imported: last_imported.timestamp_millis(),
             last_cached: None,
             sources: HashSet::new(),
+            source_folders: HashSet::new(),
             cache_modes: HashSet::new(),
             status: Status::None,
             action: Action::None,
@@ -158,6 +161,7 @@ pub struct TargetBookmarkBuilder {
     last_imported: DateTime<Utc>,
     last_cached: Option<DateTime<Utc>>,
     sources: HashSet<SourceType>,
+    source_folders: HashSet<SourceFolder>,
     cache_modes: HashSet<CacheMode>,
     status: Status,
     action: Action,
@@ -172,6 +176,7 @@ impl TargetBookmarkBuilder {
             last_imported,
             last_cached: None,
             sources: HashSet::new(),
+            source_folders: HashSet::new(),
             cache_modes: HashSet::new(),
             status: Status::None,
             action: Action::None,
@@ -190,6 +195,7 @@ impl TargetBookmarkBuilder {
             last_imported,
             last_cached: None,
             sources: HashSet::new(),
+            source_folders: HashSet::new(),
             cache_modes: HashSet::new(),
             status: Status::None,
             action: Action::None,
@@ -208,6 +214,11 @@ impl TargetBookmarkBuilder {
 
     pub fn with_sources(mut self, sources: HashSet<SourceType>) -> TargetBookmarkBuilder {
         self.sources = sources;
+        self
+    }
+
+    pub fn with_folders(mut self, folders: HashSet<SourceFolder>) -> TargetBookmarkBuilder {
+        self.source_folders = folders;
         self
     }
 
@@ -234,6 +245,7 @@ impl TargetBookmarkBuilder {
                 .last_cached
                 .map(|timestamp| timestamp.timestamp_millis()),
             sources: self.sources,
+            source_folders: self.source_folders,
             cache_modes: self.cache_modes,
             status: self.status,
             action: self.action,
@@ -256,6 +268,7 @@ impl TryFrom<JsonBookmark> for TargetBookmark {
             last_imported: value.last_imported,
             last_cached: value.last_cached,
             sources: value.sources,
+            source_folders: HashSet::new(),
             cache_modes: value.cache_modes,
             status: Status::None,
             action: Action::None,
@@ -394,8 +407,9 @@ impl TryFrom<SourceBookmarks> for TargetBookmarks {
 
         for source_bookmark in source_bookmarks.into_iter() {
             let url = Url::parse(&source_bookmark.0)?;
+            let sources = source_bookmark.1.sources_owned();
             let target_bookmark = TargetBookmarkBuilder::new(url.to_owned(), now)
-                .with_sources(source_bookmark.1.sources_owned())
+                .with_sources(sources)
                 .build();
             target_bookmarks.insert(target_bookmark);
         }
@@ -459,6 +473,7 @@ mod tests {
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
+                        source_folders: HashSet::new(),
                         cache_modes: HashSet::new(),
                         status: Status::None,
                         action: Action::None,
@@ -474,6 +489,7 @@ mod tests {
                         last_imported: 1694989714351,
                         last_cached: None,
                         sources: HashSet::new(),
+                        source_folders: HashSet::new(),
                         cache_modes: HashSet::new(),
                         status: Status::None,
                         action: Action::None,
@@ -507,6 +523,7 @@ mod tests {
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
+                    source_folders: HashSet::new(),
                     cache_modes: HashSet::new(),
                     status: Status::None,
                     action: Action::None,
@@ -522,6 +539,7 @@ mod tests {
                     last_imported: 1694989714351,
                     last_cached: None,
                     sources: HashSet::new(),
+                    source_folders: HashSet::new(),
                     cache_modes: HashSet::new(),
                     status: Status::None,
                     action: Action::None,

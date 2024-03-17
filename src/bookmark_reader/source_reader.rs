@@ -5,17 +5,14 @@ use super::{
     firefox::FirefoxSelector,
     safari::{PlistBookmarkReader, SafariSelector},
     simple::TextBookmarkReader,
-    BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks, ReadSource, SafariReader,
-    SeekRead, SimpleReader, SourceOs, SourceSelector,
+    BookmarkReader, ChromiumReader, CompressedJsonReader, FirefoxReader, JsonReader,
+    JsonReaderNoExtension, ParsedBookmarks, PlistReader, ReadSource, SafariReader, SeekRead,
+    SimpleReader, SourceOs, SourceSelector, TextReader,
 };
 use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::debug;
-use lz4::block;
-use std::{
-    io::{BufRead, BufReader, Cursor},
-    path::Path,
-};
+use std::path::Path;
 
 pub struct SourceSelectors([SourceSelector; 5]);
 
@@ -28,151 +25,6 @@ impl SourceSelectors {
             EdgeSelector::new(),
             SafariSelector::new(),
         ])
-    }
-}
-
-/// Reader for txt files.
-#[derive(Debug)]
-pub struct TextReader;
-
-impl ReadSource for TextReader {
-    fn extension(&self) -> Option<&str> {
-        Some("txt")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let buf_reader = BufReader::new(reader);
-        let lines = buf_reader.lines();
-        Ok(ParsedBookmarks::Text(lines))
-    }
-}
-
-/// Reader for json files.
-#[derive(Debug)]
-pub struct JsonReader;
-
-impl ReadSource for JsonReader {
-    fn extension(&self) -> Option<&str> {
-        Some("json")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let mut raw_bookmarks = Vec::new();
-        reader.read_to_end(&mut raw_bookmarks)?;
-
-        let parsed_bookmarks = serde_json::from_slice(&raw_bookmarks)?;
-        Ok(ParsedBookmarks::Json(parsed_bookmarks))
-    }
-}
-
-/// Reader for json files.
-#[derive(Debug)]
-pub struct JsonReaderNoExtension;
-
-impl ReadSource for JsonReaderNoExtension {
-    fn extension(&self) -> Option<&str> {
-        None
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        let mut raw_bookmarks = Vec::new();
-        reader.read_to_end(&mut raw_bookmarks)?;
-
-        let file_type = infer::get(&raw_bookmarks);
-        let mime_type = file_type.map(|file_type| file_type.mime_type());
-
-        debug!("Parse file with mime type {:?}", mime_type);
-
-        let parsed_bookmarks = match mime_type {
-            Some("text/plain") | Some("application/json") => {
-                serde_json::from_slice(&raw_bookmarks)?
-            }
-            Some(other) => return Err(anyhow!("File type {other} not supported")),
-            None => {
-                if let Ok(parsed_bookmarks) = serde_json::from_slice(&raw_bookmarks) {
-                    parsed_bookmarks
-                } else {
-                    return Err(anyhow!("File type not supported: {file_type:?}"));
-                }
-            }
-        };
-
-        Ok(ParsedBookmarks::Json(parsed_bookmarks))
-    }
-}
-
-/// Reader for compressed json files with a Firefox-specific, non-standard header.
-#[derive(Debug)]
-pub struct CompressedJsonReader;
-
-impl ReadSource for CompressedJsonReader {
-    fn extension(&self) -> Option<&str> {
-        Some("jsonlz4")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let mut compressed_data = Vec::new();
-        reader.read_to_end(&mut compressed_data)?;
-
-        // Skip the first 8 bytes: "mozLz40\0" (non-standard header)
-        let decompressed_data = block::decompress(&compressed_data[8..], None)?;
-
-        let parsed_bookmarks = serde_json::from_slice(&decompressed_data)?;
-        Ok(ParsedBookmarks::Json(parsed_bookmarks))
-    }
-}
-
-/// Reader for plist files in binary format.
-#[derive(Debug)]
-pub struct PlistReader;
-
-impl ReadSource for PlistReader {
-    fn extension(&self) -> Option<&str> {
-        Some("plist")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let mut raw_bookmarks = Vec::new();
-        reader.read_to_end(&mut raw_bookmarks)?;
-
-        let file_type = infer::get(&raw_bookmarks);
-        let mime_type = file_type.map(|file_type| file_type.mime_type());
-
-        debug!("Parse file with mime type {:?}", mime_type);
-
-        let parsed_bookmarks = match mime_type {
-            Some("text/xml") | Some("application/xml") => {
-                let cursor = Cursor::new(raw_bookmarks);
-                plist::Value::from_reader_xml(cursor)?
-            }
-            Some("application/octet-stream") | None => plist::from_bytes(&raw_bookmarks)?,
-            Some(other) => return Err(anyhow!("File type {other} not supported")),
-        };
-
-        Ok(ParsedBookmarks::Plist(parsed_bookmarks))
     }
 }
 
@@ -222,7 +74,7 @@ impl SourceReader {
     pub fn init(raw_source: &RawSource) -> Result<Self, anyhow::Error> {
         debug!("Init source: {raw_source:?}");
         let source_path = &raw_source.path;
-        let source_folders = &raw_source.folders;
+        let folders = &raw_source.folders;
 
         if source_path.is_dir() {
             let source_selectors = SourceSelectors::new();
@@ -233,11 +85,8 @@ impl SourceReader {
                         bookmarks_path.extension().and_then(|path| path.to_str());
 
                     if bookmarks_path.is_file() && source_selector.extension() == source_extension {
-                        let source = Source::new(
-                            source_selector.name(),
-                            &bookmarks_path,
-                            source_folders.clone(),
-                        );
+                        let source =
+                            Source::new(source_selector.name(), &bookmarks_path, folders.clone());
                         let bookmark_file = utils::open_file(&bookmarks_path)?;
                         let reader = Box::new(bookmark_file);
                         let source_reader = Self::select(source_extension)?;
@@ -247,7 +96,7 @@ impl SourceReader {
             }
         } else if source_path.is_file() {
             let source_extension = source_path.extension().and_then(|path| path.to_str());
-            let source = Source::new(SourceType::Unknown, source_path, source_folders.clone());
+            let source = Source::new(SourceType::Unknown, source_path, folders.clone());
             let bookmark_file = utils::open_file(&raw_source.path)?;
             let reader = Box::new(bookmark_file);
             let source_reader = Self::select(source_extension)?;
@@ -267,7 +116,7 @@ impl SourceReader {
     pub fn import(&mut self, source_bookmarks: &mut SourceBookmarks) -> Result<(), anyhow::Error> {
         let raw_source = self.source().clone();
         let source_path = &raw_source.path;
-        let source_folders = &raw_source.folders;
+        let folders = &raw_source.folders;
         let parsed_bookmarks = self.read_and_parse()?;
 
         match parsed_bookmarks {
@@ -275,7 +124,7 @@ impl SourceReader {
                 let bookmark_readers: Vec<TextBookmarkReader> = vec![SimpleReader::new()];
                 Self::import_by_source(
                     source_path,
-                    source_folders,
+                    folders,
                     source_bookmarks,
                     parsed_bookmarks,
                     bookmark_readers,
@@ -286,7 +135,7 @@ impl SourceReader {
                     vec![FirefoxReader::new(), ChromiumReader::new()];
                 Self::import_by_source(
                     source_path,
-                    source_folders,
+                    folders,
                     source_bookmarks,
                     parsed_bookmarks,
                     bookmark_readers,
@@ -296,7 +145,7 @@ impl SourceReader {
                 let bookmark_readers: Vec<PlistBookmarkReader> = vec![SafariReader::new()];
                 Self::import_by_source(
                     source_path,
-                    source_folders,
+                    folders,
                     source_bookmarks,
                     parsed_bookmarks,
                     bookmark_readers,
@@ -317,7 +166,7 @@ impl SourceReader {
 
     fn import_by_source<P>(
         source_path: &Path,
-        source_folders: &[String],
+        folders: &[String],
         source_bookmarks: &mut SourceBookmarks,
         parsed_bookmarks: P,
         bookmark_readers: Vec<BookmarkReader<P>>,
@@ -326,7 +175,7 @@ impl SourceReader {
             if let Some(source_type) =
                 bookmark_reader.select_source(source_path, &parsed_bookmarks)?
             {
-                let source = Source::new(source_type, source_path, source_folders.to_vec());
+                let source = Source::new(source_type, source_path, folders.to_vec());
                 bookmark_reader.import(&source, parsed_bookmarks, source_bookmarks)?;
                 break;
             }
@@ -402,8 +251,8 @@ mod tests {
     fn test_init_safari_binary() {
         let source_path = Path::new("test_data/bookmarks_safari_binary.plist");
         test_utils::create_binary_plist_file(source_path).unwrap();
-        let source_folders = vec![];
-        let raw_source = RawSource::new(source_path, source_folders);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -415,8 +264,8 @@ mod tests {
     #[test]
     fn test_init_safari_xml() {
         let source_path = Path::new("test_data/bookmarks_safari_xml.plist");
-        let source_folders = vec![];
-        let raw_source = RawSource::new(source_path, source_folders);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -428,8 +277,8 @@ mod tests {
     #[test]
     fn test_init_firefox() {
         let source_path = Path::new("test_data/bookmarks_firefox.json");
-        let source_folders = vec![];
-        let raw_source = RawSource::new(source_path, source_folders);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -442,8 +291,8 @@ mod tests {
     fn test_init_firefox_compressed() {
         let source_path = Path::new("test_data/bookmarks_firefox.jsonlz4");
         test_utils::create_compressed_json_file(source_path).unwrap();
-        let source_folders = vec![];
-        let raw_source = RawSource::new(source_path, source_folders);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -455,8 +304,8 @@ mod tests {
     #[test]
     fn test_init_chrome() {
         let source_path = Path::new("test_data/bookmarks_chromium.json");
-        let source_folders = vec![];
-        let raw_source = RawSource::new(source_path, source_folders);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -468,8 +317,8 @@ mod tests {
     #[test]
     fn test_init_chrome_no_extension() {
         let source_path = Path::new("test_data/bookmarks_chromium_no_extension");
-        let source_folders = vec![];
-        let raw_source = RawSource::new(source_path, source_folders);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);
@@ -481,8 +330,8 @@ mod tests {
     #[test]
     fn test_init_simple() {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
-        let source_folders = vec![];
-        let raw_source = RawSource::new(source_path, source_folders);
+        let folders = vec![];
+        let raw_source = RawSource::new(source_path, folders);
         let source_reader = SourceReader::init(&raw_source).unwrap();
         let source = source_reader.source();
         assert_eq!(source.source_type, SourceType::Unknown);

@@ -1,5 +1,6 @@
 use super::{ReadBookmark, SelectSource, SourceOs};
 use crate::{
+    bookmark_reader::json_reader::traverse_json,
     bookmarks::{Source, SourceBookmarkBuilder},
     SourceBookmarks, SourceType,
 };
@@ -94,8 +95,9 @@ impl ChromiumReader {
 
     fn select_bookmark(
         obj: &Map<String, Value>,
-        source_bookmarks: &mut SourceBookmarks,
         source: &Source,
+        source_bookmarks: &mut SourceBookmarks,
+        folder: &mut Option<String>,
     ) {
         trace!("json object: {obj:#?}");
 
@@ -104,7 +106,8 @@ impl ChromiumReader {
                 if let Some(Value::String(url_value)) = obj.get("url") {
                     if url_value.contains("http") {
                         let source_bookmark = SourceBookmarkBuilder::new(url_value)
-                            .add_source(&source.source_type)
+                            .add_source(source.source_type.to_owned())
+                            .add_folder_opt(source.source_type.to_owned(), folder.to_owned())
                             .build();
                         source_bookmarks.insert(source_bookmark);
                     }
@@ -113,64 +116,16 @@ impl ChromiumReader {
         }
     }
 
-    fn traverse_json(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
-        match value {
-            Value::Object(obj) => {
-                if source.folders.is_empty() {
-                    Self::select_bookmark(obj, source_bookmarks, source);
-
-                    for (_, val) in obj {
-                        Self::traverse_json(source, val, source_bookmarks);
-                    }
-                } else {
-                    if let Some(Value::String(type_value)) = obj.get("type") {
-                        if type_value == "folder" {
-                            if let Some(Value::String(name_value)) = obj.get("name") {
-                                if source.folders.contains(name_value) {
-                                    for (_, val) in obj {
-                                        Self::traverse_children(source, val, source_bookmarks);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    for (_, val) in obj {
-                        Self::traverse_json(source, val, source_bookmarks);
-                    }
+    fn select_folder(obj: &Map<String, Value>) -> Option<&String> {
+        if let Some(Value::String(type_value)) = obj.get("type") {
+            if type_value == "folder" {
+                if let Some(Value::String(name)) = obj.get("name") {
+                    return Some(name);
                 }
             }
-            Value::Array(arr) => {
-                for val in arr {
-                    Self::traverse_json(source, val, source_bookmarks);
-                }
-            }
-            Value::String(_) => (),
-            Value::Number(_) => (),
-            Value::Bool(_) => (),
-            Value::Null => (),
         }
-    }
 
-    fn traverse_children(source: &Source, value: &Value, source_bookmarks: &mut SourceBookmarks) {
-        match value {
-            Value::Object(obj) => {
-                Self::select_bookmark(obj, source_bookmarks, source);
-
-                for (_, val) in obj {
-                    Self::traverse_children(source, val, source_bookmarks);
-                }
-            }
-            Value::Array(arr) => {
-                for val in arr {
-                    Self::traverse_children(source, val, source_bookmarks);
-                }
-            }
-            Value::String(_) => (),
-            Value::Number(_) => (),
-            Value::Bool(_) => (),
-            Value::Null => (),
-        }
+        None
     }
 }
 
@@ -225,7 +180,13 @@ impl<'a> ReadBookmark<'a> for ChromiumReader {
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Import bookmarks from {:#?}", self.name());
-        Self::traverse_json(source, &parsed_bookmarks, source_bookmarks);
+        traverse_json(
+            &parsed_bookmarks,
+            source,
+            source_bookmarks,
+            Self::select_bookmark,
+            Self::select_folder,
+        );
         Ok(())
     }
 }
@@ -235,8 +196,7 @@ mod tests {
     use super::*;
     use crate::{
         bookmark_reader::{
-            source_reader::{JsonReader, JsonReaderNoExtension},
-            ParsedBookmarks, ReadSource, SourceReader,
+            JsonReader, JsonReaderNoExtension, ParsedBookmarks, ReadSource, SourceReader,
         },
         test_utils::tests,
         utils,
@@ -388,25 +348,25 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url4.to_owned(),
                     SourceBookmarkBuilder::new(url4)
-                        .add_source(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 )
             ])
@@ -440,13 +400,15 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
+                        .add_folder(SourceType::ChromiumDerivative, "dev")
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
+                        .add_folder(SourceType::ChromiumDerivative, "rust")
                         .build()
                 ),
             ])

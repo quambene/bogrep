@@ -190,6 +190,27 @@ impl Source {
     }
 }
 
+/// The source folder of a bookmark.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SourceFolder {
+    source: SourceType,
+    name: String,
+}
+
+impl SourceFolder {
+    pub fn new(source: SourceType, name: String) -> Self {
+        Self { source, name }
+    }
+
+    pub fn source(&self) -> &SourceType {
+        &self.source
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 #[derive(Debug, Serialize, PartialEq, Deserialize)]
 pub struct JsonBookmark {
     pub id: String,
