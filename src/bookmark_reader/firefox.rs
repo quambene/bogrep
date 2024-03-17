@@ -1,5 +1,8 @@
 use super::{ReadBookmark, SelectSource, SourceOs};
-use crate::{bookmarks::SourceBookmarkBuilder, utils, Source, SourceBookmarks, SourceType};
+use crate::{
+    bookmark_reader::json_reader::traverse_json, bookmarks::SourceBookmarkBuilder, utils, Source,
+    SourceBookmarks, SourceType,
+};
 use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
@@ -157,7 +160,7 @@ impl FirefoxReader {
         obj: &Map<String, Value>,
         source: &Source,
         bookmarks: &mut SourceBookmarks,
-        bookmark_folder: &mut Option<String>,
+        folder: &mut Option<String>,
     ) {
         trace!("json object: {obj:#?}");
 
@@ -167,10 +170,7 @@ impl FirefoxReader {
                     if uri_value.contains("http") {
                         let source_bookmark = SourceBookmarkBuilder::new(uri_value)
                             .add_source(source.source_type.to_owned())
-                            .add_folder_opt(
-                                source.source_type.to_owned(),
-                                bookmark_folder.to_owned(),
-                            )
+                            .add_folder_opt(source.source_type.to_owned(), folder.to_owned())
                             .build();
                         bookmarks.insert(source_bookmark);
                     }
@@ -179,88 +179,16 @@ impl FirefoxReader {
         }
     }
 
-    pub fn traverse_json(value: &Value, source: &Source, bookmarks: &mut SourceBookmarks) {
-        let mut parent_folder = None;
-
-        match value {
-            Value::Object(obj) => {
-                if source.folders.is_empty() {
-                    Self::select_bookmark(obj, source, bookmarks, &mut parent_folder);
-
-                    for (_, val) in obj {
-                        Self::traverse_json(val, source, bookmarks);
-                    }
-                } else {
-                    if let Some(Value::String(type_value)) = obj.get("type") {
-                        if type_value == "text/x-moz-place-container" {
-                            if let Some(Value::String(title_value)) = obj.get("title") {
-                                parent_folder = Some(title_value.to_owned());
-
-                                if source.folders.contains(title_value) {
-                                    for (_, val) in obj {
-                                        Self::traverse_children(
-                                            val,
-                                            source,
-                                            bookmarks,
-                                            &mut parent_folder,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    for (_, val) in obj {
-                        Self::traverse_json(val, source, bookmarks);
-                    }
+    fn select_folder(obj: &Map<String, Value>) -> Option<&String> {
+        if let Some(Value::String(type_value)) = obj.get("type") {
+            if type_value == "text/x-moz-place-container" {
+                if let Some(Value::String(title)) = obj.get("title") {
+                    return Some(title);
                 }
             }
-            Value::Array(arr) => {
-                for val in arr {
-                    Self::traverse_json(val, source, bookmarks);
-                }
-            }
-            Value::String(_) => (),
-            Value::Number(_) => (),
-            Value::Bool(_) => (),
-            Value::Null => (),
         }
-    }
 
-    fn traverse_children(
-        value: &Value,
-        source: &Source,
-        bookmarks: &mut SourceBookmarks,
-        parent_folder: &mut Option<String>,
-    ) {
-        let mut folder = None;
-
-        match value {
-            Value::Object(obj) => {
-                Self::select_bookmark(obj, source, bookmarks, parent_folder);
-
-                if let Some(Value::String(type_value)) = obj.get("type") {
-                    if type_value == "text/x-moz-place-container" {
-                        if let Some(Value::String(title_value)) = obj.get("title") {
-                            folder = Some(title_value.to_owned());
-                        }
-                    }
-                }
-
-                for (_, val) in obj {
-                    Self::traverse_children(val, source, bookmarks, &mut folder);
-                }
-            }
-            Value::Array(arr) => {
-                for val in arr {
-                    Self::traverse_children(val, source, bookmarks, parent_folder);
-                }
-            }
-            Value::String(_) => (),
-            Value::Number(_) => (),
-            Value::Bool(_) => (),
-            Value::Null => (),
-        }
+        None
     }
 }
 
@@ -303,7 +231,13 @@ impl<'a> ReadBookmark<'a> for FirefoxReader {
         source_bookmarks: &mut SourceBookmarks,
     ) -> Result<(), anyhow::Error> {
         debug!("Import bookmarks from {:#?}", self.name());
-        Self::traverse_json(&parsed_bookmarks, source, source_bookmarks);
+        traverse_json(
+            &parsed_bookmarks,
+            source,
+            source_bookmarks,
+            Self::select_bookmark,
+            Self::select_folder,
+        );
         Ok(())
     }
 }
@@ -313,8 +247,7 @@ mod tests {
     use super::*;
     use crate::{
         bookmark_reader::{
-            source_reader::{CompressedJsonReader, JsonReader},
-            ParsedBookmarks, ReadSource, SourceReader,
+            CompressedJsonReader, JsonReader, ParsedBookmarks, ReadSource, SourceReader,
         },
         test_utils, utils,
     };

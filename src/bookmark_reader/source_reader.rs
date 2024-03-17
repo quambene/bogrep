@@ -5,17 +5,14 @@ use super::{
     firefox::FirefoxSelector,
     safari::{PlistBookmarkReader, SafariSelector},
     simple::TextBookmarkReader,
-    BookmarkReader, ChromiumReader, FirefoxReader, ParsedBookmarks, ReadSource, SafariReader,
-    SeekRead, SimpleReader, SourceOs, SourceSelector,
+    BookmarkReader, ChromiumReader, CompressedJsonReader, FirefoxReader, JsonReader,
+    JsonReaderNoExtension, ParsedBookmarks, PlistReader, ReadSource, SafariReader, SeekRead,
+    SimpleReader, SourceOs, SourceSelector, TextReader,
 };
 use crate::{bookmarks::RawSource, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::debug;
-use lz4::block;
-use std::{
-    io::{BufRead, BufReader, Cursor},
-    path::Path,
-};
+use std::path::Path;
 
 pub struct SourceSelectors([SourceSelector; 5]);
 
@@ -28,151 +25,6 @@ impl SourceSelectors {
             EdgeSelector::new(),
             SafariSelector::new(),
         ])
-    }
-}
-
-/// Reader for txt files.
-#[derive(Debug)]
-pub struct TextReader;
-
-impl ReadSource for TextReader {
-    fn extension(&self) -> Option<&str> {
-        Some("txt")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let buf_reader = BufReader::new(reader);
-        let lines = buf_reader.lines();
-        Ok(ParsedBookmarks::Text(lines))
-    }
-}
-
-/// Reader for json files.
-#[derive(Debug)]
-pub struct JsonReader;
-
-impl ReadSource for JsonReader {
-    fn extension(&self) -> Option<&str> {
-        Some("json")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let mut raw_bookmarks = Vec::new();
-        reader.read_to_end(&mut raw_bookmarks)?;
-
-        let parsed_bookmarks = serde_json::from_slice(&raw_bookmarks)?;
-        Ok(ParsedBookmarks::Json(parsed_bookmarks))
-    }
-}
-
-/// Reader for json files.
-#[derive(Debug)]
-pub struct JsonReaderNoExtension;
-
-impl ReadSource for JsonReaderNoExtension {
-    fn extension(&self) -> Option<&str> {
-        None
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        let mut raw_bookmarks = Vec::new();
-        reader.read_to_end(&mut raw_bookmarks)?;
-
-        let file_type = infer::get(&raw_bookmarks);
-        let mime_type = file_type.map(|file_type| file_type.mime_type());
-
-        debug!("Parse file with mime type {:?}", mime_type);
-
-        let parsed_bookmarks = match mime_type {
-            Some("text/plain") | Some("application/json") => {
-                serde_json::from_slice(&raw_bookmarks)?
-            }
-            Some(other) => return Err(anyhow!("File type {other} not supported")),
-            None => {
-                if let Ok(parsed_bookmarks) = serde_json::from_slice(&raw_bookmarks) {
-                    parsed_bookmarks
-                } else {
-                    return Err(anyhow!("File type not supported: {file_type:?}"));
-                }
-            }
-        };
-
-        Ok(ParsedBookmarks::Json(parsed_bookmarks))
-    }
-}
-
-/// Reader for compressed json files with a Firefox-specific, non-standard header.
-#[derive(Debug)]
-pub struct CompressedJsonReader;
-
-impl ReadSource for CompressedJsonReader {
-    fn extension(&self) -> Option<&str> {
-        Some("jsonlz4")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let mut compressed_data = Vec::new();
-        reader.read_to_end(&mut compressed_data)?;
-
-        // Skip the first 8 bytes: "mozLz40\0" (non-standard header)
-        let decompressed_data = block::decompress(&compressed_data[8..], None)?;
-
-        let parsed_bookmarks = serde_json::from_slice(&decompressed_data)?;
-        Ok(ParsedBookmarks::Json(parsed_bookmarks))
-    }
-}
-
-/// Reader for plist files in binary format.
-#[derive(Debug)]
-pub struct PlistReader;
-
-impl ReadSource for PlistReader {
-    fn extension(&self) -> Option<&str> {
-        Some("plist")
-    }
-
-    fn read_and_parse<'a>(
-        &self,
-        reader: &'a mut dyn SeekRead,
-    ) -> Result<ParsedBookmarks<'a>, anyhow::Error> {
-        debug!("Read file with extension: {:?}", self.extension());
-
-        let mut raw_bookmarks = Vec::new();
-        reader.read_to_end(&mut raw_bookmarks)?;
-
-        let file_type = infer::get(&raw_bookmarks);
-        let mime_type = file_type.map(|file_type| file_type.mime_type());
-
-        debug!("Parse file with mime type {:?}", mime_type);
-
-        let parsed_bookmarks = match mime_type {
-            Some("text/xml") | Some("application/xml") => {
-                let cursor = Cursor::new(raw_bookmarks);
-                plist::Value::from_reader_xml(cursor)?
-            }
-            Some("application/octet-stream") | None => plist::from_bytes(&raw_bookmarks)?,
-            Some(other) => return Err(anyhow!("File type {other} not supported")),
-        };
-
-        Ok(ParsedBookmarks::Plist(parsed_bookmarks))
     }
 }
 

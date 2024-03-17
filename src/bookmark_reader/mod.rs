@@ -2,16 +2,21 @@ mod chrome;
 mod chromium;
 mod edge;
 mod firefox;
+mod json_reader;
+mod plist_reader;
 mod safari;
 mod simple;
 mod source_reader;
 mod target_reader;
 mod target_reader_writer;
 mod target_writer;
+mod text_reader;
 
 use crate::{Source, SourceBookmarks, SourceType};
 pub use chromium::ChromiumReader;
 pub use firefox::FirefoxReader;
+pub use json_reader::{CompressedJsonReader, JsonReader, JsonReaderNoExtension};
+pub use plist_reader::PlistReader;
 pub use safari::SafariReader;
 pub use simple::SimpleReader;
 pub use source_reader::SourceReader;
@@ -23,11 +28,12 @@ use std::{
 pub use target_reader::ReadTarget;
 pub use target_reader_writer::TargetReaderWriter;
 pub use target_writer::WriteTarget;
+pub use text_reader::TextReader;
 
 pub type SourceSelector = Box<dyn SelectSource>;
 pub type BookmarkReader<'a, P> = Box<dyn ReadBookmark<'a, ParsedValue = P>>;
 
-/// The supported operating system.
+/// The supported operating systems.
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum SourceOs {

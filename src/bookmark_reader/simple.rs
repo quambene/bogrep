@@ -69,7 +69,7 @@ impl<'a> ReadBookmark<'a> for SimpleReader {
 mod tests {
     use super::*;
     use crate::{
-        bookmark_reader::{source_reader::TextReader, ParsedBookmarks, ReadSource, SourceReader},
+        bookmark_reader::{ParsedBookmarks, ReadSource, SourceReader, TextReader},
         bookmarks::SourceBookmarkBuilder,
         utils,
     };
