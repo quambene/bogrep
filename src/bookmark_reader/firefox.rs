@@ -1,8 +1,5 @@
 use super::{ReadBookmark, SelectSource, SourceOs};
-use crate::{
-    bookmarks::{BookmarkSource, SourceBookmarkBuilder},
-    utils, Source, SourceBookmarks, SourceType,
-};
+use crate::{bookmarks::SourceBookmarkBuilder, utils, Source, SourceBookmarks, SourceType};
 use anyhow::anyhow;
 use log::{debug, trace};
 use serde_json::{Map, Value};
@@ -168,12 +165,12 @@ impl FirefoxReader {
             if type_value == "text/x-moz-place" {
                 if let Some(Value::String(uri_value)) = obj.get("uri") {
                     if uri_value.contains("http") {
-                        let source = BookmarkSource::new(
-                            source.source_type.to_owned(),
-                            bookmark_folder.to_owned(),
-                        );
                         let source_bookmark = SourceBookmarkBuilder::new(uri_value)
-                            .add_source(source)
+                            .add_source(source.source_type.to_owned())
+                            .add_folder_opt(
+                                source.source_type.to_owned(),
+                                bookmark_folder.to_owned(),
+                            )
                             .build();
                         bookmarks.insert(source_bookmark);
                     }
@@ -537,25 +534,25 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source_type(&SourceType::Firefox)
+                        .add_source(SourceType::Firefox)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source_type(&SourceType::Firefox)
+                        .add_source(SourceType::Firefox)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source_type(&SourceType::Firefox)
+                        .add_source(SourceType::Firefox)
                         .build()
                 ),
                 (
                     url4.to_owned(),
                     SourceBookmarkBuilder::new(url4)
-                        .add_source_type(&SourceType::Firefox)
+                        .add_source(SourceType::Firefox)
                         .build()
                 )
             ])
@@ -588,19 +585,15 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source(BookmarkSource::new(
-                            SourceType::Firefox,
-                            Some("dev".to_owned())
-                        ))
+                        .add_source(SourceType::Firefox)
+                        .add_folder(SourceType::Firefox, "dev")
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source(BookmarkSource::new(
-                            SourceType::Firefox,
-                            Some("rust".to_owned())
-                        ))
+                        .add_source(SourceType::Firefox)
+                        .add_folder(SourceType::Firefox, "rust")
                         .build()
                 ),
             ])

@@ -8,7 +8,6 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use log::{trace, warn};
-use std::collections::HashSet;
 use url::Url;
 
 #[derive(Debug)]
@@ -182,15 +181,9 @@ impl BookmarkManager {
 
         for source_bookmark in bookmarks_to_add {
             let url = Url::parse(source_bookmark.url())?;
-            let bookmark_sources = source_bookmark.sources();
-            let mut sources = HashSet::new();
-
-            for bookmark_source in bookmark_sources {
-                sources.insert(bookmark_source.source_type().to_owned());
-            }
-
             let target_bookmark = TargetBookmarkBuilder::new(url, now)
-                .with_sources(sources)
+                .with_sources(source_bookmark.sources().to_owned())
+                .with_folders(source_bookmark.folders().to_owned())
                 .build();
             self.target_bookmarks.upsert(target_bookmark);
         }
@@ -280,8 +273,8 @@ mod tests {
     fn test_import_source() {
         let now = Utc::now();
         let source_path = Path::new("test_data/bookmarks_simple.txt");
-        let source_folders = vec![];
-        let sources = vec![RawSource::new(source_path, source_folders)];
+        let folders = vec![];
+        let sources = vec![RawSource::new(source_path, folders)];
         let mut source_readers = sources
             .iter()
             .map(|source| SourceReader::init(source).unwrap())
@@ -383,13 +376,13 @@ mod tests {
             (
                 url1.to_string(),
                 SourceBookmarkBuilder::new(url1.as_str())
-                    .add_source_type(&SourceType::Simple)
+                    .add_source(SourceType::Simple)
                     .build(),
             ),
             (
                 url3.to_string(),
                 SourceBookmarkBuilder::new(url3.as_str())
-                    .add_source_type(&SourceType::Simple)
+                    .add_source(SourceType::Simple)
                     .build(),
             ),
         ]));

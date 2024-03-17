@@ -104,7 +104,7 @@ impl ChromiumReader {
                 if let Some(Value::String(url_value)) = obj.get("url") {
                     if url_value.contains("http") {
                         let source_bookmark = SourceBookmarkBuilder::new(url_value)
-                            .add_source_type(&source.source_type)
+                            .add_source(source.source_type.to_owned())
                             .build();
                         source_bookmarks.insert(source_bookmark);
                     }
@@ -388,25 +388,25 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source_type(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source_type(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url3.to_owned(),
                     SourceBookmarkBuilder::new(url3)
-                        .add_source_type(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url4.to_owned(),
                     SourceBookmarkBuilder::new(url4)
-                        .add_source_type(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 )
             ])
@@ -440,13 +440,13 @@ mod tests {
                 (
                     url1.to_owned(),
                     SourceBookmarkBuilder::new(url1)
-                        .add_source_type(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
                 (
                     url2.to_owned(),
                     SourceBookmarkBuilder::new(url2)
-                        .add_source_type(&SourceType::ChromiumDerivative)
+                        .add_source(SourceType::ChromiumDerivative)
                         .build()
                 ),
             ])

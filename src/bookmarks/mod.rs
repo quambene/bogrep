@@ -7,9 +7,7 @@ use crate::CacheMode;
 pub use bookmark_manager::BookmarkManager;
 pub use bookmark_service::{BookmarkService, ServiceConfig};
 use serde::{Deserialize, Serialize};
-pub use source_bookmarks::{
-    BookmarkSource, SourceBookmark, SourceBookmarkBuilder, SourceBookmarks,
-};
+pub use source_bookmarks::{SourceBookmark, SourceBookmarkBuilder, SourceBookmarks};
 use std::{
     cmp::Ordering,
     collections::HashSet,
@@ -189,6 +187,27 @@ impl Source {
             path: path.to_owned(),
             folders,
         }
+    }
+}
+
+/// The source folder of a bookmark.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SourceFolder {
+    source_type: SourceType,
+    name: String,
+}
+
+impl SourceFolder {
+    pub fn new(source_type: SourceType, name: String) -> Self {
+        Self { source_type, name }
+    }
+
+    pub fn source_type(&self) -> &SourceType {
+        &self.source_type
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
