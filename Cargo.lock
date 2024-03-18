@@ -223,7 +223,7 @@ checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
 
 [[package]]
 name = "bogrep"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "assert_cmd",

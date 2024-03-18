@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### v0.9.0
+
 - added
   - Select sources for `bogrep configure` if no sources are configured
   - Add bookmark folder to `SourceBookmark` and `TargetBookmark`
