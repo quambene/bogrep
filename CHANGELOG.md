@@ -9,6 +9,7 @@
   - Add bookmark folder to `SourceBookmark` and `TargetBookmark`
 - changed
   - Fix removing ignored urls
+  - Fix removed bookmarks in dry run
   - Update dependencies
 - removed
 
