@@ -128,6 +128,7 @@ pub fn configure_sources(
         let source_folders = configure_source_folders()?;
 
         if let Some(folders) = source_folders {
+            println!("Selected folders: {folders:?}");
             source.folders = folders;
             config.settings.sources.push(source.to_owned());
         } else {
