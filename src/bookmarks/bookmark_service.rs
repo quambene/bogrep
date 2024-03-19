@@ -173,9 +173,11 @@ where
                     .target_bookmarks_mut()
                     .set_action(&Action::FetchAndReplace);
             }
-            // Set dry mode at the end to overwrite all actions.
-            RunMode::DryRun => (),
-
+            RunMode::DryRun => {
+                bookmark_manager
+                    .target_bookmarks_mut()
+                    .set_action(&Action::None);
+            }
             RunMode::None => {
                 bookmark_manager
                     .target_bookmarks_mut()
@@ -184,9 +186,17 @@ where
         }
 
         for target_bookmark in bookmark_manager.target_bookmarks_mut().values_mut() {
-            match target_bookmark.status() {
-                Status::Removed => target_bookmark.set_action(Action::Remove),
-                Status::Added | Status::None => (),
+            if self.config.run_mode != RunMode::DryRun {
+                match target_bookmark.status() {
+                    Status::Removed => target_bookmark.set_action(Action::Remove),
+                    Status::Added | Status::None => (),
+                }
+            } else {
+                match target_bookmark.status() {
+                    Status::Removed => target_bookmark.set_action(Action::DryRun),
+                    Status::Added => target_bookmark.set_action(Action::DryRun),
+                    Status::None => (),
+                }
             }
         }
 
@@ -198,14 +208,13 @@ where
 
             for bookmark in ignored_bookmarks {
                 bookmark.set_status(Status::Removed);
-                bookmark.set_action(Action::Remove);
-            }
-        }
 
-        if self.config.run_mode() == &RunMode::DryRun {
-            bookmark_manager
-                .target_bookmarks_mut()
-                .set_action(&Action::DryRun);
+                if self.config.run_mode != RunMode::DryRun {
+                    bookmark.set_action(Action::Remove);
+                } else {
+                    bookmark.set_action(Action::DryRun);
+                }
+            }
         }
 
         Ok(())
@@ -456,6 +465,7 @@ mod tests {
     fn create_mock_manager(urls: &[Url], status: &[Status]) -> BookmarkManager {
         let now = Utc::now();
         let mut bookmark_manager = BookmarkManager::default();
+
         bookmark_manager.target_bookmarks_mut().insert(
             TargetBookmark::builder_with_id(
                 "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
@@ -477,6 +487,19 @@ mod tests {
             .build(),
         );
 
+        if urls.len() == 3 {
+            bookmark_manager.target_bookmarks_mut().insert(
+                TargetBookmark::builder_with_id(
+                    "a4d8f19b-92c1-4e68-a6e9-7d60b54024bc".to_owned(),
+                    urls[2].to_owned(),
+                    now,
+                )
+                .with_status(status[2].clone())
+                .with_action(Action::None)
+                .build(),
+            );
+        }
+
         bookmark_manager
     }
 
@@ -485,7 +508,8 @@ mod tests {
         let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
-        let urls = vec![url1, url2];
+        let url3 = Url::parse("https://url3.com").unwrap();
+        let urls = vec![url1.clone(), url2.clone(), url3.clone()];
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::Import,
@@ -493,7 +517,8 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls, &[Status::Added, Status::Removed]);
+        let mut bookmark_manager =
+            create_mock_manager(&urls, &[Status::Added, Status::Removed, Status::None]);
         let client = create_mock_client(&urls, "Test content");
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
@@ -501,12 +526,10 @@ mod tests {
         let res = service.set_actions(&mut bookmark_manager, now);
         assert!(res.is_ok());
 
-        let bookmarks = bookmark_manager
-            .target_bookmarks()
-            .values()
-            .collect::<Vec<_>>();
-        assert_eq!(bookmarks[0].action, Action::None);
-        assert_eq!(bookmarks[1].action, Action::Remove);
+        let bookmarks = bookmark_manager.target_bookmarks();
+        assert_eq!(bookmarks.get(&url1).unwrap().action, Action::None);
+        assert_eq!(bookmarks.get(&url2).unwrap().action, Action::Remove);
+        assert_eq!(bookmarks.get(&url3).unwrap().action, Action::None);
     }
 
     #[tokio::test]
@@ -514,7 +537,8 @@ mod tests {
         let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
-        let urls = vec![url1, url2];
+        let url3 = Url::parse("https://url3.com").unwrap();
+        let urls = vec![url1.clone(), url2.clone(), url3.clone()];
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::Fetch,
@@ -522,7 +546,8 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls, &[Status::Added, Status::Removed]);
+        let mut bookmark_manager =
+            create_mock_manager(&urls, &[Status::Added, Status::Removed, Status::None]);
         let client = create_mock_client(&urls, "Test content");
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
@@ -530,12 +555,10 @@ mod tests {
         let res = service.set_actions(&mut bookmark_manager, now);
         assert!(res.is_ok());
 
-        let bookmarks = bookmark_manager
-            .target_bookmarks()
-            .values()
-            .collect::<Vec<_>>();
-        assert_eq!(bookmarks[0].action, Action::FetchAndAdd);
-        assert_eq!(bookmarks[1].action, Action::Remove);
+        let bookmarks = bookmark_manager.target_bookmarks();
+        assert_eq!(bookmarks.get(&url1).unwrap().action, Action::FetchAndAdd);
+        assert_eq!(bookmarks.get(&url2).unwrap().action, Action::Remove);
+        assert_eq!(bookmarks.get(&url3).unwrap().action, Action::FetchAndAdd);
     }
 
     #[tokio::test]
@@ -543,7 +566,8 @@ mod tests {
         let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
-        let urls = vec![url1, url2];
+        let url3 = Url::parse("https://url3.com").unwrap();
+        let urls = vec![url1.clone(), url2.clone(), url3.clone()];
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::DryRun,
@@ -551,7 +575,8 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls, &[Status::Added, Status::Removed]);
+        let mut bookmark_manager =
+            create_mock_manager(&urls, &[Status::Added, Status::Removed, Status::None]);
         let client = create_mock_client(&urls, "Test content");
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
@@ -559,10 +584,10 @@ mod tests {
         let res = service.set_actions(&mut bookmark_manager, now);
         assert!(res.is_ok());
 
-        assert!(bookmark_manager
-            .target_bookmarks()
-            .values()
-            .all(|bookmark| bookmark.action == Action::DryRun));
+        let bookmarks = bookmark_manager.target_bookmarks();
+        assert_eq!(bookmarks.get(&url1).unwrap().action, Action::DryRun);
+        assert_eq!(bookmarks.get(&url2).unwrap().action, Action::DryRun);
+        assert_eq!(bookmarks.get(&url3).unwrap().action, Action::None);
     }
 
     #[tokio::test]
