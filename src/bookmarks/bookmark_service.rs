@@ -232,6 +232,10 @@ where
             .filter(|bookmark| bookmark.action() != &Action::None)
             .collect::<Vec<_>>();
 
+        if bookmarks.len() == 0 {
+            return Ok(());
+        }
+
         {
             let mut report = self.report.lock();
             report.set_total(bookmarks.len());
