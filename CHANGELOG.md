@@ -10,6 +10,7 @@
 - changed
   - Fix removing ignored urls
   - Fix removed bookmarks in dry run
+  - Fix processing report for underlyings
   - Update dependencies
 - removed
 

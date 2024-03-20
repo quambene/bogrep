@@ -231,6 +231,7 @@ where
 
         {
             let mut report = self.report.lock();
+            report.reset();
             report.set_total(bookmarks.len());
         }
 

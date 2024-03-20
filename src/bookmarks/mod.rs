@@ -424,6 +424,15 @@ impl ServiceReport {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.total = 0;
+        self.processed = 0;
+        self.cached = 0;
+        self.failed_response = 0;
+        self.binary_response = 0;
+        self.empty_response = 0;
+    }
+
     pub fn set_total(&mut self, total: usize) {
         self.total = total;
     }
