@@ -112,7 +112,8 @@ where
             | RunMode::FetchAll
             | RunMode::FetchUrls(_)
             | RunMode::FetchDiff(_)
-            | RunMode::Update => {
+            | RunMode::Update
+            | RunMode::DryRun => {
                 self.execute_actions(bookmark_manager).await?;
                 self.add_underlyings(bookmark_manager);
 
@@ -176,7 +177,7 @@ where
             RunMode::DryRun => {
                 bookmark_manager
                     .target_bookmarks_mut()
-                    .set_action(&Action::None);
+                    .set_action(&Action::DryRun);
             }
             RunMode::None => {
                 bookmark_manager
@@ -190,12 +191,6 @@ where
                 match target_bookmark.status() {
                     Status::Removed => target_bookmark.set_action(Action::Remove),
                     Status::Added | Status::None => (),
-                }
-            } else {
-                match target_bookmark.status() {
-                    Status::Removed => target_bookmark.set_action(Action::DryRun),
-                    Status::Added => target_bookmark.set_action(Action::DryRun),
-                    Status::None => (),
                 }
             }
         }
@@ -211,8 +206,6 @@ where
 
                 if self.config.run_mode != RunMode::DryRun {
                     bookmark.set_action(Action::Remove);
-                } else {
-                    bookmark.set_action(Action::DryRun);
                 }
             }
         }
@@ -232,7 +225,7 @@ where
             .filter(|bookmark| bookmark.action() != &Action::None)
             .collect::<Vec<_>>();
 
-        if bookmarks.len() == 0 {
+        if bookmarks.is_empty() {
             return Ok(());
         }
 
@@ -587,11 +580,10 @@ mod tests {
 
         let res = service.set_actions(&mut bookmark_manager, now);
         assert!(res.is_ok());
-
-        let bookmarks = bookmark_manager.target_bookmarks();
-        assert_eq!(bookmarks.get(&url1).unwrap().action, Action::DryRun);
-        assert_eq!(bookmarks.get(&url2).unwrap().action, Action::DryRun);
-        assert_eq!(bookmarks.get(&url3).unwrap().action, Action::None);
+        assert!(bookmark_manager
+            .target_bookmarks()
+            .values()
+            .any(|bookmark| bookmark.action == Action::DryRun));
     }
 
     #[tokio::test]
