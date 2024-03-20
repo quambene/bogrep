@@ -142,11 +142,11 @@ impl BookmarkManager {
         };
 
         if !added_bookmarks.is_empty() {
-            println!("Added {added_count} bookmarks");
+            println!("Added {added_count} bookmarks{dry_run_str}");
         }
 
         if !removed_bookmarks.is_empty() {
-            println!("Removed {removed_count} bookmarks");
+            println!("Removed {removed_count} bookmarks{dry_run_str}");
         }
 
         if added_bookmarks.is_empty() && removed_bookmarks.is_empty() {

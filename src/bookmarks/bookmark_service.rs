@@ -112,7 +112,8 @@ where
             | RunMode::FetchAll
             | RunMode::FetchUrls(_)
             | RunMode::FetchDiff(_)
-            | RunMode::Update => {
+            | RunMode::Update
+            | RunMode::DryRun => {
                 self.execute_actions(bookmark_manager).await?;
                 self.add_underlyings(bookmark_manager);
 
@@ -186,9 +187,11 @@ where
         }
 
         for target_bookmark in bookmark_manager.target_bookmarks_mut().values_mut() {
-            match target_bookmark.status() {
-                Status::Removed => target_bookmark.set_action(Action::Remove),
-                Status::Added | Status::None => (),
+            if self.config.run_mode != RunMode::DryRun {
+                match target_bookmark.status() {
+                    Status::Removed => target_bookmark.set_action(Action::Remove),
+                    Status::Added | Status::None => (),
+                }
             }
         }
 
@@ -200,7 +203,10 @@ where
 
             for bookmark in ignored_bookmarks {
                 bookmark.set_status(Status::Removed);
-                bookmark.set_action(Action::Remove);
+
+                if self.config.run_mode != RunMode::DryRun {
+                    bookmark.set_action(Action::Remove);
+                }
             }
         }
 
@@ -218,6 +224,10 @@ where
             .values_mut()
             .filter(|bookmark| bookmark.action() != &Action::None)
             .collect::<Vec<_>>();
+
+        if bookmarks.is_empty() {
+            return Ok(());
+        }
 
         {
             let mut report = self.report.lock();
@@ -449,15 +459,17 @@ mod tests {
         cache
     }
 
-    fn create_mock_manager(urls: &[Url]) -> BookmarkManager {
+    fn create_mock_manager(urls: &[Url], status: &[Status]) -> BookmarkManager {
         let now = Utc::now();
         let mut bookmark_manager = BookmarkManager::default();
+
         bookmark_manager.target_bookmarks_mut().insert(
             TargetBookmark::builder_with_id(
                 "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                 urls[0].to_owned(),
                 now,
             )
+            .with_status(status[0].clone())
             .with_action(Action::None)
             .build(),
         );
@@ -467,19 +479,119 @@ mod tests {
                 urls[1].to_owned(),
                 now,
             )
+            .with_status(status[1].clone())
             .with_action(Action::None)
             .build(),
         );
+
+        if urls.len() == 3 {
+            bookmark_manager.target_bookmarks_mut().insert(
+                TargetBookmark::builder_with_id(
+                    "a4d8f19b-92c1-4e68-a6e9-7d60b54024bc".to_owned(),
+                    urls[2].to_owned(),
+                    now,
+                )
+                .with_status(status[2].clone())
+                .with_action(Action::None)
+                .build(),
+            );
+        }
 
         bookmark_manager
     }
 
     #[tokio::test]
+    async fn test_set_actions_import() {
+        let now = Utc::now();
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let url3 = Url::parse("https://url3.com").unwrap();
+        let urls = vec![url1.clone(), url2.clone(), url3.clone()];
+        let settings = Settings::default();
+        let service_config = ServiceConfig::new(
+            RunMode::Import,
+            &settings.ignored_urls,
+            settings.max_concurrent_requests,
+        )
+        .unwrap();
+        let mut bookmark_manager =
+            create_mock_manager(&urls, &[Status::Added, Status::Removed, Status::None]);
+        let client = create_mock_client(&urls, "Test content");
+        let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
+        let service = BookmarkService::new(service_config, client, cache);
+
+        let res = service.set_actions(&mut bookmark_manager, now);
+        assert!(res.is_ok());
+
+        let bookmarks = bookmark_manager.target_bookmarks();
+        assert_eq!(bookmarks.get(&url1).unwrap().action, Action::None);
+        assert_eq!(bookmarks.get(&url2).unwrap().action, Action::Remove);
+        assert_eq!(bookmarks.get(&url3).unwrap().action, Action::None);
+    }
+
+    #[tokio::test]
+    async fn test_set_actions_fetch() {
+        let now = Utc::now();
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let url3 = Url::parse("https://url3.com").unwrap();
+        let urls = vec![url1.clone(), url2.clone(), url3.clone()];
+        let settings = Settings::default();
+        let service_config = ServiceConfig::new(
+            RunMode::Fetch,
+            &settings.ignored_urls,
+            settings.max_concurrent_requests,
+        )
+        .unwrap();
+        let mut bookmark_manager =
+            create_mock_manager(&urls, &[Status::Added, Status::Removed, Status::None]);
+        let client = create_mock_client(&urls, "Test content");
+        let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
+        let service = BookmarkService::new(service_config, client, cache);
+
+        let res = service.set_actions(&mut bookmark_manager, now);
+        assert!(res.is_ok());
+
+        let bookmarks = bookmark_manager.target_bookmarks();
+        assert_eq!(bookmarks.get(&url1).unwrap().action, Action::FetchAndAdd);
+        assert_eq!(bookmarks.get(&url2).unwrap().action, Action::Remove);
+        assert_eq!(bookmarks.get(&url3).unwrap().action, Action::FetchAndAdd);
+    }
+
+    #[tokio::test]
+    async fn test_set_actions_dry_run() {
+        let now = Utc::now();
+        let url1 = Url::parse("https://url1.com").unwrap();
+        let url2 = Url::parse("https://url2.com").unwrap();
+        let url3 = Url::parse("https://url3.com").unwrap();
+        let urls = vec![url1.clone(), url2.clone(), url3.clone()];
+        let settings = Settings::default();
+        let service_config = ServiceConfig::new(
+            RunMode::DryRun,
+            &settings.ignored_urls,
+            settings.max_concurrent_requests,
+        )
+        .unwrap();
+        let mut bookmark_manager =
+            create_mock_manager(&urls, &[Status::Added, Status::Removed, Status::None]);
+        let client = create_mock_client(&urls, "Test content");
+        let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
+        let service = BookmarkService::new(service_config, client, cache);
+
+        let res = service.set_actions(&mut bookmark_manager, now);
+        assert!(res.is_ok());
+        assert!(bookmark_manager
+            .target_bookmarks()
+            .values()
+            .any(|bookmark| bookmark.action == Action::DryRun));
+    }
+
+    #[tokio::test]
     async fn test_process_fetch_ignored_urls() {
+        let now = Utc::now();
         let url1 = Url::parse("https://url.com").unwrap();
         let url2 = Url::parse("https://url.com/endpoint").unwrap();
         let urls = vec![url1, url2];
-        let now = Utc::now();
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::Fetch,
@@ -487,7 +599,7 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls);
+        let mut bookmark_manager = create_mock_manager(&urls, &[Status::None, Status::None]);
         let client = create_mock_client(&urls, "Test content");
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
@@ -510,7 +622,7 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls);
+        let mut bookmark_manager = create_mock_manager(&urls, &[Status::None, Status::None]);
         let client = create_mock_client(&urls, "Test content");
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
@@ -538,10 +650,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_fetch_text() {
+        let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
         let urls = vec![url1, url2];
-        let now = Utc::now();
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::Fetch,
@@ -549,7 +661,7 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls);
+        let mut bookmark_manager = create_mock_manager(&urls, &[Status::None, Status::None]);
         let client = create_mock_client(&urls, "Test content");
         let cache = create_mock_cache(CacheMode::Text, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
@@ -577,10 +689,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_fetch_cached_html() {
+        let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
         let urls = vec![url1, url2];
-        let now = Utc::now();
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::Fetch,
@@ -588,7 +700,7 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls);
+        let mut bookmark_manager = create_mock_manager(&urls, &[Status::None, Status::None]);
         let client = create_mock_client(&urls, "Test content (fetched)");
         let cache = create_mock_cache(
             CacheMode::Html,
@@ -623,10 +735,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_fetch_cached_text() {
+        let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
         let urls = vec![url1, url2];
-        let now = Utc::now();
         let settings = Settings::default();
         let service_config = ServiceConfig::new(
             RunMode::Fetch,
@@ -634,7 +746,7 @@ mod tests {
             settings.max_concurrent_requests,
         )
         .unwrap();
-        let mut bookmark_manager = create_mock_manager(&urls);
+        let mut bookmark_manager = create_mock_manager(&urls, &[Status::None, Status::None]);
         let client = create_mock_client(&urls, "Test content (fetched)");
         let cache = create_mock_cache(
             CacheMode::Text,

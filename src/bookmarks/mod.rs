@@ -315,7 +315,13 @@ impl From<&TargetBookmarks> for JsonBookmarks {
     fn from(target_bookmarks: &TargetBookmarks) -> Self {
         let mut bookmarks = target_bookmarks
             .values()
-            .filter(|bookmark| bookmark.action() != &Action::DryRun)
+            .filter(|bookmark| {
+                if bookmark.action() == &Action::DryRun {
+                    bookmark.status() == &Status::None
+                } else {
+                    true
+                }
+            })
             .map(JsonBookmark::from)
             .collect::<Vec<_>>();
         bookmarks.sort_by(Self::compare);
