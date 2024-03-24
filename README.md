@@ -28,6 +28,7 @@ bogrep -i "reed-solomon code"
 - [Manage internal bookmarks](#manage-internal-bookmarks)
 - [Request throttling](#request-throttling)
 - [Supported operating systems](#supported-operating-systems)
+- [Troubleshooting](#troubleshooting)
 - [Testing](#testing)
 
 ## Install Bogrep
@@ -221,6 +222,18 @@ in your home directory for storing the `settings.json`, `bookmarks.json`, and
 
 You can configure the configuration path via the environment variable
 `BOGREP_HOME`.
+
+## Troubleshooting
+
+### Missing file permissions on macOS
+
+If file permissions are missing for Bogrep, allow CLI applications to access the
+filesystem in the System Preferences.
+
+### Missing search results
+
+The default bogrep search is case-sensitive. Try `bogrep -i` for
+case-insensitive search.
 
 ## Testing
 
