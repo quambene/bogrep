@@ -151,7 +151,7 @@ impl Caching for Cache {
     }
 
     fn exists(&self, bookmark: &TargetBookmark) -> bool {
-        bookmark.cache_modes().contains(self.mode())
+        bookmark.cache_modes().contains(self.mode()) && bookmark.last_cached.is_some()
     }
 
     fn open(&self, bookmark: &TargetBookmark) -> Result<Option<impl Read>, BogrepError> {

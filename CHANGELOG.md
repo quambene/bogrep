@@ -4,6 +4,7 @@
 
 - fixed
   - Fix throttling for fetched bookmarks
+  - Fix `Cache::exists`
 
 ### v0.9.0
 
