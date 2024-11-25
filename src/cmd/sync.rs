@@ -11,7 +11,7 @@ use log::debug;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
-pub async fn update(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
+pub async fn sync(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     if args.dry_run {

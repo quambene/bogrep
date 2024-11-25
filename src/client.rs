@@ -1,10 +1,16 @@
 use crate::{bookmarks::TargetBookmark, errors::BogrepError, Settings};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use log::debug;
 use parking_lot::Mutex;
-use reqwest::{Client as ReqwestClient, Url};
+use reqwest::{
+    header::{
+        HeaderMap, HeaderName, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
+        CACHE_CONTROL, CONNECTION, HOST, USER_AGENT,
+    },
+    Client as ReqwestClient, Url,
+};
 use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
@@ -74,6 +80,66 @@ impl Fetch for Client {
         if let Some(throttler) = &self.throttler {
             throttler.throttle(bookmark).await?;
         }
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            USER_AGENT,
+            HeaderValue::from_static(
+                "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
+            ),
+        );
+        headers.insert(
+            ACCEPT,
+            HeaderValue::from_static(
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            ),
+        );
+        headers.insert(
+            ACCEPT_LANGUAGE,
+            HeaderValue::from_static("en-US,en;q=0.7,de-DE;q=0.3"),
+        );
+        headers.insert(
+            ACCEPT_ENCODING,
+            HeaderValue::from_static("gzip,deflate,br,zstd"),
+        );
+        headers.insert(
+            HeaderName::from_static("sec-fetch-dest"),
+            HeaderValue::from_static("document"),
+        );
+        headers.insert(
+            HeaderName::from_static("sec-fetch-mode"),
+            HeaderValue::from_static("navigate"),
+        );
+        headers.insert(
+            HeaderName::from_static("sec-fetch-site"),
+            HeaderValue::from_static("none"),
+        );
+        headers.insert(
+            HeaderName::from_static("upgrade-insecure-requests"),
+            HeaderValue::from_static("1"),
+        );
+        headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+        headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
+        headers.insert(
+            HOST,
+            HeaderValue::from_str(
+                bookmark
+                    .url()
+                    .host()
+                    .context("Can't get host")?
+                    .to_string()
+                    .as_str(),
+            )
+            .context("Can't get host header")?,
+        );
+
+        let request = self.client.get(bookmark.url().to_owned()).headers(headers);
+
+        debug!(
+            "Fetch bookmark ({}) with request: {:#?}",
+            bookmark.url(),
+            request.build().unwrap()
+        );
 
         let response = self
             .client

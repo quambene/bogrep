@@ -34,7 +34,7 @@ async fn run_app(args: Args, config: Config) -> Result<(), anyhow::Error> {
         match subcommands {
             Subcommands::Config(args) => cmd::configure(config, args)?,
             Subcommands::Import(args) => cmd::import(config, args).await?,
-            Subcommands::Update(args) => cmd::update(&config, &args).await?,
+            Subcommands::Sync(args) => cmd::sync(&config, &args).await?,
             Subcommands::Fetch(args) => cmd::fetch(&config, &args).await?,
             Subcommands::Clean(args) => cmd::clean(&config, &args).await?,
             Subcommands::Add(args) => cmd::add(config, args).await?,

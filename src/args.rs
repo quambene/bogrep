@@ -30,9 +30,9 @@ pub struct Args {
 pub enum Subcommands {
     /// Configure the source files to import the bookmarks.
     Config(ConfigArgs),
-    /// Determine diff of source and target bookmarks. Fetch and cache websites
-    /// for new bookmarks; delete cache for removed bookmarks.
-    Update(UpdateArgs),
+    /// Synchronize source and target bookmarks. Fetch and cache websites for
+    /// new bookmarks; delete cache for removed bookmarks.
+    Sync(UpdateArgs),
     /// Import bookmarks from the configured source files.
     Import(ImportArgs),
     /// Fetch and cache bookmarks.
