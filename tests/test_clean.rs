@@ -28,25 +28,29 @@ async fn test_clean() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["config", "--source", source.to_str().unwrap()]);
-    cmd.output().unwrap();
+    let output = cmd.output().unwrap();
+    println!("{output:?}");
 
     println!("Execute 'bogrep import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    cmd.output().unwrap();
+    let output = cmd.output().unwrap();
+    println!("{output:?}");
 
     println!("Execute 'bogrep fetch --mode text'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch", "--mode", "text"]);
-    cmd.output().unwrap();
+    let output = cmd.output().unwrap();
+    println!("{output:?}");
 
     println!("Execute 'bogrep fetch --mode html'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch", "--mode", "html"]);
     cmd.output().unwrap();
+    println!("{output:?}");
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
