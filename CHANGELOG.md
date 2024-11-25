@@ -5,6 +5,8 @@
 - fixed
   - Fix throttling for fetched bookmarks
   - Fix `Cache::exists`
+- changed
+  - Rename subcommand from `update` to `sync`
 
 ### v0.9.0
 
