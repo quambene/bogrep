@@ -89,8 +89,6 @@ where
 
         bookmark_manager.import(source_readers, target_reader, now)?;
 
-        debug!("Imported bookmarks: {bookmark_manager:?}");
-
         self.process(bookmark_manager, &sources, now).await?;
 
         bookmark_manager.export(target_writer)?;
@@ -115,6 +113,8 @@ where
             | RunMode::FetchUrls(_)
             | RunMode::FetchDiff(_)
             | RunMode::Sync
+            | RunMode::Remove
+            | RunMode::RemoveAll
             | RunMode::DryRun => {
                 self.execute_actions(bookmark_manager).await?;
                 self.add_underlyings(bookmark_manager);
