@@ -14,6 +14,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tokio::select! {
         _ = signal::ctrl_c() => {
             // Clean up lock file when aborting.
+            // TODO: export bookmarks when cleaning up
             if target_bookmark_lock_file.exists() {
                 if let Err(err) = fs::remove_file(target_bookmark_lock_file) {
                     eprintln!("Can't remove lock file: {err:?}")
