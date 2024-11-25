@@ -139,8 +139,8 @@ impl Throttler {
         debug!("Throttle bookmark ({})", bookmark.url());
         let now = Utc::now();
 
-        if let Some(last_fetched) = self.update_last_fetched(bookmark, now)? {
-            let duration_until_next_fetch = last_fetched - now.timestamp_millis();
+        if let Some(next_fetch_time) = self.update_fetch_time(bookmark, now)? {
+            let duration_until_next_fetch = next_fetch_time - now.timestamp_millis();
 
             if duration_until_next_fetch > 0 {
                 debug!(
@@ -154,8 +154,8 @@ impl Throttler {
         Ok(())
     }
 
-    /// Update last_fetched timestamp and return previous value.
-    fn update_last_fetched(
+    /// Update the fetch time and return previous value.
+    fn update_fetch_time(
         &self,
         bookmark: &TargetBookmark,
         now: DateTime<Utc>,
@@ -270,13 +270,13 @@ mod tests {
         let bookmark2 = TargetBookmark::new(url2, now);
         let bookmark3 = TargetBookmark::new(url3, now);
 
-        let last_fetched = throttler.update_last_fetched(&bookmark1, now).unwrap();
+        let last_fetched = throttler.update_fetch_time(&bookmark1, now).unwrap();
         assert!(last_fetched.is_none());
 
-        let last_fetched = throttler.update_last_fetched(&bookmark2, now).unwrap();
+        let last_fetched = throttler.update_fetch_time(&bookmark2, now).unwrap();
         assert_eq!(last_fetched, Some(now.timestamp_millis() + 1000));
 
-        let last_fetched = throttler.update_last_fetched(&bookmark3, now).unwrap();
+        let last_fetched = throttler.update_fetch_time(&bookmark3, now).unwrap();
         assert_eq!(last_fetched, Some(now.timestamp_millis() + 2000));
     }
 }
