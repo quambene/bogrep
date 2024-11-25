@@ -9,7 +9,11 @@ use anyhow::anyhow;
 use chrono::Utc;
 use log::debug;
 
-pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
+pub async fn add(
+    config: Config,
+    args: AddArgs,
+    target_reader_writer: &TargetReaderWriter,
+) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let urls = utils::parse_urls(&args.urls)?;
@@ -26,10 +30,6 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     )?;
     let client_config = ClientConfig::new(&config.settings);
     let cache_mode = CacheMode::new(&None, &config.settings.cache_mode);
-    let target_reader_writer = TargetReaderWriter::new(
-        &config.target_bookmark_file,
-        &config.target_bookmark_lock_file,
-    )?;
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(&client_config)?;
     let mut bookmark_manager = BookmarkManager::default();
@@ -44,8 +44,6 @@ pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
             now,
         )
         .await?;
-
-    target_reader_writer.close()?;
 
     Ok(())
 }

@@ -9,7 +9,11 @@ use anyhow::anyhow;
 use chrono::Utc;
 use log::debug;
 
-pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Error> {
+pub async fn remove(
+    config: Config,
+    args: RemoveArgs,
+    target_reader_writer: &TargetReaderWriter,
+) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let urls = utils::parse_urls(&args.urls)?;
@@ -19,10 +23,6 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
     }
 
     let now = Utc::now();
-    let target_reader_writer = TargetReaderWriter::new(
-        &config.target_bookmark_file,
-        &config.target_bookmark_lock_file,
-    )?;
     let service_config = ServiceConfig::new(
         RunMode::RemoveUrls(urls.clone()),
         &[],
@@ -44,8 +44,6 @@ pub async fn remove(config: Config, args: RemoveArgs) -> Result<(), anyhow::Erro
             now,
         )
         .await?;
-
-    target_reader_writer.close()?;
 
     Ok(())
 }

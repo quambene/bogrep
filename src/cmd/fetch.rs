@@ -9,7 +9,11 @@ use chrono::Utc;
 use log::debug;
 
 /// Fetch and cache bookmarks.
-pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Error> {
+pub async fn fetch(
+    config: &Config,
+    args: &FetchArgs,
+    target_reader_writer: &TargetReaderWriter,
+) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     if args.dry_run {
@@ -21,11 +25,6 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let client_config = ClientConfig::new(&config.settings);
     let client = Client::new(&client_config)?;
     let mut source_readers = [];
-    let target_reader_writer = TargetReaderWriter::new(
-        &config.target_bookmark_file,
-        &config.target_bookmark_lock_file,
-    )?;
-
     let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
@@ -54,8 +53,6 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
             now,
         )
         .await?;
-
-    target_reader_writer.close()?;
 
     Ok(())
 }

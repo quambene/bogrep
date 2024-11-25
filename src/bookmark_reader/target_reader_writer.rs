@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// A helper struct to read from and write to target files.
+/// A helper to read from and write to a target file.
 pub struct TargetReaderWriter {
     reader: File,
     reader_path: PathBuf,

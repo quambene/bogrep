@@ -1,6 +1,6 @@
 use crate::{
-    bookmark_reader::ReadTarget, cache::CacheMode, utils, Args, Cache, Caching, Config,
-    TargetBookmarks,
+    bookmark_reader::ReadTarget, cache::CacheMode, Args, Cache, Caching, Config, TargetBookmarks,
+    TargetReaderWriter,
 };
 use anyhow::anyhow;
 use colored::Colorize;
@@ -14,14 +14,19 @@ use std::{
 /// Maximum number of characters per line displayed in the search result.
 const MAX_COLUMNS: usize = 1000;
 
-pub fn search(pattern: &str, config: &Config, args: &Args) -> Result<(), anyhow::Error> {
+pub fn search(
+    pattern: &str,
+    config: &Config,
+    args: &Args,
+    target_reader_writer: &TargetReaderWriter,
+) -> Result<(), anyhow::Error> {
     debug!("{:?}", pattern);
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
+    let mut target_reader = target_reader_writer.reader();
     target_reader.read(&mut target_bookmarks)?;
 
     if target_bookmarks.is_empty() {
