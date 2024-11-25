@@ -8,7 +8,7 @@ use std::{
 use tempfile::tempdir;
 
 #[tokio::test]
-async fn test_update() {
+async fn test_sync() {
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
     let temp_dir = tempdir().unwrap();
@@ -53,10 +53,10 @@ async fn test_update() {
         assert!(bookmark.last_cached.is_some());
     }
 
-    println!("Execute 'bogrep update'");
+    println!("Execute 'bogrep sync'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["update"]);
+    cmd.args(["sync"]);
     cmd.output().unwrap();
 
     let bookmarks = common::test_bookmarks(temp_path);

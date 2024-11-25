@@ -32,7 +32,7 @@ pub enum Subcommands {
     Config(ConfigArgs),
     /// Synchronize source and target bookmarks. Fetch and cache websites for
     /// new bookmarks; delete cache for removed bookmarks.
-    Sync(UpdateArgs),
+    Sync(SyncArgs),
     /// Import bookmarks from the configured source files.
     Import(ImportArgs),
     /// Fetch and cache bookmarks.
@@ -107,13 +107,12 @@ pub struct ImportArgs {
 /// Describes the arguments for the `fetch` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct FetchArgs {
-    /// Fetch all bookmarks.
+    /// Fetch and replace bookmarks.
     ///
-    /// If flag is not set, bookmarks are only fetched if a bookmark is not
-    /// cached yet. Otherwise, the cached content will be updated with
-    /// the fetched content.
+    /// If the flag is set, existing bookmarks will be fetched, and
+    /// the cached content will be replaced with the fetched content.
     #[arg(short, long)]
-    pub all: bool,
+    pub replace: bool,
     /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,
@@ -134,9 +133,9 @@ pub struct FetchArgs {
     pub dry_run: bool,
 }
 
-/// Describes the arguments for the `update` subcommand.
+/// Describes the arguments for the `sync` subcommand.
 #[derive(ClapArgs, Debug)]
-pub struct UpdateArgs {
+pub struct SyncArgs {
     /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(short, long, value_enum)]
     pub mode: Option<CacheMode>,

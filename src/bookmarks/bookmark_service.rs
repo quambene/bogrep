@@ -112,7 +112,7 @@ where
             | RunMode::FetchAll
             | RunMode::FetchUrls(_)
             | RunMode::FetchDiff(_)
-            | RunMode::Update
+            | RunMode::Sync
             | RunMode::DryRun => {
                 self.execute_actions(bookmark_manager).await?;
                 self.add_underlyings(bookmark_manager);
@@ -169,7 +169,7 @@ where
             RunMode::FetchDiff(urls) => {
                 bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndDiff, now);
             }
-            RunMode::Update => {
+            RunMode::Sync => {
                 bookmark_manager
                     .target_bookmarks_mut()
                     .set_action(&Action::FetchAndReplace);

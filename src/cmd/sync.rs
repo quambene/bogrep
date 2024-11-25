@@ -1,5 +1,5 @@
 use crate::{
-    args::UpdateArgs,
+    args::SyncArgs,
     bookmark_reader::{SourceReader, TargetReaderWriter},
     bookmarks::{BookmarkManager, BookmarkService, RunMode, ServiceConfig},
     cache::CacheMode,
@@ -11,7 +11,7 @@ use log::debug;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
-pub async fn sync(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Error> {
+pub async fn sync(config: &Config, args: &SyncArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     if args.dry_run {
@@ -37,7 +37,7 @@ pub async fn sync(config: &Config, args: &UpdateArgs) -> Result<(), anyhow::Erro
     let run_mode = if args.dry_run {
         RunMode::DryRun
     } else {
-        RunMode::Update
+        RunMode::Sync
     };
     let service_config = ServiceConfig::new(
         run_mode,
