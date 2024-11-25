@@ -28,29 +28,29 @@ async fn test_clean() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["config", "--source", source.to_str().unwrap()]);
-    let output = cmd.output().unwrap();
-    println!("{output:?}");
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    let output = cmd.output().unwrap();
-    println!("{output:?}");
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep fetch --mode text'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch", "--mode", "text"]);
-    let output = cmd.output().unwrap();
-    println!("{output:?}");
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep fetch --mode html'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch", "--mode", "html"]);
-    cmd.output().unwrap();
-    println!("{output:?}");
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
@@ -102,25 +102,29 @@ async fn test_clean_all() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["config", "--source", source.to_str().unwrap()]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep fetch --mode text'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch", "--mode", "text"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep fetch --mode html'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch", "--mode", "html"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks_path = temp_dir.path().join("bookmarks.json");
     let bookmarks = utils::read_file(&bookmarks_path).unwrap();
