@@ -9,6 +9,7 @@ use anyhow::anyhow;
 use chrono::Utc;
 use log::debug;
 
+/// Remove urls from bookmarks.
 pub async fn remove(
     config: Config,
     args: RemoveArgs,

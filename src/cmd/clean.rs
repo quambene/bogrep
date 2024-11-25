@@ -1,7 +1,8 @@
 use crate::{
-    args::CleanArgs, bookmark_reader::ReadTarget, cache::CacheMode, Cache, Caching, Config,
-    TargetBookmarks, TargetReaderWriter,
+    args::CleanArgs, cache::CacheMode, client::ClientConfig, BookmarkManager, BookmarkService,
+    Cache, Client, Config, RunMode, ServiceConfig, TargetReaderWriter,
 };
+use chrono::Utc;
 use log::debug;
 
 /// Clean up cache for removed bookmarks.
@@ -12,17 +13,30 @@ pub async fn clean(
 ) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
-    let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader = target_reader_writer.reader();
-    target_reader.read(&mut target_bookmarks)?;
+    let now = Utc::now();
+    let run_mode = if args.all {
+        RunMode::RemoveAll
+    } else {
+        RunMode::Remove
+    };
+    let service_config =
+        ServiceConfig::new(run_mode, &[], config.settings.max_concurrent_requests)?;
+    let client_config = ClientConfig::new(&config.settings);
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
+    let client = Client::new(&client_config)?;
+    let mut bookmark_manager = BookmarkManager::default();
+    let bookmark_service = BookmarkService::new(service_config, client, cache);
 
-    if args.all {
-        cache.clear(&mut target_bookmarks)?;
-    } else {
-        cache.remove_all(&mut target_bookmarks).await?;
-    }
+    bookmark_service
+        .run(
+            &mut bookmark_manager,
+            &mut [],
+            &mut target_reader_writer.reader(),
+            &mut target_reader_writer.writer(),
+            now,
+        )
+        .await?;
 
     Ok(())
 }

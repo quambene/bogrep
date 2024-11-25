@@ -89,6 +89,8 @@ where
 
         bookmark_manager.import(source_readers, target_reader, now)?;
 
+        debug!("Imported bookmarks: {bookmark_manager:?}");
+
         self.process(bookmark_manager, &sources, now).await?;
 
         bookmark_manager.export(target_writer)?;
@@ -152,6 +154,16 @@ where
             }
             RunMode::RemoveUrls(urls) => {
                 bookmark_manager.remove_urls(urls);
+            }
+            RunMode::Remove => {
+                bookmark_manager
+                    .target_bookmarks_mut()
+                    .set_action(&Action::Remove);
+            }
+            RunMode::RemoveAll => {
+                bookmark_manager
+                    .target_bookmarks_mut()
+                    .set_action(&Action::RemoveAll);
             }
             RunMode::FetchUrls(urls) => {
                 bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndAdd, now);
@@ -344,6 +356,9 @@ where
             }
             Action::Remove => {
                 cache.remove(bookmark).await?;
+            }
+            Action::RemoveAll => {
+                cache.remove_by_modes(bookmark).await?;
             }
             // We don't reset the action to `Action::None` in a dry run.
             Action::DryRun => return Ok(()),

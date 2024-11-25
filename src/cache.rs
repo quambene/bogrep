@@ -97,6 +97,9 @@ pub trait Caching: Clone {
     /// Remove the content of a bookmark from cache.
     async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError>;
 
+    /// Remove the content of a bookmark from cache for all `CacheMode`s.
+    async fn remove_by_modes(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError>;
+
     /// Remove the content of multiple bookmarks from cache.
     async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError>;
 
@@ -239,6 +242,23 @@ impl Caching for Cache {
         Ok(())
     }
 
+    async fn remove_by_modes(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
+        let cache_modes = Cache::modes();
+
+        for cache_mode in &cache_modes {
+            let cache_path = self.bookmark_path_by_cache_mode(bookmark.id(), cache_mode);
+
+            if cache_path.exists() {
+                debug!("Remove website from cache: {}", cache_path.display());
+                utils::remove_file_async(&cache_path).await?;
+                bookmark.unset_last_cached();
+                bookmark.clear_cache_mode();
+            }
+        }
+
+        Ok(())
+    }
+
     async fn remove_all(&self, bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         debug!("Remove all cached websites");
         for bookmark in bookmarks.values_mut() {
@@ -372,6 +392,16 @@ impl Caching for MockCache {
     }
 
     async fn remove(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
+        let mut cache_map = self.cache_map.lock();
+        cache_map.remove(bookmark.id());
+
+        bookmark.unset_last_cached();
+        bookmark.remove_cache_mode(&self.mode);
+
+        Ok(())
+    }
+
+    async fn remove_by_modes(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
         let mut cache_map = self.cache_map.lock();
         cache_map.remove(bookmark.id());
 

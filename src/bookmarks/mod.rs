@@ -86,10 +86,12 @@ pub enum Action {
     FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
     FetchAndAdd,
-    /// Fetch a bookmark and diff the fetched content with the cached content.#
+    /// Fetch a bookmark and diff the fetched content with the cached content.
     FetchAndDiff,
     /// Remove a bookmark from the cache.
     Remove,
+    /// Remove a bookmark from the cache for all `CacheMode`s.
+    RemoveAll,
     /// No actions to be performed.
     None,
     /// Skip fetching, caching, and writing to file.
@@ -129,6 +131,10 @@ pub enum RunMode {
     AddUrls(Vec<Url>),
     /// Remove provided bookmark urls.
     RemoveUrls(Vec<Url>),
+    /// Remove bookmarks from cache.
+    Remove,
+    /// Remove bookmarks from cache for all `CacheMode`s.
+    RemoveAll,
     /// Import and fetch provided bookmark urls.
     FetchUrls(Vec<Url>),
     /// Fetch bookmarks which were not fetched yet.

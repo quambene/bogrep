@@ -9,6 +9,7 @@ use anyhow::anyhow;
 use chrono::Utc;
 use log::debug;
 
+/// Add urls to bookmarks.
 pub async fn add(
     config: Config,
     args: AddArgs,

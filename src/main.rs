@@ -22,13 +22,14 @@ async fn main() -> Result<(), anyhow::Error> {
 
 
             println!("Aborting ...");
-            Ok(())
         },
         res = run_app(args, config, &target_reader_writer) => {
             target_reader_writer.close()?;
-            res
+            res?;
         }
     }
+
+    Ok(())
 }
 
 async fn run_app(
