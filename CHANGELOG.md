@@ -7,6 +7,7 @@
   - Fix `Cache::exists`
 - changed
   - Rename subcommand from `update` to `sync`
+  - Rename flag from `--all` to `--replace` for `bogrep fetch`
 
 ### v0.9.0
 
