@@ -1,4 +1,4 @@
-use crate::{bookmarks::TargetBookmark, errors::BogrepError, utils, Settings};
+use crate::{bookmarks::TargetBookmark, errors::BogrepError, Settings};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -119,7 +119,9 @@ impl Fetch for Client {
 /// A throttler to limit the number of requests.
 #[derive(Debug, Clone)]
 struct Throttler {
-    last_fetched: Arc<Mutex<HashMap<String, DateTime<Utc>>>>,
+    /// The times in milliseconds at which the next request to the domain is
+    /// allowed to be executed.
+    next_request_times: Arc<Mutex<HashMap<String, i64>>>,
     /// The throttling between requests in milliseconds.
     request_throttling: u64,
 }
@@ -127,7 +129,7 @@ struct Throttler {
 impl Throttler {
     pub fn new(request_throttling: u64) -> Self {
         Self {
-            last_fetched: Arc::new(Mutex::new(HashMap::new())),
+            next_request_times: Arc::new(Mutex::new(HashMap::new())),
             request_throttling,
         }
     }
@@ -137,18 +139,15 @@ impl Throttler {
         debug!("Throttle bookmark ({})", bookmark.url());
         let now = Utc::now();
 
-        if let Some(last_fetched) = self.last_fetched(bookmark, now)? {
-            let duration_since_last_fetched = now - last_fetched;
-            let throttling = utils::convert_to_duration(self.request_throttling as i64)?;
+        if let Some(last_fetched) = self.update_last_fetched(bookmark, now)? {
+            let duration_until_next_fetch = last_fetched - now.timestamp_millis();
 
-            if duration_since_last_fetched < throttling / 2 {
-                debug!("Wait for bookmark ({})", bookmark.url());
-                time::sleep(Duration::from_millis(self.request_throttling)).await;
-            } else if throttling / 2 < duration_since_last_fetched
-                && duration_since_last_fetched < throttling
-            {
-                debug!("Wait for bookmark ({})", bookmark.url());
-                time::sleep(Duration::from_millis(self.request_throttling / 2)).await;
+            if duration_until_next_fetch > 0 {
+                debug!(
+                    "Wait {duration_until_next_fetch} milliseconds for bookmark ({})",
+                    bookmark.url()
+                );
+                time::sleep(Duration::from_millis(duration_until_next_fetch as u64)).await;
             }
         }
 
@@ -156,26 +155,33 @@ impl Throttler {
     }
 
     /// Update last_fetched timestamp and return previous value.
-    fn last_fetched(
+    fn update_last_fetched(
         &self,
         bookmark: &TargetBookmark,
         now: DateTime<Utc>,
-    ) -> Result<Option<DateTime<Utc>>, BogrepError> {
+    ) -> Result<Option<i64>, BogrepError> {
         let bookmark_host = bookmark
             .url()
             .host_str()
             .ok_or(BogrepError::ConvertHost(bookmark.url().to_string()))?;
 
-        let mut map = self.last_fetched.lock();
-        let entry = map.entry(bookmark_host.to_string());
+        let mut next_request_times = self.next_request_times.lock();
+        let entry = next_request_times.entry(bookmark_host.to_string());
 
         match entry {
             Entry::Occupied(mut entry) => {
-                let last_fetched = entry.insert(now);
-                Ok(Some(last_fetched))
+                let next_request_time = entry.get_mut();
+                let last_request_time = *next_request_time;
+
+                if now.timestamp_millis() < *next_request_time {
+                    *next_request_time += self.request_throttling as i64;
+                }
+
+                Ok(Some(last_request_time))
             }
             Entry::Vacant(entry) => {
-                entry.insert(now);
+                let next_request_time = now.timestamp_millis() + self.request_throttling as i64;
+                entry.insert(next_request_time);
                 Ok(None)
             }
         }
@@ -222,7 +228,7 @@ impl Fetch for MockClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::time::Instant;
+    use tokio::{time::Instant, try_join};
 
     #[tokio::test]
     async fn test_throttle() {
@@ -231,19 +237,24 @@ mod tests {
         let request_throttling = 1000;
         let url1 = Url::parse("https://url/path1.com").unwrap();
         let url2 = Url::parse("https://url/path2.com").unwrap();
+        let url3 = Url::parse("https://url/path3.com").unwrap();
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(url1, now);
         let bookmark2 = TargetBookmark::new(url2, now);
+        let bookmark3 = TargetBookmark::new(url3, now);
 
         let start_instant = Instant::now();
-        throttler.throttle(&bookmark1).await.unwrap();
-        assert_eq!(Instant::now().duration_since(start_instant).as_millis(), 0);
 
-        let start_instant = Instant::now();
-        throttler.throttle(&bookmark2).await.unwrap();
+        try_join!(
+            throttler.throttle(&bookmark1),
+            throttler.throttle(&bookmark2),
+            throttler.throttle(&bookmark3)
+        )
+        .unwrap();
+
         assert_eq!(
             Instant::now().duration_since(start_instant).as_millis(),
-            (request_throttling + 1) as u128
+            2001
         );
     }
 
@@ -253,14 +264,19 @@ mod tests {
         let request_throttling = 1000;
         let url1 = Url::parse("https://url/path1.com").unwrap();
         let url2 = Url::parse("https://url/path2.com").unwrap();
+        let url3 = Url::parse("https://url/path3.com").unwrap();
         let throttler = Throttler::new(request_throttling);
         let bookmark1 = TargetBookmark::new(url1, now);
         let bookmark2 = TargetBookmark::new(url2, now);
+        let bookmark3 = TargetBookmark::new(url3, now);
 
-        let last_fetched = throttler.last_fetched(&bookmark1, now).unwrap();
+        let last_fetched = throttler.update_last_fetched(&bookmark1, now).unwrap();
         assert!(last_fetched.is_none());
 
-        let last_fetched = throttler.last_fetched(&bookmark2, now).unwrap();
-        assert_eq!(last_fetched, Some(now));
+        let last_fetched = throttler.update_last_fetched(&bookmark2, now).unwrap();
+        assert_eq!(last_fetched, Some(now.timestamp_millis() + 1000));
+
+        let last_fetched = throttler.update_last_fetched(&bookmark3, now).unwrap();
+        assert_eq!(last_fetched, Some(now.timestamp_millis() + 2000));
     }
 }
