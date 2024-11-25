@@ -10,11 +10,7 @@ use chrono::Utc;
 use log::debug;
 
 /// Add urls to bookmarks.
-pub async fn add(
-    config: Config,
-    args: AddArgs,
-    target_reader_writer: &TargetReaderWriter,
-) -> Result<(), anyhow::Error> {
+pub async fn add(config: Config, args: AddArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let urls = utils::parse_urls(&args.urls)?;
@@ -33,6 +29,10 @@ pub async fn add(
     let cache_mode = CacheMode::new(&None, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(&client_config)?;
+    let target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
     let mut bookmark_manager = BookmarkManager::default();
     let bookmark_service = BookmarkService::new(service_config, client, cache);
 
@@ -45,6 +45,8 @@ pub async fn add(
             now,
         )
         .await?;
+
+    target_reader_writer.close()?;
 
     Ok(())
 }

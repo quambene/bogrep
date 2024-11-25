@@ -12,11 +12,7 @@ use std::io::Write;
 
 /// Import bookmarks from the configured source files and store unique bookmarks
 /// in cache.
-pub async fn import(
-    config: Config,
-    args: ImportArgs,
-    target_reader_writer: &TargetReaderWriter,
-) -> Result<(), anyhow::Error> {
+pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     if args.dry_run {
@@ -48,7 +44,10 @@ pub async fn import(
         .iter()
         .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
-
+    let target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
     let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
@@ -72,6 +71,8 @@ pub async fn import(
             now,
         )
         .await?;
+
+    target_reader_writer.close()?;
 
     Ok(())
 }

@@ -6,11 +6,7 @@ use chrono::Utc;
 use log::debug;
 
 /// Clean up cache for removed bookmarks.
-pub async fn clean(
-    config: &Config,
-    args: &CleanArgs,
-    target_reader_writer: &TargetReaderWriter,
-) -> Result<(), anyhow::Error> {
+pub async fn clean(config: &Config, args: &CleanArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     let now = Utc::now();
@@ -25,6 +21,10 @@ pub async fn clean(
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client = Client::new(&client_config)?;
+    let target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
     let mut bookmark_manager = BookmarkManager::default();
     let bookmark_service = BookmarkService::new(service_config, client, cache);
 
@@ -37,6 +37,8 @@ pub async fn clean(
             now,
         )
         .await?;
+
+    target_reader_writer.close()?;
 
     Ok(())
 }

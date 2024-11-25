@@ -1,32 +1,24 @@
 use crate::{
-    bookmark_reader::ReadTarget, cache::CacheMode, Args, Cache, Caching, Config, TargetBookmarks,
-    TargetReaderWriter,
+    bookmark_reader::ReadTarget, cache::CacheMode, utils, Args, Cache, Caching, Config,
+    TargetBookmarks,
 };
 use anyhow::anyhow;
 use colored::Colorize;
 use log::debug;
 use regex::{Captures, Regex};
-use std::{
-    borrow::Cow,
-    io::{self, BufRead},
-};
+use std::{borrow::Cow, io};
 
 /// Maximum number of characters per line displayed in the search result.
 const MAX_COLUMNS: usize = 1000;
 
-pub fn search(
-    pattern: &str,
-    config: &Config,
-    args: &Args,
-    target_reader_writer: &TargetReaderWriter,
-) -> Result<(), anyhow::Error> {
+pub fn search(pattern: &str, config: &Config, args: &Args) -> Result<(), anyhow::Error> {
     debug!("{:?}", pattern);
 
     let cache_mode = CacheMode::new(&args.mode, &config.settings.cache_mode);
     let cache = Cache::new(&config.cache_path, cache_mode);
 
     let mut target_bookmarks = TargetBookmarks::default();
-    let mut target_reader = target_reader_writer.reader();
+    let mut target_reader = utils::open_file_in_read_mode(&config.target_bookmark_file)?;
     target_reader.read(&mut target_bookmarks)?;
 
     if target_bookmarks.is_empty() {
@@ -90,7 +82,7 @@ fn search_bookmarks(
 }
 
 /// Find the matched lines for the regex in a file.
-fn find_matches(reader: impl BufRead, regex: &Regex) -> Result<Vec<String>, anyhow::Error> {
+fn find_matches(reader: impl io::BufRead, regex: &Regex) -> Result<Vec<String>, anyhow::Error> {
     let mut matched_lines = vec![];
 
     for line in reader.lines() {

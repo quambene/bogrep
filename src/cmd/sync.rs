@@ -11,11 +11,7 @@ use log::debug;
 
 /// Import the diff of source and target bookmarks. Fetch and cache websites for
 /// new bookmarks; delete cache for removed bookmarks.
-pub async fn sync(
-    config: &Config,
-    args: &SyncArgs,
-    target_reader_writer: &TargetReaderWriter,
-) -> Result<(), anyhow::Error> {
+pub async fn sync(config: &Config, args: &SyncArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     if args.dry_run {
@@ -33,6 +29,10 @@ pub async fn sync(
         .iter()
         .map(SourceReader::init)
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
+    let target_reader_writer = TargetReaderWriter::new(
+        &config.target_bookmark_file,
+        &config.target_bookmark_lock_file,
+    )?;
     let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
@@ -56,6 +56,8 @@ pub async fn sync(
             now,
         )
         .await?;
+
+    target_reader_writer.close()?;
 
     Ok(())
 }

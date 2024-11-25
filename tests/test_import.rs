@@ -11,7 +11,8 @@ fn test_import(source_path: &str, home_path: &Path, expected_bookmarks: usize) {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", home_path);
     cmd.args(["-v", "config", "--source", source_path]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep -v import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();

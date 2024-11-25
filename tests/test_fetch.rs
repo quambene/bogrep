@@ -28,7 +28,7 @@ async fn test_fetch() {
     println!("Execute 'bogrep config --source {}'", source_path.display());
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", source_path.to_str().unwrap()]);
+    cmd.args(["-v", "config", "--source", source_path.to_str().unwrap()]);
     cmd.output().unwrap();
 
     let bookmarks = common::test_bookmarks(temp_path);
