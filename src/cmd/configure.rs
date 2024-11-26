@@ -1,9 +1,10 @@
 use crate::{
     bookmark_reader::{SourceOs, SourceReader},
     bookmarks::RawSource,
-    cache::CacheMode,
     errors::BogrepError,
-    json, utils, Config, ConfigArgs, Settings,
+    json,
+    settings::SettingsArgs,
+    utils, Config, ConfigArgs, Settings,
 };
 use anyhow::{anyhow, Context};
 use log::{debug, warn};
@@ -38,14 +39,14 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
         }
     }
 
-    let cache_mode = args.set_cache_mode.cache_mode;
     let source_path = args
         .set_source
         .source
+        .as_ref()
         .map(|source_path| fs::canonicalize(source_path).context("Invalid source path"))
         .transpose()?;
-    let source_folders = args.set_source.folders;
-    let source = source_path.map(|source_path| RawSource::new(source_path, source_folders));
+    let source_folders = &args.set_source.folders;
+    let source = source_path.map(|source_path| RawSource::new(source_path, source_folders.clone()));
 
     if let Some(ref source) = source {
         // Validate source file
@@ -53,42 +54,64 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
     }
 
     let settings_file = utils::open_and_truncate_file(&config.settings_path)?;
-    let mut settings = config.settings;
 
-    configure_settings(
-        &mut settings,
+    let settings_args = SettingsArgs::new(
         source,
-        cache_mode,
-        &args.set_ignored_urls.ignore,
-        &args.set_underlying_urls.underlying,
-        settings_file,
-    )?;
+        args.set_ignored_urls.ignore,
+        args.set_underlying_urls.underlying,
+        args.set_cache_mode.cache_mode,
+        args.set_max_concurrent_requests.max_concurrent_requests,
+        args.set_request_timeout.request_timeout,
+        args.set_request_throttling.request_throttling,
+        args.set_max_idle_connections_per_host
+            .max_idle_connections_per_host,
+        args.set_idle_connections_timeout.idle_connections_timeout,
+    );
+
+    configure_settings(&mut config.settings, &settings_args, settings_file)?;
 
     Ok(())
 }
 
 fn configure_settings(
     settings: &mut Settings,
-    source: Option<RawSource>,
-    cache_mode: Option<CacheMode>,
-    ignored_urls: &[String],
-    underlying_urls: &[String],
+    settings_args: &SettingsArgs,
     mut writer: impl Write,
 ) -> Result<(), anyhow::Error> {
-    if let Some(source) = source {
-        settings.set_source(source)?;
+    if let Some(source) = settings_args.source.as_ref() {
+        settings.set_source(source.clone())?;
     }
 
-    settings.set_cache_mode(cache_mode);
+    if let Some(request_timeout) = settings_args.request_timeout {
+        settings.set_request_timeout(request_timeout);
+    }
 
-    for ignored_url in ignored_urls {
-        if let Err(err) = settings.add_ignored_url(ignored_url) {
+    if let Some(request_throttling) = settings_args.request_throttling {
+        settings.set_request_throttling(request_throttling);
+    }
+
+    if let Some(request_timeout) = settings_args.max_concurrent_requests {
+        settings.set_max_concurrent_requests(request_timeout);
+    }
+
+    if let Some(request_timeout) = settings_args.max_idle_connections_per_host {
+        settings.set_max_idle_connections_per_host(request_timeout);
+    }
+
+    if let Some(request_timeout) = settings_args.idle_connections_timeout {
+        settings.set_idle_connections_timeout(request_timeout);
+    }
+
+    settings.set_cache_mode(settings_args.cache_mode.clone());
+
+    for ignored_url in settings_args.ignored_urls.as_slice() {
+        if let Err(err) = settings.add_ignored_url(&ignored_url) {
             warn!("{err}");
         }
     }
 
-    for underlying_url in underlying_urls {
-        if let Err(err) = settings.add_underlying_url(underlying_url) {
+    for underlying_url in settings_args.underlying_urls.as_slice() {
+        if let Err(err) = settings.add_underlying_url(&underlying_url) {
             warn!("{err}");
         };
     }
@@ -276,6 +299,8 @@ fn select_source_folders_from_input(input: &str) -> Result<Option<Vec<String>>, 
 
 #[cfg(test)]
 mod tests {
+    use crate::CacheMode;
+
     use super::*;
     use std::{io::Cursor, path::PathBuf};
 
@@ -357,22 +382,13 @@ mod tests {
     fn test_configure_source() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let source = RawSource {
+        let mut settings_args = SettingsArgs::default();
+        settings_args.source = Some(RawSource {
             path: PathBuf::from("test_data/bookmarks_simple.txt"),
             folders: vec!["dev".to_string(), "articles".to_string()],
-        };
-        let ignored_urls = vec![];
-        let underlying_urls = vec![];
-        let cache_mode = None;
+        });
 
-        let res = configure_settings(
-            &mut settings,
-            Some(source),
-            cache_mode,
-            &ignored_urls,
-            &underlying_urls,
-            &mut cursor,
-        );
+        let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
@@ -402,17 +418,10 @@ mod tests {
     fn test_configure_cache_mode() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let ignored_urls = vec![];
-        let underlying_urls = vec![];
-        let cache_mode = Some(CacheMode::Html);
-        let res = configure_settings(
-            &mut settings,
-            None,
-            cache_mode,
-            &ignored_urls,
-            &underlying_urls,
-            &mut cursor,
-        );
+        let mut settings_args = SettingsArgs::default();
+        settings_args.cache_mode = Some(CacheMode::Html);
+
+        let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
         let expected_settings = r#"{
@@ -433,19 +442,14 @@ mod tests {
     fn test_configure_urls() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let ignored_urls = vec![
+        let mut settings_args = SettingsArgs::default();
+        settings_args.ignored_urls = vec![
             "https://url1.com".to_string(),
             "https://url2.com".to_string(),
         ];
-        let underlying_urls = vec!["https://news.ycombinator.com".to_string()];
-        let res = configure_settings(
-            &mut settings,
-            None,
-            None,
-            &ignored_urls,
-            &underlying_urls,
-            &mut cursor,
-        );
+        settings_args.underlying_urls = vec!["https://news.ycombinator.com".to_string()];
+
+        let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
         let actual_settings = String::from_utf8(cursor.into_inner()).unwrap();
 
@@ -472,30 +476,17 @@ mod tests {
     fn test_configure_urls_twice() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let ignored_urls = vec![
+        let mut settings_args = SettingsArgs::default();
+        settings_args.ignored_urls = vec![
             "https://url1.com".to_string(),
             "https://url2.com".to_string(),
         ];
-        let underlying_urls = vec!["https://news.ycombinator.com".to_string()];
+        settings_args.underlying_urls = vec!["https://news.ycombinator.com".to_string()];
 
-        let res = configure_settings(
-            &mut settings,
-            None,
-            None,
-            &ignored_urls,
-            &underlying_urls,
-            &mut cursor,
-        );
+        let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
 
-        let res = configure_settings(
-            &mut settings,
-            None,
-            None,
-            &ignored_urls,
-            &underlying_urls,
-            &mut cursor,
-        );
+        let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
     }
 }

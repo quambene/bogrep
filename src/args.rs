@@ -59,6 +59,16 @@ pub struct ConfigArgs {
     pub set_ignored_urls: SetIgnoredUrls,
     #[command(flatten)]
     pub set_underlying_urls: SetUnderlyingUrls,
+    #[command(flatten)]
+    pub set_request_timeout: SetRequestTimeout,
+    #[command(flatten)]
+    pub set_request_throttling: SetRequestThrottling,
+    #[command(flatten)]
+    pub set_max_concurrent_requests: SetMaxConcurrentRequests,
+    #[command(flatten)]
+    pub set_max_idle_connections_per_host: SetMaxIdleConnectionsPerHost,
+    #[command(flatten)]
+    pub set_idle_connections_timeout: SetIdleConnectionsTimeout,
 }
 
 #[derive(ClapArgs, Debug)]
@@ -94,6 +104,41 @@ pub struct SetIgnoredUrls {
 pub struct SetUnderlyingUrls {
     #[arg(long, value_name = "URLs", num_args = 0.., value_delimiter = ' ')]
     pub underlying: Vec<String>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetRequestTimeout {
+    #[arg(long)]
+    pub request_timeout: Option<u64>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetRequestThrottling {
+    #[arg(long)]
+    pub request_throttling: Option<u64>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetMaxConcurrentRequests {
+    #[arg(long)]
+    pub max_concurrent_requests: Option<usize>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetMaxIdleConnectionsPerHost {
+    #[arg(long)]
+    pub max_idle_connections_per_host: Option<usize>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetIdleConnectionsTimeout {
+    #[arg(long)]
+    pub idle_connections_timeout: Option<u64>,
 }
 
 /// Describes the arguments for the `import` subcommand.

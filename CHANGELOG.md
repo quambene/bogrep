@@ -6,6 +6,8 @@
   - Fix throttling for fetched bookmarks
   - Fix `Cache::exists`
   - Fix clean up for `Ctrl+C` shortcut
+- added
+  - Make `Settings` configurable via `bogrep config`
 - changed
   - Rename subcommand from `update` to `sync`
   - Rename flag from `--all` to `--replace` for `bogrep fetch`
