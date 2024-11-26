@@ -40,7 +40,8 @@ async fn test_fetch() {
         "--request-throttling",
         request_throttling,
     ]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert!(bookmarks.is_empty());
@@ -49,7 +50,8 @@ async fn test_fetch() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["-v", "import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
@@ -144,19 +146,22 @@ async fn test_fetch_diff() {
         "--request-throttling",
         request_throttling,
     ]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep fetch'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     // Change the content for the mock website to simulate a diff.
     drop(mock_website_1);
@@ -215,7 +220,8 @@ async fn test_fetch_empty_cache() {
         "--request-throttling",
         request_throttling,
     ]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert!(bookmarks.is_empty());
@@ -224,7 +230,8 @@ async fn test_fetch_empty_cache() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);

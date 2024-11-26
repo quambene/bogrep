@@ -9,6 +9,7 @@ use tempfile::tempdir;
 
 #[tokio::test]
 async fn test_sync() {
+    let request_throttling = "1";
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
     let temp_dir = tempdir().unwrap();
@@ -23,11 +24,21 @@ async fn test_sync() {
         writeln!(file, "{}", url).unwrap();
     }
 
-    println!("Execute 'bogrep config --source {}'", source.display());
+    println!(
+        "Execute 'bogrep config --source {} --request-throttling {request_throttling}'",
+        source_path.display()
+    );
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", source.to_str().unwrap()]);
-    cmd.output().unwrap();
+    cmd.args([
+        "config",
+        "--source",
+        source.to_str().unwrap(),
+        "--request-throttling",
+        request_throttling,
+    ]);
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert!(bookmarks.is_empty());
@@ -36,7 +47,8 @@ async fn test_sync() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
@@ -45,7 +57,8 @@ async fn test_sync() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
@@ -57,7 +70,8 @@ async fn test_sync() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["sync"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
