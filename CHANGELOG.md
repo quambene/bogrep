@@ -12,6 +12,7 @@
   - Rename subcommand from `update` to `sync`
   - Rename flag from `--all` to `--replace` for `bogrep fetch`
   - Refactor subcommand `clean`
+  - Update dependencies
 
 ### v0.9.0
 
