@@ -1,9 +1,9 @@
-use super::RunMode;
+use super::{RawSource, RunMode};
 use crate::{
     bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
     bookmarks::{target_bookmarks::TargetBookmarkBuilder, Status},
     errors::BogrepError,
-    Action, CacheMode, Source, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
+    Action, CacheMode, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
     TargetBookmarks,
 };
 use chrono::{DateTime, Utc};
@@ -13,19 +13,34 @@ use url::Url;
 #[derive(Debug)]
 pub struct BookmarkManager {
     target_bookmarks: TargetBookmarks,
+    source_readers: Vec<SourceReader>,
 }
 
 impl Default for BookmarkManager {
     fn default() -> Self {
-        let target_bookmarks = TargetBookmarks::default();
-
-        Self { target_bookmarks }
+        Self {
+            target_bookmarks: TargetBookmarks::default(),
+            source_readers: vec![],
+        }
     }
 }
 
 impl BookmarkManager {
-    pub fn new(target_bookmarks: TargetBookmarks) -> Self {
-        Self { target_bookmarks }
+    pub fn new(target_bookmarks: TargetBookmarks, source_readers: Vec<SourceReader>) -> Self {
+        Self {
+            target_bookmarks,
+            source_readers,
+        }
+    }
+
+    pub fn from_sources(sources: &[RawSource]) -> Result<Self, anyhow::Error> {
+        Ok(Self {
+            target_bookmarks: TargetBookmarks::default(),
+            source_readers: sources
+                .iter()
+                .map(SourceReader::init)
+                .collect::<Result<Vec<_>, anyhow::Error>>()?,
+        })
     }
 
     pub fn target_bookmarks(&self) -> &TargetBookmarks {
@@ -39,16 +54,15 @@ impl BookmarkManager {
     /// Import bookmarks from source and target files.
     pub fn import(
         &mut self,
-        source_readers: &mut [SourceReader],
         target_reader: &mut impl ReadTarget,
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
         target_reader.read(&mut self.target_bookmarks)?;
 
-        if !source_readers.is_empty() {
+        if !self.source_readers.is_empty() {
             let mut source_bookmarks = SourceBookmarks::default();
 
-            for source_reader in source_readers.iter_mut() {
+            for source_reader in self.source_readers.iter_mut() {
                 source_reader.import(&mut source_bookmarks)?;
             }
 
@@ -112,7 +126,12 @@ impl BookmarkManager {
     }
 
     /// Print summary of the imported bookmarks.
-    pub fn print_report(&self, sources: &[Source], run_mode: &RunMode) {
+    pub fn print_report(&self, run_mode: &RunMode) {
+        let sources = self
+            .source_readers
+            .iter()
+            .map(|source_reader| source_reader.source().clone())
+            .collect::<Vec<_>>();
         let added_bookmarks = self
             .target_bookmarks
             .values()
@@ -275,14 +294,10 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let folders = vec![];
         let sources = vec![RawSource::new(source_path, folders)];
-        let mut source_readers = sources
-            .iter()
-            .map(|source| SourceReader::init(source).unwrap())
-            .collect::<Vec<_>>();
         let mut target_reader = create_target_reader(&TargetBookmarks::default());
-        let mut bookmark_manager = BookmarkManager::default();
+        let mut bookmark_manager = BookmarkManager::from_sources(&sources).unwrap();
 
-        let res = bookmark_manager.import(&mut source_readers, &mut target_reader, now);
+        let res = bookmark_manager.import(&mut target_reader, now);
         assert!(res.is_ok());
 
         assert!(bookmark_manager
@@ -316,7 +331,7 @@ mod tests {
         let mut target_reader = create_target_reader(&target_bookmarks);
 
         let mut bookmark_manager = BookmarkManager::default();
-        let res = bookmark_manager.import(&mut [], &mut target_reader, now);
+        let res = bookmark_manager.import(&mut target_reader, now);
         assert!(res.is_ok());
 
         assert!(bookmark_manager.target_bookmarks.contains_key(&url1));
@@ -408,7 +423,7 @@ mod tests {
                 .build(),
             ),
         ]));
-        let mut bookmark_manager = BookmarkManager { target_bookmarks };
+        let mut bookmark_manager = BookmarkManager::new(target_bookmarks, vec![]);
 
         bookmark_manager
             .add_bookmarks(&source_bookmarks, now)

@@ -31,7 +31,6 @@ pub async fn clean(config: &Config, args: &CleanArgs) -> Result<(), anyhow::Erro
     bookmark_service
         .run(
             &mut bookmark_manager,
-            &mut [],
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
             now,

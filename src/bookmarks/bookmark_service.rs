@@ -1,8 +1,8 @@
 use super::{BookmarkManager, RunMode};
 use crate::{
-    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmark_reader::{ReadTarget, WriteTarget},
     errors::BogrepError,
-    html, utils, Action, Caching, Fetch, ServiceReport, Source, SourceType, Status, TargetBookmark,
+    html, utils, Action, Caching, Fetch, ServiceReport, SourceType, Status, TargetBookmark,
     TargetBookmarkBuilder,
 };
 use chrono::{DateTime, Utc};
@@ -77,19 +77,13 @@ where
     pub async fn run(
         &self,
         bookmark_manager: &mut BookmarkManager,
-        source_readers: &mut [SourceReader],
         target_reader: &mut impl ReadTarget,
         target_writer: &mut impl WriteTarget,
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
-        let sources = source_readers
-            .iter()
-            .map(|source_reader| source_reader.source().clone())
-            .collect::<Vec<_>>();
+        bookmark_manager.import(target_reader, now)?;
 
-        bookmark_manager.import(source_readers, target_reader, now)?;
-
-        self.process(bookmark_manager, &sources, now).await?;
+        self.process(bookmark_manager, now).await?;
 
         bookmark_manager.export(target_writer)?;
 
@@ -100,7 +94,6 @@ where
     pub async fn process(
         &self,
         bookmark_manager: &mut BookmarkManager,
-        sources: &[Source],
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
         self.set_actions(bookmark_manager, now)?;
@@ -127,7 +120,7 @@ where
             _ => (),
         }
 
-        bookmark_manager.print_report(sources, self.config.run_mode());
+        bookmark_manager.print_report(self.config.run_mode());
         bookmark_manager.finish();
 
         Ok(())
@@ -620,7 +613,7 @@ mod tests {
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert!(bookmark_manager.target_bookmarks().is_empty());
     }
@@ -643,7 +636,7 @@ mod tests {
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),
@@ -682,7 +675,7 @@ mod tests {
         let cache = create_mock_cache(CacheMode::Text, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),
@@ -726,7 +719,7 @@ mod tests {
         .await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),
@@ -772,7 +765,7 @@ mod tests {
         .await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),
