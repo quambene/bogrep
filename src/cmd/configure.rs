@@ -299,9 +299,8 @@ fn select_source_folders_from_input(input: &str) -> Result<Option<Vec<String>>, 
 
 #[cfg(test)]
 mod tests {
-    use crate::CacheMode;
-
     use super::*;
+    use crate::CacheMode;
     use std::{io::Cursor, path::PathBuf};
 
     #[test]
