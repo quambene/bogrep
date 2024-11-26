@@ -8,14 +8,14 @@ fn test_configure_source(temp_path: &Path, source: &str, folder: Option<&str>) {
         println!("Execute 'bogrep config --source {source} --folders {folder}'");
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
         cmd.env("BOGREP_HOME", temp_path);
-        cmd.args(["config", "--source", source, "--folders", folder]);
+        cmd.args(["-v", "config", "--source", source, "--folders", folder]);
         let res = cmd.output();
         assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
     } else {
         println!("Execute 'bogrep config --source {source}'");
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
         cmd.env("BOGREP_HOME", temp_path);
-        cmd.args(["config", "--source", source]);
+        cmd.args(["-v", "config", "--source", source]);
         let res = cmd.output();
         assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
     }

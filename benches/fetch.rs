@@ -78,10 +78,7 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
 
     let service = BookmarkService::new(config, client, cache);
 
-    service
-        .process(&mut bookmark_manager, &[], now)
-        .await
-        .unwrap();
+    service.process(&mut bookmark_manager, now).await.unwrap();
 }
 
 async fn fetch_in_parallel(max_parallel_requests: usize) {

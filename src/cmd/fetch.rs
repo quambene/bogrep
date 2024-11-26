@@ -20,12 +20,11 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     let cache = Cache::new(&config.cache_path, cache_mode);
     let client_config = ClientConfig::new(&config.settings);
     let client = Client::new(&client_config)?;
-    let mut source_readers = [];
+
     let target_reader_writer = TargetReaderWriter::new(
         &config.target_bookmark_file,
         &config.target_bookmark_lock_file,
     )?;
-
     let now = Utc::now();
     let run_mode = if args.dry_run {
         RunMode::DryRun
@@ -35,7 +34,7 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     } else if !args.urls.is_empty() {
         let fetch_urls = utils::parse_urls(&args.urls)?;
         RunMode::FetchUrls(fetch_urls)
-    } else if args.all {
+    } else if args.replace {
         RunMode::FetchAll
     } else {
         RunMode::Fetch
@@ -48,7 +47,6 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
     bookmark_service
         .run(
             &mut bookmark_manager,
-            &mut source_readers,
             &mut target_reader_writer.reader(),
             &mut target_reader_writer.writer(),
             now,

@@ -11,6 +11,7 @@ use tempfile::tempdir;
 
 #[tokio::test]
 async fn test_fetch() {
+    let request_throttling = "1";
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
     let temp_dir = tempdir().unwrap();
@@ -25,11 +26,22 @@ async fn test_fetch() {
         writeln!(file, "{}", url).unwrap();
     }
 
-    println!("Execute 'bogrep config --source {}'", source_path.display());
+    println!(
+        "Execute 'bogrep config --source {} --request-throttling {request_throttling}'",
+        source_path.display()
+    );
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", source_path.to_str().unwrap()]);
-    cmd.output().unwrap();
+    cmd.args([
+        "-v",
+        "config",
+        "--source",
+        source_path.to_str().unwrap(),
+        "--request-throttling",
+        request_throttling,
+    ]);
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert!(bookmarks.is_empty());
@@ -38,7 +50,8 @@ async fn test_fetch() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["-v", "import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);
@@ -105,6 +118,7 @@ async fn test_fetch() {
 
 #[tokio::test]
 async fn test_fetch_diff() {
+    let request_throttling = "1";
     let mock_server = common::start_mock_server().await;
     let mock_website_1 = common::mount_mock_scoped(&mock_server, 1, 10).await;
     let mock_website_2 = common::mount_mock_scoped(&mock_server, 2, 20).await;
@@ -119,23 +133,35 @@ async fn test_fetch_diff() {
     writeln!(bookmarks_file, "{}", mock_website_1.url).unwrap();
     writeln!(bookmarks_file, "{}", mock_website_2.url).unwrap();
 
-    println!("Execute 'bogrep config --source {}'", source.display());
+    println!(
+        "Execute 'bogrep config --source {} --request-throttling {request_throttling}'",
+        source.display()
+    );
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", source.to_str().unwrap()]);
-    cmd.output().unwrap();
+    cmd.args([
+        "config",
+        "--source",
+        source.to_str().unwrap(),
+        "--request-throttling",
+        request_throttling,
+    ]);
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep import'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     println!("Execute 'bogrep fetch'");
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["fetch"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     // Change the content for the mock website to simulate a diff.
     drop(mock_website_1);
@@ -166,6 +192,7 @@ async fn test_fetch_diff() {
 // inconsistent state as the target bookmarks are still marked as last cached.
 #[tokio::test]
 async fn test_fetch_empty_cache() {
+    let request_throttling = "1";
     let mock_server = common::start_mock_server().await;
     let mocks = common::mount_mocks(&mock_server, 3).await;
     let temp_dir = tempdir().unwrap();
@@ -180,11 +207,21 @@ async fn test_fetch_empty_cache() {
         writeln!(file, "{}", url).unwrap();
     }
 
-    println!("Execute 'bogrep config --source {}'", source.display());
+    println!(
+        "Execute 'bogrep config --source {} --request-throttling {request_throttling}'",
+        source.display()
+    );
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
-    cmd.args(["config", "--source", source.to_str().unwrap()]);
-    cmd.output().unwrap();
+    cmd.args([
+        "config",
+        "--source",
+        source.to_str().unwrap(),
+        "--request-throttling",
+        request_throttling,
+    ]);
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert!(bookmarks.is_empty());
@@ -193,7 +230,8 @@ async fn test_fetch_empty_cache() {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.env("BOGREP_HOME", temp_path);
     cmd.args(["import"]);
-    cmd.output().unwrap();
+    let res = cmd.output();
+    assert!(res.is_ok(), "Can't execute command: {}", res.unwrap_err());
 
     let bookmarks = common::test_bookmarks(temp_path);
     assert_eq!(bookmarks.len(), 3);

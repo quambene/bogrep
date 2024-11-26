@@ -1,6 +1,18 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### Unreleased
+### v0.10.0 (unreleased)
+
+- fixed
+  - Fix throttling for fetched bookmarks
+  - Fix `Cache::exists`
+  - Fix clean up for `Ctrl+C` shortcut
+- added
+  - Make `Settings` configurable via `bogrep config`
+- changed
+  - Rename subcommand from `update` to `sync`
+  - Rename flag from `--all` to `--replace` for `bogrep fetch`
+  - Refactor subcommand `clean`
+  - Update dependencies
 
 ### v0.9.0
 

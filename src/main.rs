@@ -14,6 +14,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tokio::select! {
         _ = signal::ctrl_c() => {
             // Clean up lock file when aborting.
+            // TODO: export bookmarks when cleaning up
             if target_bookmark_lock_file.exists() {
                 if let Err(err) = fs::remove_file(target_bookmark_lock_file) {
                     eprintln!("Can't remove lock file: {err:?}")
@@ -21,12 +22,13 @@ async fn main() -> Result<(), anyhow::Error> {
             }
 
             println!("Aborting ...");
-            Ok(())
         },
         res = run_app(args, config) => {
-            res
+            res?;
         }
     }
+
+    Ok(())
 }
 
 async fn run_app(args: Args, config: Config) -> Result<(), anyhow::Error> {
@@ -34,7 +36,7 @@ async fn run_app(args: Args, config: Config) -> Result<(), anyhow::Error> {
         match subcommands {
             Subcommands::Config(args) => cmd::configure(config, args)?,
             Subcommands::Import(args) => cmd::import(config, args).await?,
-            Subcommands::Update(args) => cmd::update(&config, &args).await?,
+            Subcommands::Sync(args) => cmd::sync(&config, &args).await?,
             Subcommands::Fetch(args) => cmd::fetch(&config, &args).await?,
             Subcommands::Clean(args) => cmd::clean(&config, &args).await?,
             Subcommands::Add(args) => cmd::add(config, args).await?,

@@ -5,7 +5,7 @@ mod fetch;
 mod import;
 mod remove;
 mod search;
-mod update;
+mod sync;
 
 pub use add::add;
 pub use clean::clean;
@@ -14,4 +14,4 @@ pub use fetch::fetch;
 pub use import::import;
 pub use remove::remove;
 pub use search::search;
-pub use update::update;
+pub use sync::sync;

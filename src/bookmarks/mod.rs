@@ -82,14 +82,16 @@ pub enum Status {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Action {
     /// Fetch and cache the bookmark, even if it is cached already. The cached
-    /// content will be updated with the most recent version of the website.
+    /// content will be replaced with the most recent version of the website.
     FetchAndReplace,
     /// Fetch and cache bookmark if it is not cached yet.
     FetchAndAdd,
-    /// Fetch a bookmark and diff the fetched content with the cached content.#
+    /// Fetch a bookmark and diff the fetched content with the cached content.
     FetchAndDiff,
     /// Remove a bookmark from the cache.
     Remove,
+    /// Remove a bookmark from the cache for all `CacheMode`s.
+    RemoveAll,
     /// No actions to be performed.
     None,
     /// Skip fetching, caching, and writing to file.
@@ -129,16 +131,20 @@ pub enum RunMode {
     AddUrls(Vec<Url>),
     /// Remove provided bookmark urls.
     RemoveUrls(Vec<Url>),
+    /// Remove bookmarks from cache.
+    Remove,
+    /// Remove bookmarks from cache for all `CacheMode`s.
+    RemoveAll,
     /// Import and fetch provided bookmark urls.
     FetchUrls(Vec<Url>),
-    /// Fetch new bookmarks.
+    /// Fetch bookmarks which were not fetched yet.
     Fetch,
-    /// Fetch all bookmarks.
+    /// Fetch and replace all bookmarks.
     FetchAll,
     /// Fetch diff for provided bookmark urls.
     FetchDiff(Vec<Url>),
-    /// Import bookmarks and fetch new bookmarks.
-    Update,
+    /// Sync bookmarks.
+    Sync,
     /// Run in dry mode.
     DryRun,
     #[default]

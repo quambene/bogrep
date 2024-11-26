@@ -6,10 +6,7 @@ use anyhow::anyhow;
 use colored::Colorize;
 use log::debug;
 use regex::{Captures, Regex};
-use std::{
-    borrow::Cow,
-    io::{self, BufRead},
-};
+use std::{borrow::Cow, io};
 
 /// Maximum number of characters per line displayed in the search result.
 const MAX_COLUMNS: usize = 1000;
@@ -85,7 +82,7 @@ fn search_bookmarks(
 }
 
 /// Find the matched lines for the regex in a file.
-fn find_matches(reader: impl BufRead, regex: &Regex) -> Result<Vec<String>, anyhow::Error> {
+fn find_matches(reader: impl io::BufRead, regex: &Regex) -> Result<Vec<String>, anyhow::Error> {
     let mut matched_lines = vec![];
 
     for line in reader.lines() {

@@ -1,8 +1,8 @@
 use super::{BookmarkManager, RunMode};
 use crate::{
-    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmark_reader::{ReadTarget, WriteTarget},
     errors::BogrepError,
-    html, utils, Action, Caching, Fetch, ServiceReport, Source, SourceType, Status, TargetBookmark,
+    html, utils, Action, Caching, Fetch, ServiceReport, SourceType, Status, TargetBookmark,
     TargetBookmarkBuilder,
 };
 use chrono::{DateTime, Utc};
@@ -77,19 +77,13 @@ where
     pub async fn run(
         &self,
         bookmark_manager: &mut BookmarkManager,
-        source_readers: &mut [SourceReader],
         target_reader: &mut impl ReadTarget,
         target_writer: &mut impl WriteTarget,
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
-        let sources = source_readers
-            .iter()
-            .map(|source_reader| source_reader.source().clone())
-            .collect::<Vec<_>>();
+        bookmark_manager.import(target_reader, now)?;
 
-        bookmark_manager.import(source_readers, target_reader, now)?;
-
-        self.process(bookmark_manager, &sources, now).await?;
+        self.process(bookmark_manager, now).await?;
 
         bookmark_manager.export(target_writer)?;
 
@@ -100,7 +94,6 @@ where
     pub async fn process(
         &self,
         bookmark_manager: &mut BookmarkManager,
-        sources: &[Source],
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
         self.set_actions(bookmark_manager, now)?;
@@ -112,7 +105,9 @@ where
             | RunMode::FetchAll
             | RunMode::FetchUrls(_)
             | RunMode::FetchDiff(_)
-            | RunMode::Update
+            | RunMode::Sync
+            | RunMode::Remove
+            | RunMode::RemoveAll
             | RunMode::DryRun => {
                 self.execute_actions(bookmark_manager).await?;
                 self.add_underlyings(bookmark_manager);
@@ -125,7 +120,7 @@ where
             _ => (),
         }
 
-        bookmark_manager.print_report(sources, self.config.run_mode());
+        bookmark_manager.print_report(self.config.run_mode());
         bookmark_manager.finish();
 
         Ok(())
@@ -153,6 +148,16 @@ where
             RunMode::RemoveUrls(urls) => {
                 bookmark_manager.remove_urls(urls);
             }
+            RunMode::Remove => {
+                bookmark_manager
+                    .target_bookmarks_mut()
+                    .set_action(&Action::Remove);
+            }
+            RunMode::RemoveAll => {
+                bookmark_manager
+                    .target_bookmarks_mut()
+                    .set_action(&Action::RemoveAll);
+            }
             RunMode::FetchUrls(urls) => {
                 bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndAdd, now);
             }
@@ -169,7 +174,7 @@ where
             RunMode::FetchDiff(urls) => {
                 bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndDiff, now);
             }
-            RunMode::Update => {
+            RunMode::Sync => {
                 bookmark_manager
                     .target_bookmarks_mut()
                     .set_action(&Action::FetchAndReplace);
@@ -344,6 +349,9 @@ where
             }
             Action::Remove => {
                 cache.remove(bookmark).await?;
+            }
+            Action::RemoveAll => {
+                cache.remove_by_modes(bookmark).await?;
             }
             // We don't reset the action to `Action::None` in a dry run.
             Action::DryRun => return Ok(()),
@@ -605,7 +613,7 @@ mod tests {
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert!(bookmark_manager.target_bookmarks().is_empty());
     }
@@ -628,7 +636,7 @@ mod tests {
         let cache = create_mock_cache(CacheMode::Html, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),
@@ -667,7 +675,7 @@ mod tests {
         let cache = create_mock_cache(CacheMode::Text, None, &mut bookmark_manager).await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),
@@ -711,7 +719,7 @@ mod tests {
         .await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),
@@ -757,7 +765,7 @@ mod tests {
         .await;
         let service = BookmarkService::new(service_config, client, cache);
 
-        let res = service.process(&mut bookmark_manager, &[], now).await;
+        let res = service.process(&mut bookmark_manager, now).await;
         assert!(res.is_ok());
         assert_eq!(
             service.cache.cache_map(),

@@ -28,6 +28,58 @@ const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 10;
 /// The  default for `Setting::idle_connections_timeout`.
 const IDLE_CONNECTIONS_TIMEOUT: u64 = 5_000;
 
+/// Optional settings configured via `ConfigArgs`.
+#[derive(Debug, PartialEq, Clone, Default)]
+pub struct SettingsArgs {
+    /// The paths to the configured bookmark files.
+    ///
+    /// Source could be Firefox or Chrome.
+    pub source: Option<RawSource>,
+    /// The urls which are ignored and not imported.
+    pub ignored_urls: Vec<String>,
+    /// Fetch the underlying for the given urls.
+    pub underlying_urls: Vec<String>,
+    /// The file extension used to cache websites.
+    pub cache_mode: Option<CacheMode>,
+    /// The maximal number of concurrent requests.
+    pub max_concurrent_requests: Option<usize>,
+    /// The request timeout in milliseconds.
+    pub request_timeout: Option<u64>,
+    /// The throttling between requests in milliseconds.
+    pub request_throttling: Option<u64>,
+    /// The maximum number of idle connections allowed in the connection pool.
+    pub max_idle_connections_per_host: Option<usize>,
+    /// The timeout for idle connections to be kept alive in milliseconds.
+    pub idle_connections_timeout: Option<u64>,
+}
+
+impl SettingsArgs {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        source: Option<RawSource>,
+        ignored_urls: Vec<String>,
+        underlying_urls: Vec<String>,
+        cache_mode: Option<CacheMode>,
+        max_concurrent_requests: Option<usize>,
+        request_timeout: Option<u64>,
+        request_throttling: Option<u64>,
+        max_idle_connections_per_host: Option<usize>,
+        idle_connections_timeout: Option<u64>,
+    ) -> Self {
+        Self {
+            source,
+            ignored_urls,
+            underlying_urls,
+            cache_mode,
+            max_concurrent_requests,
+            request_timeout,
+            request_throttling,
+            max_idle_connections_per_host,
+            idle_connections_timeout,
+        }
+    }
+}
+
 /// Describes the settings used in Bogrep.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Settings {
@@ -170,6 +222,31 @@ impl Settings {
             debug!("Set cache mode to {}", cache_mode);
             self.cache_mode = cache_mode;
         }
+    }
+
+    pub fn set_request_timeout(&mut self, request_timeout: u64) {
+        debug!("Set `request_timeout` to {request_timeout}");
+        self.request_timeout = request_timeout;
+    }
+
+    pub fn set_request_throttling(&mut self, request_throttling: u64) {
+        debug!("Set `request_throttling` to {request_throttling}");
+        self.request_throttling = request_throttling;
+    }
+
+    pub fn set_max_concurrent_requests(&mut self, max_concurrent_requests: usize) {
+        debug!("Set `max_concurrent_requests` timeout to {max_concurrent_requests}");
+        self.max_concurrent_requests = max_concurrent_requests;
+    }
+
+    pub fn set_max_idle_connections_per_host(&mut self, max_idle_connections_per_host: usize) {
+        debug!("Set `max_idle_connections_per_host` to {max_idle_connections_per_host}");
+        self.max_idle_connections_per_host = max_idle_connections_per_host;
+    }
+
+    pub fn set_idle_connections_timeout(&mut self, idle_connections_timeout: u64) {
+        debug!("Set `idle_connections_timeout` to {idle_connections_timeout}");
+        self.idle_connections_timeout = idle_connections_timeout;
     }
 }
 
