@@ -105,13 +105,13 @@ fn configure_settings(
     settings.set_cache_mode(settings_args.cache_mode.clone());
 
     for ignored_url in settings_args.ignored_urls.as_slice() {
-        if let Err(err) = settings.add_ignored_url(&ignored_url) {
+        if let Err(err) = settings.add_ignored_url(ignored_url) {
             warn!("{err}");
         }
     }
 
     for underlying_url in settings_args.underlying_urls.as_slice() {
-        if let Err(err) = settings.add_underlying_url(&underlying_url) {
+        if let Err(err) = settings.add_underlying_url(underlying_url) {
             warn!("{err}");
         };
     }
@@ -381,11 +381,13 @@ mod tests {
     fn test_configure_source() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let mut settings_args = SettingsArgs::default();
-        settings_args.source = Some(RawSource {
-            path: PathBuf::from("test_data/bookmarks_simple.txt"),
-            folders: vec!["dev".to_string(), "articles".to_string()],
-        });
+        let settings_args = SettingsArgs {
+            source: Some(RawSource {
+                path: PathBuf::from("test_data/bookmarks_simple.txt"),
+                folders: vec!["dev".to_string(), "articles".to_string()],
+            }),
+            ..Default::default()
+        };
 
         let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -417,8 +419,10 @@ mod tests {
     fn test_configure_cache_mode() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let mut settings_args = SettingsArgs::default();
-        settings_args.cache_mode = Some(CacheMode::Html);
+        let settings_args = SettingsArgs {
+            cache_mode: Some(CacheMode::Html),
+            ..Default::default()
+        };
 
         let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -441,12 +445,14 @@ mod tests {
     fn test_configure_urls() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let mut settings_args = SettingsArgs::default();
-        settings_args.ignored_urls = vec![
-            "https://url1.com".to_string(),
-            "https://url2.com".to_string(),
-        ];
-        settings_args.underlying_urls = vec!["https://news.ycombinator.com".to_string()];
+        let settings_args = SettingsArgs {
+            ignored_urls: vec![
+                "https://url1.com".to_string(),
+                "https://url2.com".to_string(),
+            ],
+            underlying_urls: vec!["https://news.ycombinator.com".to_string()],
+            ..Default::default()
+        };
 
         let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());
@@ -475,12 +481,14 @@ mod tests {
     fn test_configure_urls_twice() {
         let mut cursor = Cursor::new(Vec::new());
         let mut settings = Settings::default();
-        let mut settings_args = SettingsArgs::default();
-        settings_args.ignored_urls = vec![
-            "https://url1.com".to_string(),
-            "https://url2.com".to_string(),
-        ];
-        settings_args.underlying_urls = vec!["https://news.ycombinator.com".to_string()];
+        let settings_args = SettingsArgs {
+            ignored_urls: vec![
+                "https://url1.com".to_string(),
+                "https://url2.com".to_string(),
+            ],
+            underlying_urls: vec!["https://news.ycombinator.com".to_string()],
+            ..Default::default()
+        };
 
         let res = configure_settings(&mut settings, &settings_args, &mut cursor);
         assert!(res.is_ok(), "{}", res.unwrap_err());

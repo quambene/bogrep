@@ -10,19 +10,10 @@ use chrono::{DateTime, Utc};
 use log::{trace, warn};
 use url::Url;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BookmarkManager {
     target_bookmarks: TargetBookmarks,
     source_readers: Vec<SourceReader>,
-}
-
-impl Default for BookmarkManager {
-    fn default() -> Self {
-        Self {
-            target_bookmarks: TargetBookmarks::default(),
-            source_readers: vec![],
-        }
-    }
 }
 
 impl BookmarkManager {
