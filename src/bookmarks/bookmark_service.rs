@@ -1,9 +1,7 @@
 use super::{BookmarkManager, RunMode};
 use crate::{
-    bookmark_reader::{ReadTarget, WriteTarget},
-    errors::BogrepError,
-    html, utils, Action, Caching, Fetch, ServiceReport, SourceType, Status, TargetBookmark,
-    TargetBookmarkBuilder,
+    errors::BogrepError, html, utils, Action, Caching, Fetch, ServiceReport, SourceType, Status,
+    TargetBookmark, TargetBookmarkBuilder,
 };
 use chrono::{DateTime, Utc};
 use colored::Colorize;
@@ -77,15 +75,13 @@ where
     pub async fn run(
         &self,
         bookmark_manager: &mut BookmarkManager,
-        target_reader: &mut impl ReadTarget,
-        target_writer: &mut impl WriteTarget,
         now: DateTime<Utc>,
     ) -> Result<(), BogrepError> {
-        bookmark_manager.import(target_reader, now)?;
+        bookmark_manager.import(now)?;
 
         self.process(bookmark_manager, now).await?;
 
-        bookmark_manager.export(target_writer)?;
+        bookmark_manager.export()?;
 
         Ok(())
     }
@@ -424,7 +420,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CacheMode, MockCache, MockClient, Settings};
+    use crate::{
+        bookmarks::bookmark_manager::tests::create_target_reader_writer, CacheMode, MockCache,
+        MockClient, Settings, TargetBookmarks,
+    };
     use std::collections::HashMap;
 
     fn create_mock_client(urls: &[Url], content: &str) -> MockClient {
@@ -470,7 +469,8 @@ mod tests {
 
     fn create_mock_manager(urls: &[Url], status: &[Status]) -> BookmarkManager {
         let now = Utc::now();
-        let mut bookmark_manager = BookmarkManager::default();
+        let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
 
         bookmark_manager.target_bookmarks_mut().insert(
             TargetBookmark::builder_with_id(

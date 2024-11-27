@@ -1,37 +1,29 @@
 use super::{RawSource, RunMode};
 use crate::{
-    bookmark_reader::{ReadTarget, SourceReader, WriteTarget},
+    bookmark_reader::SourceReader,
     bookmarks::{target_bookmarks::TargetBookmarkBuilder, Status},
     errors::BogrepError,
     Action, CacheMode, SourceBookmark, SourceBookmarks, SourceType, TargetBookmark,
-    TargetBookmarks,
+    TargetBookmarks, TargetReaderWriter,
 };
 use chrono::{DateTime, Utc};
 use log::{trace, warn};
 use url::Url;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct BookmarkManager {
     target_bookmarks: TargetBookmarks,
     source_readers: Vec<SourceReader>,
+    target_reader_writer: TargetReaderWriter,
 }
 
 impl BookmarkManager {
-    pub fn new(target_bookmarks: TargetBookmarks, source_readers: Vec<SourceReader>) -> Self {
+    pub fn new(target_reader_writer: TargetReaderWriter) -> Self {
         Self {
-            target_bookmarks,
-            source_readers,
-        }
-    }
-
-    pub fn from_sources(sources: &[RawSource]) -> Result<Self, anyhow::Error> {
-        Ok(Self {
             target_bookmarks: TargetBookmarks::default(),
-            source_readers: sources
-                .iter()
-                .map(SourceReader::init)
-                .collect::<Result<Vec<_>, anyhow::Error>>()?,
-        })
+            source_readers: vec![],
+            target_reader_writer,
+        }
     }
 
     pub fn target_bookmarks(&self) -> &TargetBookmarks {
@@ -42,13 +34,23 @@ impl BookmarkManager {
         &mut self.target_bookmarks
     }
 
+    pub fn target_reader_writer(&self) -> &TargetReaderWriter {
+        &self.target_reader_writer
+    }
+
+    pub fn add_sources(&mut self, sources: &[RawSource]) -> Result<(), anyhow::Error> {
+        let source_readers = sources
+            .iter()
+            .map(SourceReader::init)
+            .collect::<Result<Vec<_>, anyhow::Error>>()?;
+        self.source_readers.extend(source_readers);
+        Ok(())
+    }
+
     /// Import bookmarks from source and target files.
-    pub fn import(
-        &mut self,
-        target_reader: &mut impl ReadTarget,
-        now: DateTime<Utc>,
-    ) -> Result<(), BogrepError> {
-        target_reader.read(&mut self.target_bookmarks)?;
+    pub fn import(&mut self, now: DateTime<Utc>) -> Result<(), BogrepError> {
+        self.target_reader_writer
+            .read_target(&mut self.target_bookmarks)?;
 
         if !self.source_readers.is_empty() {
             let mut source_bookmarks = SourceBookmarks::default();
@@ -65,8 +67,9 @@ impl BookmarkManager {
     }
 
     /// Export bookmarks to target file.
-    pub fn export(&mut self, target_writer: &mut impl WriteTarget) -> Result<(), BogrepError> {
-        target_writer.write(&self.target_bookmarks)?;
+    pub fn export(&mut self) -> Result<(), BogrepError> {
+        self.target_reader_writer
+            .write_target(&self.target_bookmarks)?;
         Ok(())
     }
 
@@ -255,7 +258,7 @@ impl BookmarkManager {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::{
         bookmarks::{RawSource, SourceBookmarkBuilder},
@@ -268,15 +271,16 @@ mod tests {
         str::FromStr,
     };
 
-    fn create_target_reader(target_bookmarks: &TargetBookmarks) -> impl ReadTarget {
+    pub fn create_target_reader_writer(target_bookmarks: &TargetBookmarks) -> Box<Cursor<Vec<u8>>> {
         let bookmarks_json = JsonBookmarks::from(target_bookmarks);
         let buf = json::serialize(bookmarks_json).unwrap();
 
-        let mut target_reader: Cursor<Vec<u8>> = Cursor::new(Vec::new());
-        target_reader.write_all(&buf).unwrap();
+        let mut target_reader_writer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
+        target_reader_writer.write_all(&buf).unwrap();
         // Set cursor position to the start again to prepare cursor for reading.
-        target_reader.set_position(0);
-        target_reader
+        target_reader_writer.set_position(0);
+
+        Box::new(target_reader_writer)
     }
 
     #[test]
@@ -285,10 +289,11 @@ mod tests {
         let source_path = Path::new("test_data/bookmarks_simple.txt");
         let folders = vec![];
         let sources = vec![RawSource::new(source_path, folders)];
-        let mut target_reader = create_target_reader(&TargetBookmarks::default());
-        let mut bookmark_manager = BookmarkManager::from_sources(&sources).unwrap();
+        let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
+        bookmark_manager.add_sources(&sources).unwrap();
 
-        let res = bookmark_manager.import(&mut target_reader, now);
+        let res = bookmark_manager.import(now);
         assert!(res.is_ok());
 
         assert!(bookmark_manager
@@ -319,10 +324,10 @@ mod tests {
                 .add_source(SourceType::Internal)
                 .build(),
         );
-        let mut target_reader = create_target_reader(&target_bookmarks);
+        let target_reader_writer = create_target_reader_writer(&target_bookmarks);
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
 
-        let mut bookmark_manager = BookmarkManager::default();
-        let res = bookmark_manager.import(&mut target_reader, now);
+        let res = bookmark_manager.import(now);
         assert!(res.is_ok());
 
         assert!(bookmark_manager.target_bookmarks.contains_key(&url1));
@@ -334,7 +339,8 @@ mod tests {
         let now = Utc::now();
         let url1 = Url::parse("https://url1.com").unwrap();
         let url2 = Url::parse("https://url2.com").unwrap();
-        let mut bookmark_manager = BookmarkManager::default();
+        let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
         bookmark_manager.target_bookmarks.insert(
             TargetBookmarkBuilder::new(url1.clone(), now)
                 .add_source(SourceType::Internal)
@@ -346,11 +352,10 @@ mod tests {
                 .build(),
         );
 
-        let mut target_writer = Cursor::new(Vec::new());
-        let res = bookmark_manager.export(&mut target_writer);
+        let res = bookmark_manager.export();
         assert!(res.is_ok());
 
-        let actual = target_writer.get_ref();
+        let actual = bookmark_manager.target_reader_writer().inner();
         let actual_bookmarks = json::deserialize::<JsonBookmarks>(actual);
         assert!(
             actual_bookmarks.is_ok(),
@@ -392,29 +397,26 @@ mod tests {
                     .build(),
             ),
         ]));
-        let target_bookmarks = TargetBookmarks::new(HashMap::from_iter([
-            (
+        let target_reader_writer = Box::new(Cursor::new(Vec::new()));
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
+        bookmark_manager.target_bookmarks.insert(
+            TargetBookmark::builder_with_id(
+                "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
                 url1.clone(),
-                TargetBookmark::builder_with_id(
-                    "dd30381b-8e67-4e84-9379-0852f60a7cd7".to_owned(),
-                    url1.clone(),
-                    now,
-                )
-                .add_source(SourceType::Simple)
-                .build(),
-            ),
-            (
+                now,
+            )
+            .add_source(SourceType::Simple)
+            .build(),
+        );
+        bookmark_manager.target_bookmarks.insert(
+            TargetBookmark::builder_with_id(
+                "511b1590-e6de-4989-bca4-96dc61730508".to_owned(),
                 url2.clone(),
-                TargetBookmark::builder_with_id(
-                    "511b1590-e6de-4989-bca4-96dc61730508".to_owned(),
-                    url2.clone(),
-                    now,
-                )
-                .add_source(SourceType::Simple)
-                .build(),
-            ),
-        ]));
-        let mut bookmark_manager = BookmarkManager::new(target_bookmarks, vec![]);
+                now,
+            )
+            .add_source(SourceType::Simple)
+            .build(),
+        );
 
         bookmark_manager
             .add_bookmarks(&source_bookmarks, now)
@@ -505,7 +507,8 @@ mod tests {
         let url2 = Url::parse("https://url2.com").unwrap();
         let now = Utc::now();
         let settings = Settings::default();
-        let mut bookmark_manager = BookmarkManager::default();
+        let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
 
         bookmark_manager.add_urls(
             &[url1.clone(), url2.clone()],
@@ -546,7 +549,8 @@ mod tests {
             .add_cache_mode(CacheMode::Text)
             .build();
         let settings = Settings::default();
-        let mut bookmark_manager = BookmarkManager::default();
+        let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
         bookmark_manager
             .target_bookmarks_mut()
             .insert(target_bookmark.clone());
@@ -570,11 +574,11 @@ mod tests {
     fn test_add_urls_empty() {
         let now = Utc::now();
         let settings = Settings::default();
-        let mut bookmark_manager = BookmarkManager::default();
+        let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
         assert!(bookmark_manager.target_bookmarks.is_empty());
 
         bookmark_manager.add_urls(&[], &settings.cache_mode, &Action::None, now);
-
         assert!(bookmark_manager.target_bookmarks.is_empty());
     }
 
@@ -583,8 +587,8 @@ mod tests {
         let now = Utc::now();
         let url = Url::parse("https://url1.com").unwrap();
         let settings = Settings::default();
-
-        let mut bookmark_manager = BookmarkManager::default();
+        let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
+        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
 
         bookmark_manager.add_urls(&[url.clone()], &settings.cache_mode, &Action::None, now);
         assert_eq!(bookmark_manager.target_bookmarks.len(), 1);

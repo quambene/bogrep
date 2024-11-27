@@ -1,7 +1,7 @@
 use bogrep::{
-    errors::BogrepError, html, Action, BookmarkManager, BookmarkService, Cache, CacheMode, Caching,
-    Fetch, MockClient, RunMode, ServiceConfig, Settings, TargetBookmark, TargetBookmarkBuilder,
-    TargetBookmarks,
+    errors::BogrepError, html, utils, Action, BookmarkManager, BookmarkService, Cache, CacheMode,
+    Caching, Fetch, MockClient, RunMode, ServiceConfig, Settings, TargetBookmark,
+    TargetBookmarkBuilder, TargetBookmarks,
 };
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -62,7 +62,9 @@ async fn fetch_concurrently(max_concurrent_requests: usize) {
     .unwrap();
     let cache = Cache::new(&cache_path, CacheMode::Text);
     let client = MockClient::new();
-    let mut bookmark_manager = BookmarkManager::default();
+    let target_reader_writer =
+        utils::open_file_in_read_write_mode(&temp_path.join("bookmarks.json")).unwrap();
+    let mut bookmark_manager = BookmarkManager::new(Box::new(target_reader_writer));
 
     for i in 0..10000 {
         let url = Url::parse(&format!("https://url{i}.com")).unwrap();
