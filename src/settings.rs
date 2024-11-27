@@ -94,6 +94,9 @@ pub struct Settings {
     /// The file extension used to cache websites.
     pub cache_mode: CacheMode,
     /// The maximal number of concurrent requests.
+    ///
+    /// On macOS, no more than 100 open files are supported which is why 100 is
+    /// also used as a default for the number of concurrent requests.
     pub max_concurrent_requests: usize,
     /// The request timeout in milliseconds.
     pub request_timeout: u64,
