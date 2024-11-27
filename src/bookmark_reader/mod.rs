@@ -22,12 +22,11 @@ pub use simple::SimpleReader;
 pub use source_reader::SourceReader;
 use std::{
     fmt,
-    io::{BufReader, Lines, Read, Seek},
+    io::{BufReader, Lines, Read, Seek, Write},
     path::{Path, PathBuf},
 };
 pub use target_reader::ReadTarget;
-pub use target_reader_writer::TargetReaderWriter;
-pub use target_writer::WriteTarget;
+pub use target_reader_writer::{ReadWriteTarget, TargetReaderWriter};
 pub use text_reader::TextReader;
 
 pub type SourceSelector = Box<dyn SelectSource>;
@@ -82,6 +81,9 @@ pub trait SelectSource {
 
 pub trait SeekRead: Seek + Read + fmt::Debug {}
 impl<T> SeekRead for T where T: Seek + Read + fmt::Debug {}
+
+pub trait SeekReadWrite: Seek + Read + Write + fmt::Debug {}
+impl<T> SeekReadWrite for T where T: Seek + Read + Write + fmt::Debug {}
 
 /// A trait to read and parse the content for different file extensions.
 pub trait ReadSource: fmt::Debug {

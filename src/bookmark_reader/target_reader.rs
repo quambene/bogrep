@@ -30,7 +30,7 @@ where
     }
 }
 
-fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
+pub fn convert_underlyings(target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
     let underlying_bookmarks = target_bookmarks
         .values()
         .filter_map(|bookmark| {
