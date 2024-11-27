@@ -8,7 +8,7 @@ use std::{
 
 pub type TargetReaderWriter = Box<dyn SeekReadWrite>;
 
-/// Extension trait for [`Read`], [`Write`], and [`Seek`] to read and write bookmarks.
+/// Supertrait for [`Read`], [`Write`], and [`Seek`] to read and write bookmarks.
 pub trait ReadWriteTarget: SeekReadWrite {
     fn read_target(&mut self, target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError>;
 
