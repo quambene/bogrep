@@ -470,7 +470,7 @@ mod tests {
     fn create_mock_manager(urls: &[Url], status: &[Status]) -> BookmarkManager {
         let now = Utc::now();
         let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
-        let mut bookmark_manager = BookmarkManager::new(target_reader_writer);
+        let mut bookmark_manager = BookmarkManager::new(Box::new(target_reader_writer));
 
         bookmark_manager.target_bookmarks_mut().insert(
             TargetBookmark::builder_with_id(

@@ -1,29 +1,21 @@
-use super::target_reader::convert_underlyings;
+use super::{target_reader::convert_underlyings, SeekReadWrite};
 use crate::{errors::BogrepError, json, JsonBookmarks, TargetBookmarks};
 use anyhow::Context;
 use std::{
-    fmt,
     fs::File,
     io::{Cursor, Read, Seek, Write},
 };
 
-pub type TargetReaderWriter = Box<dyn ReadWriteTarget>;
+pub type TargetReaderWriter = Box<dyn SeekReadWrite>;
 
 /// Extension trait for [`Read`], [`Write`], and [`Seek`] to read and write bookmarks.
-pub trait ReadWriteTarget: fmt::Debug {
-    // TODO: refactor and remove `inner`.
-    fn inner(&self) -> &[u8];
-
+pub trait ReadWriteTarget: SeekReadWrite {
     fn read_target(&mut self, target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError>;
 
     fn write_target(&mut self, target_bookmarks: &TargetBookmarks) -> Result<(), BogrepError>;
 }
 
 impl ReadWriteTarget for File {
-    fn inner(&self) -> &[u8] {
-        &[]
-    }
-
     fn read_target(&mut self, target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         let mut buf = Vec::new();
         self.read_to_end(&mut buf).map_err(BogrepError::ReadFile)?;
@@ -60,10 +52,6 @@ impl ReadWriteTarget for File {
 }
 
 impl ReadWriteTarget for Cursor<Vec<u8>> {
-    fn inner(&self) -> &[u8] {
-        self.get_ref()
-    }
-
     fn read_target(&mut self, target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError> {
         let mut buf = Vec::new();
         self.read_to_end(&mut buf).map_err(BogrepError::ReadFile)?;

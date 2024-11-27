@@ -26,9 +26,7 @@ use std::{
     path::{Path, PathBuf},
 };
 pub use target_reader::ReadTarget;
-#[cfg(test)]
-pub use target_reader_writer::ReadWriteTarget;
-pub use target_reader_writer::TargetReaderWriter;
+pub use target_reader_writer::{ReadWriteTarget, TargetReaderWriter};
 pub use text_reader::TextReader;
 
 pub type SourceSelector = Box<dyn SelectSource>;
