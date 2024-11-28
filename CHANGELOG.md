@@ -12,6 +12,7 @@
 - changed
   - Rename subcommand from `update` to `sync`
   - Rename flag from `--all` to `--replace` for `bogrep fetch`
+  - Use upload token for codecov in CI
 
 ### v0.9.0
 
