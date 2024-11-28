@@ -118,6 +118,7 @@ fn configure_settings(
 
     let settings_json = json::serialize(settings)?;
     writer.write_all(&settings_json)?;
+    writer.flush()?;
 
     Ok(())
 }
