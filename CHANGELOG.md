@@ -9,6 +9,7 @@
   - Make `Settings` configurable via `bogrep config`
   - Set maximum number of open file descriptors
   - Abort `BookmarkService::process` gracefully for Ctrl+C
+  - Make `max_open_files` configurable
 - changed
   - Rename subcommand from `update` to `sync`
   - Rename flag from `--all` to `--replace` for `bogrep fetch`
