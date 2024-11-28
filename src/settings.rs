@@ -23,7 +23,7 @@ const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
 /// The  default for `Setting::max_idle_connections_per_host`.
-const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 10;
+const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 1;
 
 /// The  default for `Setting::idle_connections_timeout`.
 const IDLE_CONNECTIONS_TIMEOUT: u64 = 5_000;
@@ -47,7 +47,8 @@ pub struct SettingsArgs {
     pub request_timeout: Option<u64>,
     /// The throttling between requests in milliseconds.
     pub request_throttling: Option<u64>,
-    /// The maximum number of idle connections allowed in the connection pool.
+    /// The maximum number of idle connections allowed in the connection pool of
+    /// the client.
     pub max_idle_connections_per_host: Option<usize>,
     /// The timeout for idle connections to be kept alive in milliseconds.
     pub idle_connections_timeout: Option<u64>,
@@ -102,9 +103,22 @@ pub struct Settings {
     pub request_timeout: u64,
     /// The throttling between requests in milliseconds.
     pub request_throttling: u64,
-    /// The maximum number of idle connections allowed in the connection pool.
+    /// The maximum number of idle connections allowed in the connection pool of
+    /// the client.
+    ///
+    /// As the maximum number of open file descriptors (i.e. open files +
+    /// network sockets) are limited, `max_idle_connections_per_host` should be
+    /// configured to 1.
+    ///
+    /// Fix "Too many open files" and DNS errors (rate limit for DNS server) by
+    /// choosing a sensible value for `max_idle_connections_per_host` and
+    /// `idle_connections_timeout`.
     pub max_idle_connections_per_host: usize,
     /// The timeout for idle connections to be kept alive in milliseconds.
+    ///
+    /// Fix "Too many open files" and DNS errors (rate limit for DNS server) by
+    /// choosing a sensible value for `max_idle_connections_per_host` and
+    /// `idle_connections_timeout`.
     pub idle_connections_timeout: u64,
 }
 

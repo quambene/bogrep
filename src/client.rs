@@ -60,9 +60,6 @@ impl Client {
         let request_throttling = config.request_throttling;
         let client = ReqwestClient::builder()
             .timeout(Duration::from_millis(request_timeout))
-            // Fix "Too many open files" and DNS errors (rate limit for DNS
-            // server) by choosing a sensible value for `pool_idle_timeout()`
-            // and `pool_max_idle_per_host()`.
             .pool_idle_timeout(Duration::from_millis(config.idle_connections_timeout))
             .pool_max_idle_per_host(config.max_idle_connections_per_host)
             .build()
