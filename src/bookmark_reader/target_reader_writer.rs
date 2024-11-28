@@ -44,6 +44,8 @@ impl ReadWriteTarget for File {
         self.set_len(json.len() as u64)
             .context("Can't set length for writer")?;
 
+        self.flush().map_err(BogrepError::FlushFile)?;
+
         // Rewind after writing.
         self.rewind().map_err(BogrepError::RewindFile)?;
 
@@ -78,6 +80,8 @@ impl ReadWriteTarget for Cursor<Vec<u8>> {
         self.get_mut().clear();
 
         self.write_all(&json).map_err(BogrepError::WriteFile)?;
+
+        self.flush().map_err(BogrepError::FlushFile)?;
 
         // Rewind after writing.
         self.rewind().map_err(BogrepError::RewindFile)?;
