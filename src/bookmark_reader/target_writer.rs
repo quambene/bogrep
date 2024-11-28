@@ -16,6 +16,8 @@ where
 
         self.write_all(&json).map_err(BogrepError::WriteFile)?;
 
+        self.flush().map_err(BogrepError::FlushFile)?;
+
         // Rewind after writing.
         self.rewind().map_err(BogrepError::RewindFile)?;
 

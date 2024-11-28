@@ -43,6 +43,7 @@ lz4 = "1.24.0"
 similar = "2.2.1"
 plist = "1.6.0"
 infer = "0.15.0"
+rlimit = "0.10.2"
 
 [dev-dependencies]
 assert_cmd = "2.0.12"

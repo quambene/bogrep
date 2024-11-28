@@ -15,6 +15,7 @@ const BOOKMARKS_LOCK_FILE: &str = "bookmarks-lock.json";
 const CACHE_DIR: &str = "cache";
 
 /// A configuration for running Bogrep.
+// TODO: remove `target_bookmark_lock_file` (not used).
 #[derive(Debug, PartialEq, Default)]
 pub struct Config {
     /// The path of the settings file.
@@ -69,6 +70,11 @@ impl Config {
 
         let settings = Settings::init(&settings_path)?;
 
+        // `max_concurrent_requests` is bounded by how fast we can write the
+        // content, i.e. by the maximum number of open file descriptors.
+        #[cfg(not(any(target_os = "windows")))]
+        set_file_descriptor_limit(settings.max_concurrent_requests as u64)?;
+
         if !target_bookmark_path.exists() {
             debug!(
                 "Create bookmarks file at {}",
@@ -106,4 +112,20 @@ impl Config {
 
         Ok(config)
     }
+}
+
+#[cfg(not(any(target_os = "windows")))]
+fn set_file_descriptor_limit(max_file_descriptors: u64) -> Result<(), anyhow::Error> {
+    use rlimit::Resource;
+
+    let (soft_limit, hard_limit) =
+        rlimit::getrlimit(Resource::NOFILE).context("Can't get file descriptor limit")?;
+    debug!("Soft and hard limit for file descriptors: {soft_limit} and {hard_limit}");
+
+    if soft_limit < max_file_descriptors || hard_limit < max_file_descriptors {
+        rlimit::setrlimit(Resource::NOFILE, max_file_descriptors, max_file_descriptors)
+            .context("Can't set file descriptor limit")?;
+    }
+
+    Ok(())
 }

@@ -7,9 +7,12 @@
   - Fix `Cache::exists`
 - added
   - Make `Settings` configurable via `bogrep config`
+  - Set maximum number of open file descriptors
+  - Abort `BookmarkService::process` gracefully for Ctrl+C
 - changed
   - Rename subcommand from `update` to `sync`
   - Rename flag from `--all` to `--replace` for `bogrep fetch`
+  - Use upload token for codecov in CI
 
 ### v0.9.0
 

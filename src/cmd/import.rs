@@ -29,6 +29,7 @@ pub async fn import(config: Config, args: ImportArgs) -> Result<(), anyhow::Erro
                 let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
                 let settings_json = json::serialize(config.settings.clone())?;
                 settings_file.write_all(&settings_json)?;
+                settings_file.flush()?;
             }
         }
     }

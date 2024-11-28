@@ -1,32 +1,14 @@
 use anyhow::anyhow;
 use bogrep::{cmd, Args, Config, Logger, Subcommands};
 use clap::Parser;
-use std::fs;
-use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let args = Args::parse();
     Logger::init(args.verbose);
     let config = Config::init()?;
-    let target_bookmark_lock_file = config.target_bookmark_lock_file.clone();
 
-    tokio::select! {
-        _ = signal::ctrl_c() => {
-            // Clean up lock file when aborting.
-            // TODO: export bookmarks when cleaning up
-            if target_bookmark_lock_file.exists() {
-                if let Err(err) = fs::remove_file(target_bookmark_lock_file) {
-                    eprintln!("Can't remove lock file: {err:?}")
-                }
-            }
-
-            println!("Aborting ...");
-        },
-        res = run_app(args, config) => {
-            res?;
-        }
-    }
+    run_app(args, config).await?;
 
     Ok(())
 }

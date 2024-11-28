@@ -35,6 +35,7 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
                 let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
                 let settings_json = json::serialize(config.settings.clone())?;
                 settings_file.write_all(&settings_json)?;
+                settings_file.flush()?;
             }
         }
     }
@@ -118,6 +119,7 @@ fn configure_settings(
 
     let settings_json = json::serialize(settings)?;
     writer.write_all(&settings_json)?;
+    writer.flush()?;
 
     Ok(())
 }

@@ -8,7 +8,7 @@ use std::{
 
 pub type TargetReaderWriter = Box<dyn SeekReadWrite>;
 
-/// Extension trait for [`Read`], [`Write`], and [`Seek`] to read and write bookmarks.
+/// Supertrait for [`Read`], [`Write`], and [`Seek`] to read and write bookmarks.
 pub trait ReadWriteTarget: SeekReadWrite {
     fn read_target(&mut self, target_bookmarks: &mut TargetBookmarks) -> Result<(), BogrepError>;
 
@@ -44,6 +44,8 @@ impl ReadWriteTarget for File {
         self.set_len(json.len() as u64)
             .context("Can't set length for writer")?;
 
+        self.flush().map_err(BogrepError::FlushFile)?;
+
         // Rewind after writing.
         self.rewind().map_err(BogrepError::RewindFile)?;
 
@@ -78,6 +80,8 @@ impl ReadWriteTarget for Cursor<Vec<u8>> {
         self.get_mut().clear();
 
         self.write_all(&json).map_err(BogrepError::WriteFile)?;
+
+        self.flush().map_err(BogrepError::FlushFile)?;
 
         // Rewind after writing.
         self.rewind().map_err(BogrepError::RewindFile)?;

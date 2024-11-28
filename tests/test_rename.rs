@@ -19,6 +19,7 @@ fn test_rename() {
         let buf = json::serialize(&bookmarks_json).unwrap();
         let mut bookmarks_file = utils::create_file(&bookmarks_path).unwrap();
         bookmarks_file.write_all(&buf).unwrap();
+        bookmarks_file.flush().unwrap();
 
         let mut bookmarks_json = JsonBookmarks::default();
         bookmarks_json.bookmarks.push(JsonBookmark::new(
@@ -31,6 +32,7 @@ fn test_rename() {
         let buf = json::serialize(&bookmarks_json).unwrap();
         let mut bookmarks_lock_file = utils::open_and_truncate_file(&bookmarks_lock_path).unwrap();
         bookmarks_lock_file.write_all(&buf).unwrap();
+        bookmarks_lock_file.flush().unwrap();
     }
 
     assert!(bookmarks_path.exists());
