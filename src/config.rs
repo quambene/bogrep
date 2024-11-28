@@ -71,7 +71,8 @@ impl Config {
 
         let settings = Settings::init(&settings_path)?;
 
-        let (soft_limit, hard_limit) = rlimit::getrlimit(Resource::NOFILE)?;
+        let (soft_limit, hard_limit) =
+            rlimit::getrlimit(Resource::NOFILE).context("Can't get file descriptor limit")?;
         debug!("Soft and hard limit for file descriptors: {soft_limit} and {hard_limit}");
 
         // `max_concurrent_requests` is bounded by how fast we can write the
@@ -79,7 +80,8 @@ impl Config {
         let max_file_descriptors = settings.max_concurrent_requests as u64;
 
         if soft_limit < max_file_descriptors || hard_limit < max_file_descriptors {
-            rlimit::setrlimit(Resource::NOFILE, max_file_descriptors, max_file_descriptors)?;
+            rlimit::setrlimit(Resource::NOFILE, max_file_descriptors, max_file_descriptors)
+                .context("Can't set file descriptor limit")?;
         }
 
         if !target_bookmark_path.exists() {
