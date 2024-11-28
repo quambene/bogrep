@@ -15,6 +15,7 @@ const BOOKMARKS_LOCK_FILE: &str = "bookmarks-lock.json";
 const CACHE_DIR: &str = "cache";
 
 /// A configuration for running Bogrep.
+// TODO: remove `target_bookmark_lock_file` (not used).
 #[derive(Debug, PartialEq, Default)]
 pub struct Config {
     /// The path of the settings file.
