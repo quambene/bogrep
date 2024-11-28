@@ -1,7 +1,6 @@
 use crate::{json, JsonBookmarks, Settings};
 use anyhow::{anyhow, Context};
 use log::{debug, trace};
-use rlimit::Resource;
 use std::{
     env,
     fs::{self, File},
@@ -118,6 +117,8 @@ impl Config {
 
 #[cfg(not(any(target_os = "windows")))]
 fn set_file_descriptor_limit(max_file_descriptors: u64) -> Result<(), anyhow::Error> {
+    use rlimit::Resource;
+
     let (soft_limit, hard_limit) =
         rlimit::getrlimit(Resource::NOFILE).context("Can't get file descriptor limit")?;
     debug!("Soft and hard limit for file descriptors: {soft_limit} and {hard_limit}");
