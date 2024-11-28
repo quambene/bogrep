@@ -13,7 +13,7 @@
   - Rename subcommand from `update` to `sync`
   - Rename flag from `--all` to `--replace` for `bogrep fetch`
   - Use upload token for codecov in CI
-  - Set default for `max_idle_connections_per_host` from 10 to 1
+  - Decrease default for `max_idle_connections_per_host` from 10 to 1
 
 ### v0.9.0
 
