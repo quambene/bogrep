@@ -116,6 +116,7 @@ impl Config {
     }
 }
 
+#[cfg(not(any(target_os = "windows")))]
 fn set_file_descriptor_limit(max_file_descriptors: u64) -> Result<(), anyhow::Error> {
     let (soft_limit, hard_limit) =
         rlimit::getrlimit(Resource::NOFILE).context("Can't get file descriptor limit")?;
