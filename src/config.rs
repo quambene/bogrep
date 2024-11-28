@@ -70,11 +70,10 @@ impl Config {
 
         let settings = Settings::init(&settings_path)?;
 
-        if !cfg!(target_os = "windows") {
-            // `max_concurrent_requests` is bounded by how fast we can write the
-            // content, i.e. by the maximum number of open file descriptors.
-            set_file_descriptor_limit(settings.max_concurrent_requests as u64)?;
-        }
+        // `max_concurrent_requests` is bounded by how fast we can write the
+        // content, i.e. by the maximum number of open file descriptors.
+        #[cfg(not(any(target_os = "windows")))]
+        set_file_descriptor_limit(settings.max_concurrent_requests as u64)?;
 
         if !target_bookmark_path.exists() {
             debug!(
