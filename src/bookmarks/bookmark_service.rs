@@ -10,6 +10,7 @@ use log::{debug, trace, warn};
 use parking_lot::Mutex;
 use similar::{ChangeTag, TextDiff};
 use std::{error::Error, io::Write, rc::Rc};
+use tokio::signal;
 use url::Url;
 
 #[derive(Debug, Default)]
@@ -79,7 +80,14 @@ where
     ) -> Result<(), BogrepError> {
         bookmark_manager.import(now)?;
 
-        self.process(bookmark_manager, now).await?;
+        tokio::select! {
+            _ = signal::ctrl_c() => {
+                println!("Aborting ...");
+            },
+            res = self.process(bookmark_manager, now) => {
+                res?;
+            }
+        }
 
         bookmark_manager.export()?;
 
