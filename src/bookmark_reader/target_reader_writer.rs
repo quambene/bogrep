@@ -36,7 +36,7 @@ impl ReadWriteTarget for File {
 
     fn write_target(&mut self, target_bookmarks: &TargetBookmarks) -> Result<(), BogrepError> {
         let bookmarks = JsonBookmarks::from(target_bookmarks);
-        let json = json::serialize(bookmarks)?;
+        let json = json::serialize(&bookmarks)?;
 
         self.write_all(&json).map_err(BogrepError::WriteFile)?;
 
@@ -74,7 +74,7 @@ impl ReadWriteTarget for Cursor<Vec<u8>> {
 
     fn write_target(&mut self, target_bookmarks: &TargetBookmarks) -> Result<(), BogrepError> {
         let bookmarks = JsonBookmarks::from(target_bookmarks);
-        let json = json::serialize(bookmarks)?;
+        let json = json::serialize(&bookmarks)?;
 
         // Truncate the cursor.
         self.get_mut().clear();

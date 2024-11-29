@@ -273,7 +273,7 @@ pub mod tests {
 
     pub fn create_target_reader_writer(target_bookmarks: &TargetBookmarks) -> Cursor<Vec<u8>> {
         let bookmarks_json = JsonBookmarks::from(target_bookmarks);
-        let buf = json::serialize(bookmarks_json).unwrap();
+        let buf = json::serialize(&bookmarks_json).unwrap();
 
         let mut target_reader_writer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
         target_reader_writer.write_all(&buf).unwrap();

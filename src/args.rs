@@ -28,7 +28,9 @@ pub struct Args {
 /// Describes the available subcommands in the CLI.
 #[derive(Subcommand, Debug)]
 pub enum Subcommands {
-    /// Configure the source files to import the bookmarks.
+    /// Initialize the source files to import the bookmarks.
+    Init,
+    /// Configure the settings.
     Config(ConfigArgs),
     /// Synchronize source and target bookmarks. Fetch and cache websites for
     /// new bookmarks; delete cache for removed bookmarks.
