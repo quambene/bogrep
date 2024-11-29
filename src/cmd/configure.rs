@@ -1,6 +1,7 @@
 use crate::{
     bookmark_reader::{SourceOs, SourceReader},
     bookmarks::RawSource,
+    config::set_file_descriptor_limit,
     errors::BogrepError,
     json,
     settings::SettingsArgs,
@@ -80,8 +81,16 @@ fn configure_settings(
     settings_args: &SettingsArgs,
     mut writer: impl Write,
 ) -> Result<(), anyhow::Error> {
-    if let Some(source) = settings_args.source.as_ref() {
+    if let Some(source) = &settings_args.source {
         settings.set_source(source.clone())?;
+    }
+
+    if let Some(cache_mode) = &settings_args.cache_mode {
+        settings.set_cache_mode(cache_mode.clone());
+    }
+
+    if let Some(max_open_files) = settings_args.max_open_files {
+        settings.set_max_open_files(max_open_files);
     }
 
     if let Some(request_timeout) = settings_args.request_timeout {
@@ -92,19 +101,24 @@ fn configure_settings(
         settings.set_request_throttling(request_throttling);
     }
 
-    if let Some(request_timeout) = settings_args.max_concurrent_requests {
-        settings.set_max_concurrent_requests(request_timeout);
+    if let Some(max_concurrent_requests) = settings_args.max_concurrent_requests {
+        settings.set_max_concurrent_requests(max_concurrent_requests);
     }
 
-    if let Some(request_timeout) = settings_args.max_idle_connections_per_host {
-        settings.set_max_idle_connections_per_host(request_timeout);
+    if let Some(max_idle_connections_per_host) = settings_args.max_idle_connections_per_host {
+        settings.set_max_idle_connections_per_host(max_idle_connections_per_host);
     }
 
-    if let Some(request_timeout) = settings_args.idle_connections_timeout {
-        settings.set_idle_connections_timeout(request_timeout);
+    if let Some(idle_connections_timeout) = settings_args.idle_connections_timeout {
+        settings.set_idle_connections_timeout(idle_connections_timeout);
     }
 
-    settings.set_cache_mode(settings_args.cache_mode.clone());
+    if settings_args.max_open_files.is_some() && settings_args.max_concurrent_requests.is_some() {
+        #[cfg(not(any(target_os = "windows")))]
+        set_file_descriptor_limit(
+            settings.max_open_files + settings.max_concurrent_requests as u64,
+        )?;
+    }
 
     for ignored_url in settings_args.ignored_urls.as_slice() {
         if let Err(err) = settings.add_ignored_url(ignored_url) {

@@ -104,12 +104,23 @@ pub struct Settings {
     pub cache_mode: CacheMode,
     /// The maximal number of open files used to write the fetched content to
     /// disk.
+    ///
+    /// As the number of file descriptors (i.e. open files + network sockets) is
+    /// limited by the operating system, the sum of `max_open_files` and
+    /// `max_concurrent_requests` will be set as file descriptor limit.
+    ///
+    /// On macOS, no more than 256 file descriptors (i.e. open files + network
+    /// sockets) are supported.
     pub max_open_files: u64,
     /// The maximal number of concurrent requests used to fetch the content from
     /// the bookmarked websites.
     ///
-    /// On macOS, no more than 256 file descriptors are supported which is why
-    /// 100 is also used as a default for the number of concurrent requests.
+    /// As the number of file descriptors (i.e. open files + network sockets) is
+    /// limited by the operating system, the sum of `max_open_files` and
+    /// `max_concurrent_requests` will be set as file descriptor limit.
+    ///
+    /// On macOS, the default for the file descriptor limit is 256. On Linux,
+    /// the file descriptor
     pub max_concurrent_requests: usize,
     /// The request timeout in milliseconds.
     pub request_timeout: u64,
@@ -251,11 +262,9 @@ impl Settings {
         Ok(())
     }
 
-    pub fn set_cache_mode(&mut self, cache_mode: Option<CacheMode>) {
-        if let Some(cache_mode) = cache_mode {
-            debug!("Set cache mode to {}", cache_mode);
-            self.cache_mode = cache_mode;
-        }
+    pub fn set_cache_mode(&mut self, cache_mode: CacheMode) {
+        debug!("Set cache mode to {}", cache_mode);
+        self.cache_mode = cache_mode;
     }
 
     pub fn set_max_open_files(&mut self, max_open_files: u64) {
@@ -445,7 +454,7 @@ mod tests {
     #[test]
     fn test_set_cache_mode() {
         let mut settings = Settings::default();
-        settings.set_cache_mode(Some(CacheMode::Html));
+        settings.set_cache_mode(CacheMode::Html);
         assert_eq!(
             settings,
             Settings {
