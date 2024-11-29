@@ -83,7 +83,7 @@ impl Config {
                 target_bookmark_path.display()
             );
             let bookmarks_json = JsonBookmarks::default();
-            let buf = json::serialize(bookmarks_json)?;
+            let buf = json::serialize(&bookmarks_json)?;
             let mut bookmark_file = File::create(&target_bookmark_path).context(format!(
                 "Can't create `bookmarks.json` file: {}",
                 target_bookmark_path.display()

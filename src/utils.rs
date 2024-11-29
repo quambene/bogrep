@@ -1,4 +1,4 @@
-use crate::{bookmark_reader::SourceOs, errors::BogrepError};
+use crate::{bookmark_reader::SourceOs, errors::BogrepError, json, Settings};
 use anyhow::anyhow;
 use log::debug;
 use std::{
@@ -213,5 +213,14 @@ pub fn close_and_rename(from: (File, &Path), to: (File, &Path)) -> Result<(), Bo
         err,
     })?;
 
+    Ok(())
+}
+
+/// Overwrite settings.
+pub fn write_settings(settings_path: &Path, settings: &Settings) -> Result<(), anyhow::Error> {
+    let mut settings_file = open_and_truncate_file(settings_path)?;
+    let settings_json = json::serialize(settings)?;
+    settings_file.write_all(&settings_json)?;
+    settings_file.flush()?;
     Ok(())
 }
