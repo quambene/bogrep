@@ -7,7 +7,7 @@
   - Fix `Cache::exists`
 - added
   - Make `Settings` configurable via `bogrep config`
-  - Set maximum number of open file descriptors
+  - Set file descriptor limit
   - Abort `BookmarkService::process` gracefully for Ctrl+C
   - Make `max_open_files` configurable
 - changed
