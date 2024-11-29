@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### v0.10.0 (unreleased)
+### v0.10.0
 
 - fixed
   - Fix throttling for fetched bookmarks
