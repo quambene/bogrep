@@ -14,10 +14,10 @@ use std::{
 };
 
 /// The default for `Settungs::max_open_files`.
-const MAX_OPEN_FILES_DEFAULT: u64 = 100;
+const MAX_OPEN_FILES_DEFAULT: u64 = 500;
 
 /// The default for `Settungs::max_concurrent_requests`.
-const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 100;
+const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 500;
 
 /// The default for `Settings::request_timeout`.
 const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
