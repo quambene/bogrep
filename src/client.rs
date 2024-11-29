@@ -2,7 +2,8 @@ use crate::{bookmarks::TargetBookmark, errors::BogrepError, Settings};
 use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use log::{debug, trace};
+use headless_chrome::{Browser, LaunchOptionsBuilder};
+use log::{debug, error, trace};
 use parking_lot::Mutex;
 use reqwest::{
     header::{
@@ -15,7 +16,10 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
-use tokio::time::{self, Duration};
+use tokio::{
+    task,
+    time::{self, Duration},
+};
 
 /// A trait to fetch websites from a real or mock client.
 #[async_trait]
@@ -48,9 +52,10 @@ impl ClientConfig {
 }
 
 /// A client to fetch websites.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
     client: ReqwestClient,
+    browser: Browser,
     throttler: Option<Throttler>,
 }
 
@@ -64,8 +69,19 @@ impl Client {
             .pool_max_idle_per_host(config.max_idle_connections_per_host)
             .build()
             .map_err(BogrepError::CreateClient)?;
+        let launch_options = LaunchOptionsBuilder::default()
+            .headless(true)
+            // .devtools(false)
+            .idle_browser_timeout(Duration::from_secs(300))
+            .build()
+            .context("Can't build launch options")?;
+        let browser = Browser::new(launch_options)?;
         let throttler = Some(Throttler::new(request_throttling));
-        Ok(Self { client, throttler })
+        Ok(Self {
+            client,
+            browser,
+            throttler,
+        })
     }
 }
 
@@ -78,105 +94,129 @@ impl Fetch for Client {
             throttler.throttle(bookmark).await?;
         }
 
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            USER_AGENT,
-            HeaderValue::from_static(
-                "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
-            ),
-        );
-        headers.insert(
-            ACCEPT,
-            HeaderValue::from_static(
-                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            ),
-        );
-        headers.insert(
-            ACCEPT_LANGUAGE,
-            HeaderValue::from_static("en-US,en;q=0.7,de-DE;q=0.3"),
-        );
-        headers.insert(
-            ACCEPT_ENCODING,
-            HeaderValue::from_static("gzip,deflate,br,zstd"),
-        );
-        headers.insert(
-            HeaderName::from_static("sec-fetch-dest"),
-            HeaderValue::from_static("document"),
-        );
-        headers.insert(
-            HeaderName::from_static("sec-fetch-mode"),
-            HeaderValue::from_static("navigate"),
-        );
-        headers.insert(
-            HeaderName::from_static("sec-fetch-site"),
-            HeaderValue::from_static("none"),
-        );
-        headers.insert(
-            HeaderName::from_static("upgrade-insecure-requests"),
-            HeaderValue::from_static("1"),
-        );
-        headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
-        headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
-        headers.insert(
-            HOST,
-            HeaderValue::from_str(
-                bookmark
-                    .url()
-                    .host()
-                    .context("Can't get host")?
-                    .to_string()
-                    .as_str(),
-            )
-            .context("Can't get host header")?,
-        );
+        // let mut headers = HeaderMap::new();
+        // headers.insert(
+        //     USER_AGENT,
+        //     HeaderValue::from_static(
+        //         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
+        //     ),
+        // );
+        // headers.insert(
+        //     ACCEPT,
+        //     HeaderValue::from_static(
+        //         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        //     ),
+        // );
+        // headers.insert(
+        //     ACCEPT_LANGUAGE,
+        //     HeaderValue::from_static("en-US,en;q=0.7,de-DE;q=0.3"),
+        // );
+        // headers.insert(
+        //     ACCEPT_ENCODING,
+        //     HeaderValue::from_static("gzip,deflate,br,zstd"),
+        // );
+        // headers.insert(
+        //     HeaderName::from_static("sec-fetch-dest"),
+        //     HeaderValue::from_static("document"),
+        // );
+        // headers.insert(
+        //     HeaderName::from_static("sec-fetch-mode"),
+        //     HeaderValue::from_static("navigate"),
+        // );
+        // headers.insert(
+        //     HeaderName::from_static("sec-fetch-site"),
+        //     HeaderValue::from_static("none"),
+        // );
+        // headers.insert(
+        //     HeaderName::from_static("upgrade-insecure-requests"),
+        //     HeaderValue::from_static("1"),
+        // );
+        // headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+        // headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
+        // headers.insert(
+        //     HOST,
+        //     HeaderValue::from_str(
+        //         bookmark
+        //             .url()
+        //             .host()
+        //             .context("Can't get host")?
+        //             .to_string()
+        //             .as_str(),
+        //     )
+        //     .context("Can't get host header")?,
+        // );
 
-        let request = self.client.get(bookmark.url().to_owned()).headers(headers);
+        // let request = self.client.get(bookmark.url().to_owned()).headers(headers);
 
-        debug!("Fetch bookmark ({}) with request", bookmark.url(),);
-        trace!(
-            "Fetch bookmark ({}) with request: {:#?}",
-            bookmark.url(),
-            request.build().unwrap()
-        );
+        debug!("Fetch bookmark: {}", bookmark.url());
+        // trace!(
+        //     "Fetch bookmark ({}) with request: {:#?}",
+        //     bookmark.url(),
+        //     request.build().unwrap()
+        // );
 
-        let response = self
-            .client
-            .get(bookmark.url().to_owned())
-            .send()
-            .await
-            .map_err(BogrepError::HttpResponse)?;
+        let browser = self.browser.clone();
+        let bookmark_url = bookmark.url().clone();
 
-        if response.status().is_success() {
-            if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
-                let content_type = content_type.to_str()?;
+        let content = task::spawn_blocking(move || {
+            let tab = browser.new_tab()?;
+            tab.navigate_to(bookmark_url.as_str())?;
+            tab.wait_until_navigated()?;
+            let html = tab.get_content();
+            html
+        })
+        .await;
 
-                if !(content_type.starts_with("application/")
-                    || content_type.starts_with("image/")
-                    || content_type.starts_with("audio/")
-                    || content_type.starts_with("video/"))
-                {
-                    let html = response
-                        .text()
-                        .await
-                        .map_err(BogrepError::ParseHttpResponse)?;
-
-                    if !html.is_empty() {
-                        Ok(html)
-                    } else {
-                        Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
-                    }
-                } else {
-                    Err(BogrepError::BinaryResponse(bookmark.url().to_string()))
-                }
-            } else {
-                Err(BogrepError::BinaryResponse(bookmark.url().to_string()))
+        match content {
+            Ok(Ok(html)) => Ok(html),
+            Ok(Err(err)) => {
+                error!("Can't fetch website: {err}");
+                Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
             }
-        } else {
-            Err(BogrepError::HttpStatus {
-                status: response.status().to_string(),
-                url: bookmark.url().to_string(),
-            })
+            Err(err) => {
+                error!("Can't get content: {err}");
+                Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
+            }
         }
+
+        // let response = self
+        //     .client
+        //     .get(bookmark.url().to_owned())
+        //     .send()
+        //     .await
+        //     .map_err(BogrepError::HttpResponse)?;
+
+        // if response.status().is_success() {
+        //     if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
+        //         let content_type = content_type.to_str()?;
+
+        //         if !(content_type.starts_with("application/")
+        //             || content_type.starts_with("image/")
+        //             || content_type.starts_with("audio/")
+        //             || content_type.starts_with("video/"))
+        //         {
+        //             let html = response
+        //                 .text()
+        //                 .await
+        //                 .map_err(BogrepError::ParseHttpResponse)?;
+
+        //             if !html.is_empty() {
+        //                 Ok(html)
+        //             } else {
+        //                 Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
+        //             }
+        //         } else {
+        //             Err(BogrepError::BinaryResponse(bookmark.url().to_string()))
+        //         }
+        //     } else {
+        //         Err(BogrepError::BinaryResponse(bookmark.url().to_string()))
+        //     }
+        // } else {
+        //     Err(BogrepError::HttpStatus {
+        //         status: response.status().to_string(),
+        //         url: bookmark.url().to_string(),
+        //     })
+        // }
     }
 }
 
