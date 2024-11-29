@@ -1,7 +1,7 @@
 use crate::{
     bookmark_reader::{SourceOs, SourceReader},
     bookmarks::RawSource,
-    config::set_file_descriptor_limit,
+    config,
     errors::BogrepError,
     json,
     settings::SettingsArgs,
@@ -115,7 +115,7 @@ fn configure_settings(
 
     if settings_args.max_open_files.is_some() && settings_args.max_concurrent_requests.is_some() {
         #[cfg(not(any(target_os = "windows")))]
-        set_file_descriptor_limit(
+        config::set_file_descriptor_limit(
             settings.max_open_files + settings.max_concurrent_requests as u64,
         )?;
     }
