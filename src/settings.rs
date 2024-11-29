@@ -13,7 +13,10 @@ use std::{
     path::Path,
 };
 
-/// The default `Settungs::max_concurrent_requests`.
+/// The default for `Settungs::max_open_files`.
+const MAX_OPEN_FILES_DEFAULT: u64 = 100;
+
+/// The default for `Settungs::max_concurrent_requests`.
 const MAX_CONCURRENT_REQUESTS_DEFAULT: usize = 100;
 
 /// The default for `Settings::request_timeout`.
@@ -23,7 +26,7 @@ const REQUEST_TIMEOUT_DEFAULT: u64 = 60_000;
 const REQUEST_THROTTLING_DEFAULT: u64 = 3_000;
 
 /// The  default for `Setting::max_idle_connections_per_host`.
-const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 10;
+const MAX_IDLE_CONNECTIONS_PER_HOST: usize = 1;
 
 /// The  default for `Setting::idle_connections_timeout`.
 const IDLE_CONNECTIONS_TIMEOUT: u64 = 5_000;
@@ -41,13 +44,17 @@ pub struct SettingsArgs {
     pub underlying_urls: Vec<String>,
     /// The file extension used to cache websites.
     pub cache_mode: Option<CacheMode>,
+    /// The maximal number of open files used to write the fetched content to
+    /// disk.
+    pub max_open_files: Option<u64>,
     /// The maximal number of concurrent requests.
     pub max_concurrent_requests: Option<usize>,
     /// The request timeout in milliseconds.
     pub request_timeout: Option<u64>,
     /// The throttling between requests in milliseconds.
     pub request_throttling: Option<u64>,
-    /// The maximum number of idle connections allowed in the connection pool.
+    /// The maximum number of idle connections allowed in the connection pool of
+    /// the client.
     pub max_idle_connections_per_host: Option<usize>,
     /// The timeout for idle connections to be kept alive in milliseconds.
     pub idle_connections_timeout: Option<u64>,
@@ -60,6 +67,7 @@ impl SettingsArgs {
         ignored_urls: Vec<String>,
         underlying_urls: Vec<String>,
         cache_mode: Option<CacheMode>,
+        max_open_files: Option<u64>,
         max_concurrent_requests: Option<usize>,
         request_timeout: Option<u64>,
         request_throttling: Option<u64>,
@@ -71,6 +79,7 @@ impl SettingsArgs {
             ignored_urls,
             underlying_urls,
             cache_mode,
+            max_open_files,
             max_concurrent_requests,
             request_timeout,
             request_throttling,
@@ -93,18 +102,46 @@ pub struct Settings {
     pub underlying_urls: Vec<String>,
     /// The file extension used to cache websites.
     pub cache_mode: CacheMode,
-    /// The maximal number of concurrent requests.
+    /// The maximal number of open files used to write the fetched content to
+    /// disk.
     ///
-    /// On macOS, no more than 100 file descriptors are supported which is why
-    /// 100 is also used as a default for the number of concurrent requests.
+    /// As the number of file descriptors (i.e. open files + network sockets) is
+    /// limited by the operating system, the sum of `max_open_files` and
+    /// `max_concurrent_requests` will be set as file descriptor limit.
+    ///
+    /// On macOS, no more than 256 file descriptors (i.e. open files + network
+    /// sockets) are supported.
+    pub max_open_files: u64,
+    /// The maximal number of concurrent requests used to fetch the content from
+    /// the bookmarked websites.
+    ///
+    /// As the number of file descriptors (i.e. open files + network sockets) is
+    /// limited by the operating system, the sum of `max_open_files` and
+    /// `max_concurrent_requests` will be set as file descriptor limit.
+    ///
+    /// On macOS, the default for the file descriptor limit is 256. On Linux,
+    /// the file descriptor
     pub max_concurrent_requests: usize,
     /// The request timeout in milliseconds.
     pub request_timeout: u64,
     /// The throttling between requests in milliseconds.
     pub request_throttling: u64,
-    /// The maximum number of idle connections allowed in the connection pool.
+    /// The maximum number of idle connections allowed in the connection pool of
+    /// the client.
+    ///
+    /// As the maximum number of open file descriptors (i.e. open files +
+    /// network sockets) are limited by the operating system,
+    /// `max_idle_connections_per_host` should be configured to 1.
+    ///
+    /// Choose sensible values for `max_idle_connections_per_host` and
+    /// `idle_connections_timeout` to fix "Too many open files" and DNS errors
+    /// (rate limit for DNS server).
     pub max_idle_connections_per_host: usize,
     /// The timeout for idle connections to be kept alive in milliseconds.
+    ///
+    /// Choose sensible values for `max_idle_connections_per_host` and
+    /// `idle_connections_timeout` to fix "Too many open files" and DNS errors
+    /// (rate limit for DNS server).
     pub idle_connections_timeout: u64,
 }
 
@@ -115,6 +152,7 @@ impl Default for Settings {
             ignored_urls: Vec::new(),
             underlying_urls: Vec::new(),
             cache_mode: CacheMode::default(),
+            max_open_files: MAX_OPEN_FILES_DEFAULT,
             max_concurrent_requests: MAX_CONCURRENT_REQUESTS_DEFAULT,
             request_timeout: REQUEST_TIMEOUT_DEFAULT,
             request_throttling: REQUEST_THROTTLING_DEFAULT,
@@ -131,6 +169,7 @@ impl Settings {
         ignored_urls: Vec<String>,
         underlying_urls: Vec<String>,
         cache_mode: CacheMode,
+        max_open_files: u64,
         max_concurrent_requests: usize,
         request_timeout: u64,
         request_throttling: u64,
@@ -142,6 +181,7 @@ impl Settings {
             ignored_urls,
             underlying_urls,
             cache_mode,
+            max_open_files,
             max_concurrent_requests,
             request_timeout,
             request_throttling,
@@ -222,11 +262,14 @@ impl Settings {
         Ok(())
     }
 
-    pub fn set_cache_mode(&mut self, cache_mode: Option<CacheMode>) {
-        if let Some(cache_mode) = cache_mode {
-            debug!("Set cache mode to {}", cache_mode);
-            self.cache_mode = cache_mode;
-        }
+    pub fn set_cache_mode(&mut self, cache_mode: CacheMode) {
+        debug!("Set cache mode to {}", cache_mode);
+        self.cache_mode = cache_mode;
+    }
+
+    pub fn set_max_open_files(&mut self, max_open_files: u64) {
+        debug!("Set `max_open_files` to {max_open_files}");
+        self.max_open_files = max_open_files;
     }
 
     pub fn set_request_timeout(&mut self, request_timeout: u64) {
@@ -240,7 +283,7 @@ impl Settings {
     }
 
     pub fn set_max_concurrent_requests(&mut self, max_concurrent_requests: usize) {
-        debug!("Set `max_concurrent_requests` timeout to {max_concurrent_requests}");
+        debug!("Set `max_concurrent_requests` to {max_concurrent_requests}");
         self.max_concurrent_requests = max_concurrent_requests;
     }
 
@@ -411,7 +454,7 @@ mod tests {
     #[test]
     fn test_set_cache_mode() {
         let mut settings = Settings::default();
-        settings.set_cache_mode(Some(CacheMode::Html));
+        settings.set_cache_mode(CacheMode::Html);
         assert_eq!(
             settings,
             Settings {

@@ -56,6 +56,8 @@ pub struct ConfigArgs {
     #[command(flatten)]
     pub set_cache_mode: SetCacheMode,
     #[command(flatten)]
+    pub set_max_open_files: SetMaxOpenFiles,
+    #[command(flatten)]
     pub set_ignored_urls: SetIgnoredUrls,
     #[command(flatten)]
     pub set_underlying_urls: SetUnderlyingUrls,
@@ -90,6 +92,13 @@ pub struct SetCacheMode {
     /// Cache the fetched bookmarks as text, HTML or markdown file.
     #[arg(long)]
     pub cache_mode: Option<CacheMode>,
+}
+
+#[derive(ClapArgs, Debug)]
+#[group(required = false)]
+pub struct SetMaxOpenFiles {
+    #[arg(long)]
+    pub max_open_files: Option<u64>,
 }
 
 #[derive(ClapArgs, Debug)]
