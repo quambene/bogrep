@@ -100,24 +100,6 @@ impl Fetch for Client {
             HeaderValue::from_static("gzip,deflate,br,zstd"),
         );
         headers.insert(
-            HeaderName::from_static("sec-fetch-dest"),
-            HeaderValue::from_static("document"),
-        );
-        headers.insert(
-            HeaderName::from_static("sec-fetch-mode"),
-            HeaderValue::from_static("navigate"),
-        );
-        headers.insert(
-            HeaderName::from_static("sec-fetch-site"),
-            HeaderValue::from_static("none"),
-        );
-        headers.insert(
-            HeaderName::from_static("upgrade-insecure-requests"),
-            HeaderValue::from_static("1"),
-        );
-        headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
-        headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
-        headers.insert(
             HOST,
             HeaderValue::from_str(
                 bookmark
