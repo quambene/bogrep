@@ -73,8 +73,11 @@ pub async fn mount_mocks(mock_server: &MockServer, num_mocks: u32) -> HashMap<St
 }
 
 pub struct MockWebsite {
+    #[allow(dead_code)]
     pub url: String,
+    #[allow(dead_code)]
     pub content: String,
+    #[allow(dead_code)]
     pub mock_guard: MockGuard,
 }
 
