@@ -71,10 +71,10 @@ impl Config {
         let settings = Settings::init(&settings_path)?;
 
         // The file descriptor limit is determined by open files and network
-        // sockets.
+        // sockets. We are adding 100 more to be on the safe side.
         #[cfg(not(any(target_os = "windows")))]
         set_file_descriptor_limit(
-            settings.max_open_files + settings.max_concurrent_requests as u64,
+            settings.max_open_files + settings.max_concurrent_requests as u64 + 100,
         )?;
 
         if !target_bookmark_path.exists() {
