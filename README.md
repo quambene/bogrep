@@ -63,6 +63,9 @@ been run for the first time. The configuration path depends on your operating
 system (see [Supported operating systems](#supported-operating-systems)).
 
 ``` bash
+# Initialize bookmark sources
+bogrep init
+
 # Import bookmarks from selected sources
 bogrep import
 
