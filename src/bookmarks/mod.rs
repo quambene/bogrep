@@ -424,8 +424,8 @@ impl ServiceReport {
                 "Processed {} bookmarks, {} cached, {} ignored, {} failed",
                 self.total,
                 self.cached,
+                self.binary_response + self.empty_response,
                 self.failed_response,
-                self.binary_response + self.empty_response
             );
         }
     }

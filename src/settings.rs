@@ -109,8 +109,8 @@ pub struct Settings {
     /// limited by the operating system, the sum of `max_open_files` and
     /// `max_concurrent_requests` will be set as file descriptor limit.
     ///
-    /// On macOS, no more than 256 file descriptors (i.e. open files + network
-    /// sockets) are supported.
+    /// On macOS, the default for the soft file descriptor limit is 256. On
+    /// Linux, the soft file descriptor limit usually is 1024 by default.
     pub max_open_files: u64,
     /// The maximal number of concurrent requests used to fetch the content from
     /// the bookmarked websites.
@@ -119,8 +119,8 @@ pub struct Settings {
     /// limited by the operating system, the sum of `max_open_files` and
     /// `max_concurrent_requests` will be set as file descriptor limit.
     ///
-    /// On macOS, the default for the file descriptor limit is 256. On Linux,
-    /// the file descriptor
+    /// On macOS, the default for the soft file descriptor limit is 256. On
+    /// Linux, the soft file descriptor limit usually is 1024 by default.
     pub max_concurrent_requests: usize,
     /// The request timeout in milliseconds.
     pub request_timeout: u64,
