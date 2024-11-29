@@ -2,7 +2,7 @@ use crate::{bookmarks::TargetBookmark, errors::BogrepError, Settings};
 use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use log::debug;
+use log::{debug, trace};
 use parking_lot::Mutex;
 use reqwest::{
     header::{
@@ -132,7 +132,8 @@ impl Fetch for Client {
 
         let request = self.client.get(bookmark.url().to_owned()).headers(headers);
 
-        debug!(
+        debug!("Fetch bookmark ({}) with request", bookmark.url(),);
+        trace!(
             "Fetch bookmark ({}) with request: {:#?}",
             bookmark.url(),
             request.build().unwrap()
