@@ -406,7 +406,12 @@ where
                         .with_action(Action::FetchAndAdd)
                         .build();
 
-                debug!("Added underlying bookmark: {underlying_bookmark:#?}");
+                debug!(
+                    "Added underlying bookmark with url {}",
+                    underlying_bookmark.url()
+                );
+                trace!("Added underlying bookmark: {underlying_bookmark:#?}");
+
                 let mut underlying_bookmarks = self.underlying_bookmarks.lock();
                 underlying_bookmarks.push(underlying_bookmark);
             }
