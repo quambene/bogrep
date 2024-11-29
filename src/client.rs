@@ -5,10 +5,7 @@ use chrono::{DateTime, Utc};
 use log::{debug, trace};
 use parking_lot::Mutex;
 use reqwest::{
-    header::{
-        HeaderMap, HeaderName, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
-        CACHE_CONTROL, CONNECTION, HOST, USER_AGENT,
-    },
+    header::{HeaderMap, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, HOST, USER_AGENT},
     Client as ReqwestClient, Url,
 };
 use std::{
