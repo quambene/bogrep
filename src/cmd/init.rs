@@ -2,12 +2,13 @@ use crate::{
     bookmark_reader::{SourceOs, SourceReader},
     bookmarks::RawSource,
     errors::BogrepError,
-    json, utils, Config, Settings,
+    utils::{self},
+    Config, Settings,
 };
 use anyhow::anyhow;
 use std::{
     collections::HashSet,
-    io::{self, Write},
+    io::{self},
     path::Path,
 };
 
@@ -17,11 +18,7 @@ pub fn init(mut config: Config) -> Result<(), anyhow::Error> {
     if config.settings.sources.is_empty() {
         if let Some(source_os) = utils::get_supported_os() {
             init_sources(&mut config.settings, &home_dir, &source_os)?;
-
-            let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
-            let settings_json = json::serialize(config.settings.clone())?;
-            settings_file.write_all(&settings_json)?;
-            settings_file.flush()?;
+            utils::write_settings(&config.settings_path, &config.settings)?;
         }
     } else {
         println!("Bookmark sources already configured");

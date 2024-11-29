@@ -23,10 +23,7 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
             init_sources(&mut config.settings, &home_dir, &source_os)?;
 
             if !args.dry_run {
-                let mut settings_file = utils::open_and_truncate_file(&config.settings_path)?;
-                let settings_json = json::serialize(config.settings.clone())?;
-                settings_file.write_all(&settings_json)?;
-                settings_file.flush()?;
+                utils::write_settings(&config.settings_path, &config.settings)?;
             }
         }
     }
