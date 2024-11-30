@@ -55,19 +55,24 @@ pub fn init_sources(
 
         let source_folders = init_source_folders()?;
 
-        if let Some(folders) = source_folders {
-            if folders.is_empty() {
-                println!("No folders selected");
-            } else {
-                println!("Selected folders: {folders:?}");
-                source.folders = folders;
-                settings.sources.push(source.to_owned());
-            }
+        if source_folders.is_empty() {
+            println!("No folders selected");
+            settings.sources.push(source.to_owned());
         } else {
-            settings.sources.clear();
-            println!("No folders selected. Aborting ...");
-            break;
+            println!("Selected folders: {source_folders:?}");
+            source.folders = source_folders;
+            settings.sources.push(source.to_owned());
         }
+    }
+
+    println!("Selected sources:");
+
+    for source in selected_sources.iter() {
+        println!(
+            "path: {}, folders: {:?}",
+            source.path.display(),
+            source.folders
+        );
     }
 
     Ok(())
@@ -98,14 +103,7 @@ fn configure_source_path(sources: &[RawSource]) -> Result<Vec<RawSource>, anyhow
     if selected_indices.is_empty() {
         println!("No sources selected. Aborting ...");
     } else {
-        println!(
-            "Selected sources: {}",
-            selected_indices
-                .iter()
-                .map(|num| num.to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        );
+        println!("Selected sources: {selected_indices:?}",);
     }
 
     let selected_sources = selected_indices
@@ -160,7 +158,7 @@ fn select_sources_from_input(
     }
 }
 
-fn init_source_folders() -> Result<Option<Vec<String>>, anyhow::Error> {
+fn init_source_folders() -> Result<Vec<String>, anyhow::Error> {
     let selected_folders = loop {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
@@ -179,28 +177,26 @@ fn init_source_folders() -> Result<Option<Vec<String>>, anyhow::Error> {
     Ok(selected_folders)
 }
 
-fn select_source_folders_from_input(input: &str) -> Result<Option<Vec<String>>, BogrepError> {
+fn select_source_folders_from_input(input: &str) -> Result<Vec<String>, BogrepError> {
     let choices: Vec<&str> = input.split_whitespace().collect();
 
     if choices.is_empty() {
-        Err(BogrepError::InvalidInput)
+        Ok(vec![])
     } else if choices.len() == 1 {
         match choices[0] {
             choice => {
                 if choice.is_empty() {
-                    Ok(None)
+                    Ok(vec![])
                 } else {
-                    Ok(Some(vec![choice.trim().to_owned()]))
+                    Ok(vec![choice.trim().to_owned()])
                 }
             }
         }
     } else {
-        Ok(Some(
-            choices
-                .into_iter()
-                .map(|folder| folder.trim().to_owned())
-                .collect(),
-        ))
+        Ok(choices
+            .into_iter()
+            .map(|folder| folder.trim().to_owned())
+            .collect())
     }
 }
 
@@ -217,12 +213,12 @@ mod tests {
         assert!(res.is_err());
 
         let selected_folders = select_source_folders_from_input("dev").unwrap();
-        assert_eq!(selected_folders, Some(vec!["dev".to_owned(),]));
+        assert_eq!(selected_folders, vec!["dev".to_owned(),]);
 
         let selected_folders = select_source_folders_from_input("dev science").unwrap();
         assert_eq!(
             selected_folders,
-            Some(vec!["dev".to_owned(), "science".to_owned()])
+            vec!["dev".to_owned(), "science".to_owned()]
         );
     }
 
