@@ -63,6 +63,9 @@ been run for the first time. The configuration path depends on your operating
 system (see [Supported operating systems](#supported-operating-systems)).
 
 ``` bash
+# Initialize bookmark sources
+bogrep init
+
 # Import bookmarks from selected sources
 bogrep import
 
@@ -125,10 +128,10 @@ bogrep config --source ~/path/to/bookmarks/file
 
 ## Filter bookmark folders
 
-Filter which bookmark folders are imported. Multiple folders are separated by comma:
+Filter which bookmark folders are imported. Multiple folders are separated by whitespaces:
 
 ``` bash
-bogrep config --source "my/path/to/bookmarks_file.json" --folders dev,science,articles
+bogrep config --source "my/path/to/bookmarks_file.json" --folders dev science articles
 ```
 
 ## Ignore urls

@@ -71,10 +71,10 @@ impl Config {
         let settings = Settings::init(&settings_path)?;
 
         // The file descriptor limit is determined by open files and network
-        // sockets.
+        // sockets. We are adding 100 more to be on the safe side.
         #[cfg(not(any(target_os = "windows")))]
         set_file_descriptor_limit(
-            settings.max_open_files + settings.max_concurrent_requests as u64,
+            settings.max_open_files + settings.max_concurrent_requests as u64 + 100,
         )?;
 
         if !target_bookmark_path.exists() {
@@ -83,7 +83,7 @@ impl Config {
                 target_bookmark_path.display()
             );
             let bookmarks_json = JsonBookmarks::default();
-            let buf = json::serialize(bookmarks_json)?;
+            let buf = json::serialize(&bookmarks_json)?;
             let mut bookmark_file = File::create(&target_bookmark_path).context(format!(
                 "Can't create `bookmarks.json` file: {}",
                 target_bookmark_path.display()

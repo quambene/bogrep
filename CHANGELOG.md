@@ -1,6 +1,11 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### v0.10.0 (unreleased)
+### v0.11.0 (unreleased)
+
+- fixed
+  - Fix `bogrep init` for empty folders
+
+### v0.10.0
 
 - fixed
   - Fix throttling for fetched bookmarks
@@ -10,6 +15,7 @@
   - Set file descriptor limit
   - Abort `BookmarkService::process` gracefully for Ctrl+C
   - Make `max_open_files` configurable
+  - Implement `bogrep init` subcommand
 - changed
   - Rename subcommand from `update` to `sync`
   - Rename flag from `--all` to `--replace` for `bogrep fetch`
