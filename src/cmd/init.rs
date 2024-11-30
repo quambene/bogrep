@@ -204,14 +204,14 @@ mod tests {
 
     #[test]
     fn test_select_source_folders_from_input() {
-        let res = select_source_folders_from_input("");
-        assert!(res.is_err());
+        let selected_folders = select_source_folders_from_input("").unwrap();
+        assert_eq!(selected_folders, Vec::<String>::new());
 
-        let res = select_source_folders_from_input(" ");
-        assert!(res.is_err());
+        let selected_folders = select_source_folders_from_input(" ").unwrap();
+        assert_eq!(selected_folders, Vec::<String>::new());
 
         let selected_folders = select_source_folders_from_input("dev").unwrap();
-        assert_eq!(selected_folders, vec!["dev".to_owned(),]);
+        assert_eq!(selected_folders, vec!["dev".to_owned()]);
 
         let selected_folders = select_source_folders_from_input("dev science").unwrap();
         assert_eq!(
