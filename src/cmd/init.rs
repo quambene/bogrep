@@ -48,17 +48,21 @@ pub fn init_sources(
         return Ok(());
     }
 
-    println!("Select bookmark folders: yes (y), no (n), or specify folder names separated by whitespaces");
+    println!("Specify bookmark folder names separated by whitespaces, or press enter to skip");
 
     for source in selected_sources.iter_mut() {
         println!("Select folders for source: {}", source.path.display());
 
-        let source_folders = configure_source_folders()?;
+        let source_folders = init_source_folders()?;
 
         if let Some(folders) = source_folders {
-            println!("Selected folders: {folders:?}");
-            source.folders = folders;
-            settings.sources.push(source.to_owned());
+            if folders.is_empty() {
+                println!("No folders selected");
+            } else {
+                println!("Selected folders: {folders:?}");
+                source.folders = folders;
+                settings.sources.push(source.to_owned());
+            }
         } else {
             settings.sources.clear();
             println!("No folders selected. Aborting ...");
@@ -156,14 +160,14 @@ fn select_sources_from_input(
     }
 }
 
-fn configure_source_folders() -> Result<Option<Vec<String>>, anyhow::Error> {
+fn init_source_folders() -> Result<Option<Vec<String>>, anyhow::Error> {
     let selected_folders = loop {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         let input = input.trim().to_lowercase();
         match select_source_folders_from_input(&input) {
-            Ok(selected_fodlers) => {
-                break selected_fodlers;
+            Ok(selected_folders) => {
+                break selected_folders;
             }
             Err(_) => {
                 println!("Invalid input. Please try again");
@@ -182,8 +186,6 @@ fn select_source_folders_from_input(input: &str) -> Result<Option<Vec<String>>, 
         Err(BogrepError::InvalidInput)
     } else if choices.len() == 1 {
         match choices[0] {
-            "y" | "yes" => Ok(Some(vec![])),
-            "n" | "no" => Ok(None),
             choice => {
                 if choice.is_empty() {
                     Ok(None)
