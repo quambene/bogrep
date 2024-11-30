@@ -48,22 +48,31 @@ pub fn init_sources(
         return Ok(());
     }
 
-    println!("Select bookmark folders: yes (y), no (n), or specify folder names separated by whitespaces");
+    println!("Specify bookmark folder names separated by whitespaces, or press enter to skip");
 
     for source in selected_sources.iter_mut() {
         println!("Select folders for source: {}", source.path.display());
 
-        let source_folders = configure_source_folders()?;
+        let source_folders = init_source_folders()?;
 
-        if let Some(folders) = source_folders {
-            println!("Selected folders: {folders:?}");
-            source.folders = folders;
+        if source_folders.is_empty() {
+            println!("No folders selected");
             settings.sources.push(source.to_owned());
         } else {
-            settings.sources.clear();
-            println!("No folders selected. Aborting ...");
-            break;
+            println!("Selected folders: {source_folders:?}");
+            source.folders = source_folders;
+            settings.sources.push(source.to_owned());
         }
+    }
+
+    println!("Selected sources:");
+
+    for source in selected_sources.iter() {
+        println!(
+            "path: {}, folders: {:?}",
+            source.path.display(),
+            source.folders
+        );
     }
 
     Ok(())
@@ -94,14 +103,7 @@ fn configure_source_path(sources: &[RawSource]) -> Result<Vec<RawSource>, anyhow
     if selected_indices.is_empty() {
         println!("No sources selected. Aborting ...");
     } else {
-        println!(
-            "Selected sources: {}",
-            selected_indices
-                .iter()
-                .map(|num| num.to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        );
+        println!("Selected sources: {selected_indices:?}",);
     }
 
     let selected_sources = selected_indices
@@ -156,14 +158,14 @@ fn select_sources_from_input(
     }
 }
 
-fn configure_source_folders() -> Result<Option<Vec<String>>, anyhow::Error> {
+fn init_source_folders() -> Result<Vec<String>, anyhow::Error> {
     let selected_folders = loop {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         let input = input.trim().to_lowercase();
         match select_source_folders_from_input(&input) {
-            Ok(selected_fodlers) => {
-                break selected_fodlers;
+            Ok(selected_folders) => {
+                break selected_folders;
             }
             Err(_) => {
                 println!("Invalid input. Please try again");
@@ -175,30 +177,24 @@ fn configure_source_folders() -> Result<Option<Vec<String>>, anyhow::Error> {
     Ok(selected_folders)
 }
 
-fn select_source_folders_from_input(input: &str) -> Result<Option<Vec<String>>, BogrepError> {
+fn select_source_folders_from_input(input: &str) -> Result<Vec<String>, BogrepError> {
     let choices: Vec<&str> = input.split_whitespace().collect();
 
     if choices.is_empty() {
-        Err(BogrepError::InvalidInput)
+        Ok(vec![])
     } else if choices.len() == 1 {
-        match choices[0] {
-            "y" | "yes" => Ok(Some(vec![])),
-            "n" | "no" => Ok(None),
-            choice => {
-                if choice.is_empty() {
-                    Ok(None)
-                } else {
-                    Ok(Some(vec![choice.trim().to_owned()]))
-                }
-            }
+        let choice = choices[0];
+
+        if choice.is_empty() {
+            Ok(vec![])
+        } else {
+            Ok(vec![choice.trim().to_owned()])
         }
     } else {
-        Ok(Some(
-            choices
-                .into_iter()
-                .map(|folder| folder.trim().to_owned())
-                .collect(),
-        ))
+        Ok(choices
+            .into_iter()
+            .map(|folder| folder.trim().to_owned())
+            .collect())
     }
 }
 
@@ -208,19 +204,19 @@ mod tests {
 
     #[test]
     fn test_select_source_folders_from_input() {
-        let res = select_source_folders_from_input("");
-        assert!(res.is_err());
+        let selected_folders = select_source_folders_from_input("").unwrap();
+        assert_eq!(selected_folders, Vec::<String>::new());
 
-        let res = select_source_folders_from_input(" ");
-        assert!(res.is_err());
+        let selected_folders = select_source_folders_from_input(" ").unwrap();
+        assert_eq!(selected_folders, Vec::<String>::new());
 
         let selected_folders = select_source_folders_from_input("dev").unwrap();
-        assert_eq!(selected_folders, Some(vec!["dev".to_owned(),]));
+        assert_eq!(selected_folders, vec!["dev".to_owned()]);
 
         let selected_folders = select_source_folders_from_input("dev science").unwrap();
         assert_eq!(
             selected_folders,
-            Some(vec!["dev".to_owned(), "science".to_owned()])
+            vec!["dev".to_owned(), "science".to_owned()]
         );
     }
 

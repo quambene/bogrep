@@ -35,6 +35,13 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
         .map(|source_path| fs::canonicalize(source_path).context("Invalid source path"))
         .transpose()?;
     let source_folders = &args.set_source.folders;
+
+    if source_path.is_none() && !source_folders.is_empty() {
+        return Err(anyhow!(
+            "Missing source: specifiy `--source` to configure folders"
+        ));
+    }
+
     let source = source_path.map(|source_path| RawSource::new(source_path, source_folders.clone()));
 
     if let Some(ref source) = source {
