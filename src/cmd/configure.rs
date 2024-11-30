@@ -38,7 +38,7 @@ pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> 
 
     if source_path.is_none() && !source_folders.is_empty() {
         return Err(anyhow!(
-            "Missing source for specified folders: {source_folders:?}"
+            "Missing source: specifiy `--source` to configure folders"
         ));
     }
 
