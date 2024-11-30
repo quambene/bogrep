@@ -183,14 +183,12 @@ fn select_source_folders_from_input(input: &str) -> Result<Vec<String>, BogrepEr
     if choices.is_empty() {
         Ok(vec![])
     } else if choices.len() == 1 {
-        match choices[0] {
-            choice => {
-                if choice.is_empty() {
-                    Ok(vec![])
-                } else {
-                    Ok(vec![choice.trim().to_owned()])
-                }
-            }
+        let choice = choices[0];
+
+        if choice.is_empty() {
+            Ok(vec![])
+        } else {
+            Ok(vec![choice.trim().to_owned()])
         }
     } else {
         Ok(choices
