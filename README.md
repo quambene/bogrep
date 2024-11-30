@@ -128,10 +128,10 @@ bogrep config --source ~/path/to/bookmarks/file
 
 ## Filter bookmark folders
 
-Filter which bookmark folders are imported. Multiple folders are separated by comma:
+Filter which bookmark folders are imported. Multiple folders are separated by space:
 
 ``` bash
-bogrep config --source "my/path/to/bookmarks_file.json" --folders dev,science,articles
+bogrep config --source "my/path/to/bookmarks_file.json" --folders dev science articles
 ```
 
 ## Ignore urls
