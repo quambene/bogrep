@@ -68,7 +68,7 @@ impl Client {
             .map_err(BogrepError::CreateClient)?;
         let launch_options = LaunchOptionsBuilder::default()
             .headless(true)
-            // .devtools(false)
+            .devtools(false)
             .idle_browser_timeout(Duration::from_secs(300))
             .build()
             .context("Can't build launch options")?;
@@ -91,90 +91,48 @@ impl Fetch for Client {
             throttler.throttle(bookmark).await?;
         }
 
-        // let mut headers = HeaderMap::new();
-        // headers.insert(
-        //     USER_AGENT,
-        //     HeaderValue::from_static(
-        //         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
-        //     ),
-        // );
-        // headers.insert(
-        //     ACCEPT,
-        //     HeaderValue::from_static(
-        //         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        //     ),
-        // );
-        // headers.insert(
-        //     ACCEPT_LANGUAGE,
-        //     HeaderValue::from_static("en-US,en;q=0.7,de-DE;q=0.3"),
-        // );
-        // headers.insert(
-        //     ACCEPT_ENCODING,
-        //     HeaderValue::from_static("gzip,deflate,br,zstd"),
-        // );
-        // headers.insert(
-        //     HeaderName::from_static("sec-fetch-dest"),
-        //     HeaderValue::from_static("document"),
-        // );
-        // headers.insert(
-        //     HeaderName::from_static("sec-fetch-mode"),
-        //     HeaderValue::from_static("navigate"),
-        // );
-        // headers.insert(
-        //     HeaderName::from_static("sec-fetch-site"),
-        //     HeaderValue::from_static("none"),
-        // );
-        // headers.insert(
-        //     HeaderName::from_static("upgrade-insecure-requests"),
-        //     HeaderValue::from_static("1"),
-        // );
-        // headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
-        // headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
-        // headers.insert(
-        //     HOST,
-        //     HeaderValue::from_str(
-        //         bookmark
-        //             .url()
-        //             .host()
-        //             .context("Can't get host")?
-        //             .to_string()
-        //             .as_str(),
-        //     )
-        //     .context("Can't get host header")?,
-        // );
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            USER_AGENT,
+            HeaderValue::from_static(
+                "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
+            ),
+        );
+        headers.insert(
+            ACCEPT,
+            HeaderValue::from_static(
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            ),
+        );
+        headers.insert(
+            ACCEPT_LANGUAGE,
+            HeaderValue::from_static("en-US,en;q=0.7,de-DE;q=0.3"),
+        );
+        headers.insert(
+            ACCEPT_ENCODING,
+            HeaderValue::from_static("gzip,deflate,br,zstd"),
+        );
+        headers.insert(
+            HOST,
+            HeaderValue::from_str(
+                bookmark
+                    .url()
+                    .host()
+                    .context("Can't get host")?
+                    .to_string()
+                    .as_str(),
+            )
+            .context("Can't get host header")?,
+        );
 
-        // let request = self.client.get(bookmark.url().to_owned()).headers(headers);
+        let request = self.client.get(bookmark.url().to_owned()).headers(headers);
 
         debug!("Fetch bookmark: {}", bookmark.url());
-        // trace!(
-        //     "Fetch bookmark ({}) with request: {:#?}",
-        //     bookmark.url(),
-        //     request.build().unwrap()
-        // );
-
-        let browser = self.browser.clone();
-        let bookmark_url = bookmark.url().clone();
-
-        let content = task::spawn_blocking(move || {
-            let tab = browser.new_tab()?;
-            tab.navigate_to(bookmark_url.as_str())?;
-            tab.wait_until_navigated()?;
-            let html = tab.get_content();
-            html
-        })
-        .await;
-
-        match content {
-            Ok(Ok(html)) => Ok(html),
-            Ok(Err(err)) => {
-                error!("Can't fetch website: {err}");
-                Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
-            }
-            Err(err) => {
-                error!("Can't get content: {err}");
-                Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
-            }
-        }
+        trace!(
+            "Fetch bookmark ({}) with request: {:#?}",
+            bookmark.url(),
+            request.build().unwrap()
+        );
 
         // let response = self
         //     .client
@@ -214,6 +172,31 @@ impl Fetch for Client {
         //         url: bookmark.url().to_string(),
         //     })
         // }
+
+        let browser = self.browser.clone();
+        let bookmark_url = bookmark.url().clone();
+
+        let content = task::spawn_blocking(move || {
+            let tab = browser.new_tab()?;
+            tab.navigate_to(bookmark_url.as_str())?;
+            tab.wait_until_navigated()?;
+            let html = tab.get_content();
+            debug!("Fetched website: {html:?}");
+            html
+        })
+        .await;
+
+        match content {
+            Ok(Ok(html)) => Ok(html),
+            Ok(Err(err)) => {
+                error!("Can't fetch website: {err}");
+                Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
+            }
+            Err(err) => {
+                error!("Can't get content: {err}");
+                Err(BogrepError::EmptyResponse(bookmark.url().to_string()))
+            }
+        }
     }
 }
 
