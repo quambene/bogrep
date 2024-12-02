@@ -139,9 +139,9 @@ pub enum RunMode {
     FetchUrls(Vec<Url>),
     /// Import, fetch and replace provided bookmark urls.
     FetchAllUrls(Vec<Url>),
-    /// Fetch bookmarks which were not fetched yet.
+    /// Fetch bookmarks if not fetched yet.
     Fetch,
-    /// Fetch and replace all bookmarks.
+    /// Fetch and replace bookmarks.
     FetchAll,
     /// Fetch diff for provided bookmark urls.
     FetchDiff(Vec<Url>),
