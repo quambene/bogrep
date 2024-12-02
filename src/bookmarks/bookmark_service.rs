@@ -108,6 +108,7 @@ where
             | RunMode::Fetch
             | RunMode::FetchAll
             | RunMode::FetchUrls(_)
+            | RunMode::FetchAllUrls(_)
             | RunMode::FetchDiff(_)
             | RunMode::Sync
             | RunMode::Remove
@@ -164,6 +165,9 @@ where
             }
             RunMode::FetchUrls(urls) => {
                 bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndAdd, now);
+            }
+            RunMode::FetchAllUrls(urls) => {
+                bookmark_manager.add_urls(urls, self.cache.mode(), &Action::FetchAndReplace, now);
             }
             RunMode::Fetch => {
                 bookmark_manager
