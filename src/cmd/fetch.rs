@@ -28,7 +28,12 @@ pub async fn fetch(config: &Config, args: &FetchArgs) -> Result<(), anyhow::Erro
         RunMode::FetchDiff(diff_urls)
     } else if !args.urls.is_empty() {
         let fetch_urls = utils::parse_urls(&args.urls)?;
-        RunMode::FetchUrls(fetch_urls)
+
+        if args.replace {
+            RunMode::FetchAllUrls(fetch_urls)
+        } else {
+            RunMode::FetchUrls(fetch_urls)
+        }
     } else if args.replace {
         RunMode::FetchAll
     } else {
