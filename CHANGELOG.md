@@ -4,6 +4,7 @@
 
 - fixed
   - Fix `bogrep init` for empty folders
+  - Fix `--replace` for `bogrep fetch --urls <URLs>`
 
 ### v0.10.0
 
