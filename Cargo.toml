@@ -45,6 +45,9 @@ plist = "1.6.0"
 infer = "0.15.0"
 rlimit = "0.10.2"
 
+[patch.crates-io]
+readability = { path = "../../forks/readability" }
+
 [dev-dependencies]
 assert_cmd = "2.0.12"
 predicates = "3.0.4"
