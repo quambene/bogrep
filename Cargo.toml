@@ -35,7 +35,7 @@ serde = { version = "1.0.175", features = ["derive"] }
 serde_json = "1.0.103"
 html5ever = "0.24.1"
 html2md = "0.2.14"
-readability-rs = "0.4.0"
+readability-rs = "0.5.0"
 scraper = "0.18.1"
 regex = "1.9.1"
 colored = "2.0.4"
@@ -44,9 +44,6 @@ similar = "2.2.1"
 plist = "1.6.0"
 infer = "0.15.0"
 rlimit = "0.10.2"
-
-[patch.crates-io]
-readability-rs = { path = "../readability-rs" }
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
