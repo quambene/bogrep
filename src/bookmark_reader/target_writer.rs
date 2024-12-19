@@ -3,6 +3,7 @@ use std::io::{Seek, Write};
 
 /// Extension trait for [`Write`] and [`Seek`] to read target bookmarks.
 pub trait WriteTarget {
+    #[allow(dead_code)]
     fn write(&mut self, target_bookmarks: &TargetBookmarks) -> Result<(), BogrepError>;
 }
 

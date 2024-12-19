@@ -1,3 +1,4 @@
+use readability::ReadabilityError;
 use reqwest::header::ToStrError;
 use std::{io, string::FromUtf8Error};
 use thiserror::Error;
@@ -28,7 +29,7 @@ pub enum BogrepError {
     #[error("Can't parse html")]
     ParseHtml(String),
     #[error("Can't convert html: {0}")]
-    ConvertHtml(readability::error::Error),
+    ConvertHtml(ReadabilityError),
     #[error("Invalid utf8: {0}")]
     ConvertUtf8(#[from] FromUtf8Error),
     #[error("Can't read from HTML: {0}")]

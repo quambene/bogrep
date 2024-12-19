@@ -7,10 +7,15 @@ use html5ever::{
     ParseOpts, QualName,
 };
 use log::{debug, trace};
-use readability::extractor;
+use readability::{extract, ExtractOptions, ScorerOptions};
+use regex::Regex;
 use reqwest::Url;
 use scraper::{Html, Selector};
-use std::{borrow::BorrowMut, io::Cursor, rc::Rc};
+use std::{borrow::BorrowMut, io::Cursor, rc::Rc, sync::OnceLock};
+
+static UNLIKELY_CANDIDATES: OnceLock<Regex> = OnceLock::new();
+static NEGATIVE_CANDIDATES: OnceLock<Regex> = OnceLock::new();
+static POSITIVE_CANDIDATES: OnceLock<Regex> = OnceLock::new();
 
 pub fn filter_html(html: &str) -> Result<String, BogrepError> {
     let dom = parse_document(RcDom::default(), ParseOpts::default())
@@ -97,8 +102,22 @@ fn is_filtered_tag(tag_name: &QualName) -> bool {
 
 pub fn convert_to_text(html: &str, bookmark_url: &Url) -> Result<String, BogrepError> {
     let mut cursor = Cursor::new(html);
-    let product =
-        extractor::extract(&mut cursor, bookmark_url).map_err(BogrepError::ConvertHtml)?;
+    let options =  ExtractOptions { parse_options: Default::default(), scorer_options: ScorerOptions {
+        unlikely_candidates: UNLIKELY_CANDIDATES.get_or_init(|| {
+            Regex::new(
+                "combx|community|disqus|extra|foot|header|menu|remark|rss|shoutbox|sidebar|sponsor|ad-break|agegate|pagination|pager|popup|tweet|twitter|ssba",
+            )
+            .unwrap()
+        }),
+        negative_candidates: NEGATIVE_CANDIDATES.get_or_init(|| {
+            Regex::new("combx|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget|form|textfield|uiScale|hidden").unwrap()
+        }),
+        positive_candidates: POSITIVE_CANDIDATES.get_or_init(|| {
+            Regex::new("article|body|content|entry|hentry|main|page|pagination|post|blog|story").unwrap()
+        }),
+        ..Default::default()
+    }};
+    let product = extract(&mut cursor, bookmark_url, options).map_err(BogrepError::ConvertHtml)?;
     Ok(product.text)
 }
 
