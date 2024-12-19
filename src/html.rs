@@ -117,8 +117,7 @@ pub fn convert_to_text(html: &str, bookmark_url: &Url) -> Result<String, BogrepE
         }),
         ..Default::default()
     }};
-    let product =
-        extract(&mut cursor, bookmark_url, options.to_owned()).map_err(BogrepError::ConvertHtml)?;
+    let product = extract(&mut cursor, bookmark_url, options).map_err(BogrepError::ConvertHtml)?;
     Ok(product.text)
 }
 
