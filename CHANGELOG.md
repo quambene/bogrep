@@ -25,13 +25,15 @@
 
 ### v0.9.0
 
+- fixed
+  - Fix removing ignored urls
+  - Fix removed bookmarks in dry run
+  - Fix processing report for underlyings
+  - Fix trimmed whitespaces for HTML to text conversion
 - added
   - Select sources for `bogrep configure` if no sources are configured
   - Add bookmark folder to `SourceBookmark` and `TargetBookmark`
 - changed
-  - Fix removing ignored urls
-  - Fix removed bookmarks in dry run
-  - Fix processing report for underlyings
   - Update dependencies
 - removed
 
