@@ -192,7 +192,7 @@ impl FirefoxReader {
     }
 }
 
-impl<'a> ReadBookmark<'a> for FirefoxReader {
+impl ReadBookmark<'_> for FirefoxReader {
     type ParsedValue = serde_json::Value;
 
     fn name(&self) -> SourceType {

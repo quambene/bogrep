@@ -129,7 +129,7 @@ impl ChromiumReader {
     }
 }
 
-impl<'a> ReadBookmark<'a> for ChromiumReader {
+impl ReadBookmark<'_> for ChromiumReader {
     type ParsedValue = serde_json::Value;
 
     fn name(&self) -> SourceType {

@@ -100,7 +100,7 @@ impl SafariReader {
     }
 }
 
-impl<'a> ReadBookmark<'a> for SafariReader {
+impl ReadBookmark<'_> for SafariReader {
     type ParsedValue = plist::Value;
 
     fn name(&self) -> SourceType {
