@@ -50,6 +50,7 @@ pub enum Subcommands {
 /// Describes the arguments for the `init` subcommand.
 #[derive(ClapArgs, Debug)]
 pub struct InitArgs {
+    /// Run command in dry mode.
     #[arg(short = 'n', long = "dry-run")]
     pub dry_run: bool,
 }
