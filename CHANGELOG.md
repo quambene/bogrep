@@ -6,6 +6,8 @@
   - Fix `bogrep init` for empty folders
   - Fix `--replace` for `bogrep fetch --urls <URLs>`
   - Fix line breaks in text for paragraphs from HTML
+- added
+  - Add `InitArgs` to `init()`
 
 ### v0.10.0
 

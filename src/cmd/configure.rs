@@ -1,6 +1,6 @@
 use crate::{
-    bookmark_reader::SourceReader, bookmarks::RawSource, cmd::init_sources, config, json,
-    settings::SettingsArgs, utils, Config, ConfigArgs, Settings,
+    bookmark_reader::SourceReader, bookmarks::RawSource, json, settings::SettingsArgs, utils,
+    Config, ConfigArgs, Settings,
 };
 use anyhow::{anyhow, Context};
 use log::{debug, warn};
@@ -8,24 +8,11 @@ use std::{fs, io::Write};
 
 /// Configure the source files to import the bookmarks, the cache mode, or the
 /// ignoure urls .
-pub fn configure(config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> {
+pub fn configure(mut config: Config, args: ConfigArgs) -> Result<(), anyhow::Error> {
     debug!("{args:?}");
 
     if args.dry_run {
         println!("Running in dry mode ...")
-    }
-
-    let mut config = config;
-    let home_dir = dirs::home_dir().ok_or(anyhow!("Missing home dir"))?;
-
-    if config.settings.sources.is_empty() {
-        if let Some(source_os) = utils::get_supported_os() {
-            init_sources(&mut config.settings, &home_dir, &source_os)?;
-
-            if !args.dry_run {
-                utils::write_settings(&config.settings_path, &config.settings)?;
-            }
-        }
     }
 
     let source_path = args
@@ -109,7 +96,7 @@ fn configure_settings(
 
     if settings_args.max_open_files.is_some() && settings_args.max_concurrent_requests.is_some() {
         #[cfg(not(any(target_os = "windows")))]
-        config::set_file_descriptor_limit(
+        crate::config::set_file_descriptor_limit(
             settings.max_open_files + settings.max_concurrent_requests as u64,
         )?;
     }
