@@ -29,7 +29,7 @@ pub struct Args {
 #[derive(Subcommand, Debug)]
 pub enum Subcommands {
     /// Initialize the source files to import the bookmarks.
-    Init,
+    Init(InitArgs),
     /// Configure the settings.
     Config(ConfigArgs),
     /// Synchronize source and target bookmarks. Fetch and cache websites for
@@ -45,6 +45,13 @@ pub enum Subcommands {
     Add(AddArgs),
     /// Remove a bookmark.
     Remove(RemoveArgs),
+}
+
+/// Describes the arguments for the `init` subcommand.
+#[derive(ClapArgs, Debug)]
+pub struct InitArgs {
+    #[arg(short = 'n', long = "dry-run")]
+    pub dry_run: bool,
 }
 
 /// Describes the arguments for the `config` subcommand.

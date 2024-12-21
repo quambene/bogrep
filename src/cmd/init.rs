@@ -1,4 +1,5 @@
 use crate::{
+    args::InitArgs,
     bookmark_reader::{SourceOs, SourceReader},
     bookmarks::RawSource,
     errors::BogrepError,
@@ -12,13 +13,16 @@ use std::{
     path::Path,
 };
 
-pub fn init(mut config: Config) -> Result<(), anyhow::Error> {
+pub fn init(mut config: Config, args: InitArgs) -> Result<(), anyhow::Error> {
     let home_dir = dirs::home_dir().ok_or(anyhow!("Missing home dir"))?;
 
     if config.settings.sources.is_empty() {
         if let Some(source_os) = utils::get_supported_os() {
             init_sources(&mut config.settings, &home_dir, &source_os)?;
-            utils::write_settings(&config.settings_path, &config.settings)?;
+
+            if !args.dry_run {
+                utils::write_settings(&config.settings_path, &config.settings)?;
+            }
         }
     } else {
         println!("Bookmark sources already configured");

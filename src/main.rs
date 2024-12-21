@@ -16,7 +16,7 @@ async fn main() -> Result<(), anyhow::Error> {
 async fn run_app(args: Args, config: Config) -> Result<(), anyhow::Error> {
     if let Some(subcommands) = args.subcommands {
         match subcommands {
-            Subcommands::Init => cmd::init(config)?,
+            Subcommands::Init(args) => cmd::init(config, args)?,
             Subcommands::Config(args) => cmd::configure(config, args)?,
             Subcommands::Import(args) => cmd::import(config, args).await?,
             Subcommands::Sync(args) => cmd::sync(&config, &args).await?,
