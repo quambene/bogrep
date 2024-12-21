@@ -35,6 +35,13 @@ pub fn init_sources(
 ) -> Result<(), anyhow::Error> {
     let sources = SourceReader::select_sources(home_dir, source_os)?;
 
+    if sources.is_empty() {
+        return Err(anyhow!(
+            "Found no sources in {}. Use `bogrep config --source` to configure custom sources.",
+            home_dir.display()
+        ));
+    }
+
     println!("Found sources:");
     for (index, source) in sources.iter().enumerate() {
         println!("{}: {}", index + 1, source.path.display());
