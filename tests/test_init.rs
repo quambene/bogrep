@@ -3,6 +3,7 @@ use predicates::str;
 use std::{env, fs, path::Path};
 use tempfile::tempdir;
 
+#[cfg(target_os = "linux")]
 #[test]
 fn test_init() {
     let temp_dir = tempdir().unwrap();
