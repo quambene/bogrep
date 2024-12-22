@@ -32,6 +32,8 @@ mod client;
 pub mod cmd;
 /// The configuration used in Bogrep.
 mod config;
+/// A reference-counted DOM.
+mod dom;
 /// The errors which can occur in Bogrep.
 pub mod errors;
 /// Helper functions to work with HTML.
