@@ -19,13 +19,13 @@ harness = false
 [dependencies]
 chrono = "0.4.26"
 anyhow = "1.0.72"
-thiserror = "1.0.50"
+thiserror = "2.0"
 log = "0.4.19"
-env_logger = "0.10.0"
+env_logger = "0.11"
 dirs = "5.0.1"
 url = "2.5.0"
 clap = { version = "4.3.19", features = ["derive"] }
-reqwest = { version = "0.11.18", features = ["trust-dns"] }
+reqwest = { version = "0.12", features = ["trust-dns"] }
 tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "time", "signal"] }
 futures = "0.3.28"
 async-trait = "0.1.73"
@@ -33,23 +33,25 @@ parking_lot = "0.12.1"
 uuid = { version = "1.4.1", features = ["v4"] }
 serde = { version = "1.0.175", features = ["derive"] }
 serde_json = "1.0.103"
-html5ever = "0.24.1"
+markup5ever = "0.14"
+html5ever = "0.29"
 html2md = "0.2.14"
 readability-rs = "0.5.0"
-scraper = "0.18.1"
+scraper = "0.22"
 regex = "1.9.1"
 colored = "2.0.4"
 lz4 = "1.24.0"
 similar = "2.2.1"
 plist = "1.6.0"
-infer = "0.15.0"
+infer = "0.16"
 rlimit = "0.10.2"
+tendril = "0.4.3"
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
 predicates = "3.0.4"
 tempfile = "3.8.0"
-wiremock = "0.5.19"
+wiremock = "0.6"
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros", "fs", "time", "test-util"] }
 assert_matches = "1.5.0"

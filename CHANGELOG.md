@@ -1,5 +1,10 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
+### v0.10.2 (unreleased)
+
+- changed
+  - Update dependencies
+
 ### v0.10.1
 
 - fixed

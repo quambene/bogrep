@@ -1,17 +1,21 @@
-use crate::{errors::BogrepError, UnderlyingType};
+use crate::{
+    dom::{Node, NodeData, RcDom, SerializableHandle},
+    errors::BogrepError,
+    UnderlyingType,
+};
 use html5ever::{
     parse_document,
-    rcdom::{Node, NodeData, RcDom},
     serialize::{serialize, SerializeOpts},
-    tendril::TendrilSink,
-    ParseOpts, QualName,
+    ParseOpts,
 };
 use log::{debug, trace};
+use markup5ever::interface::QualName;
 use readability::{extract, ExtractOptions, ScorerOptions};
 use regex::Regex;
 use reqwest::Url;
 use scraper::{Html, Selector};
 use std::{borrow::BorrowMut, io::Cursor, rc::Rc, sync::OnceLock};
+use tendril::TendrilSink;
 
 static UNLIKELY_CANDIDATES: OnceLock<Regex> = OnceLock::new();
 static NEGATIVE_CANDIDATES: OnceLock<Regex> = OnceLock::new();
@@ -24,11 +28,12 @@ pub fn filter_html(html: &str) -> Result<String, BogrepError> {
         .map_err(BogrepError::ReadHtml)?;
 
     let filtered_dom = filter_dom(dom);
+    let handle = SerializableHandle::from(filtered_dom.document);
 
     let mut bytes = vec![];
     serialize(
         &mut bytes,
-        &filtered_dom.document,
+        &handle,
         SerializeOpts {
             scripting_enabled: true,
             traversal_scope: html5ever::serialize::TraversalScope::ChildrenOnly(None),

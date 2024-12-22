@@ -3,6 +3,7 @@
 [![Latest Version](https://img.shields.io/crates/v/bogrep.svg)](https://crates.io/crates/bogrep)
 [![Build Status](https://github.com/quambene/bogrep/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/quambene/bogrep/actions/workflows/rust-ci.yml)
 [![codecov](https://codecov.io/gh/quambene/bogrep/graph/badge.svg)](https://codecov.io/gh/quambene/bogrep)
+[![dependency status](https://deps.rs/repo/github/quambene/bogrep/status.svg)](https://deps.rs/repo/github/quambene/bogrep)
 
 Bogrep downloads and caches your bookmarks in plaintext without images or
 videos. Use the Bogrep CLI to grep through your cached bookmarks in full-text
