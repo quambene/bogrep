@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD034 -->
 
-### v0.10.1 (unreleased)
+### v0.10.1
 
 - fixed
   - Fix `bogrep init` for empty folders
