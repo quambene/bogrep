@@ -38,22 +38,25 @@
 //! [tree structure]: https://en.wikipedia.org/wiki/Tree_(data_structure)
 //! [dom wiki]: https://en.wikipedia.org/wiki/Document_Object_Model
 
-use html5ever::interface::tree_builder;
-use html5ever::interface::tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink};
-use html5ever::serialize::TraversalScope;
-use html5ever::serialize::TraversalScope::{ChildrenOnly, IncludeNode};
-use html5ever::serialize::{Serialize, Serializer};
-use html5ever::Attribute;
-use html5ever::ExpandedName;
-use html5ever::QualName;
-use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
-use std::collections::{HashSet, VecDeque};
-use std::default::Default;
-use std::fmt;
-use std::io;
-use std::mem;
-use std::rc::{Rc, Weak};
+use html5ever::{
+    interface::{
+        tree_builder,
+        tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink},
+    },
+    serialize::{
+        Serialize, Serializer, TraversalScope,
+        TraversalScope::{ChildrenOnly, IncludeNode},
+    },
+    Attribute, ExpandedName, QualName,
+};
+use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
+    collections::{HashSet, VecDeque},
+    default::Default,
+    fmt, io, mem,
+    rc::{Rc, Weak},
+};
 use tendril::StrTendril;
 
 /// The different kinds of nodes in the DOM.
