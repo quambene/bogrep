@@ -4,6 +4,7 @@
 
 - changed
   - Update dependencies
+  - Replace openssl by rustls
 
 ### v0.10.1
 
