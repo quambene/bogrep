@@ -2,9 +2,12 @@
 
 ### v0.10.2 (unreleased)
 
+- added
+  - Add `cargo audit` to CI
 - changed
   - Update dependencies
   - Replace openssl by rustls
+  - Update rust to 1.97
 
 ### v0.10.1
 

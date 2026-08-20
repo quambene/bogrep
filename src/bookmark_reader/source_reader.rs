@@ -159,7 +159,7 @@ impl SourceReader {
         Ok(())
     }
 
-    fn read_and_parse(&mut self) -> Result<ParsedBookmarks, anyhow::Error> {
+    fn read_and_parse(&mut self) -> Result<ParsedBookmarks<'_>, anyhow::Error> {
         let parsed_bookmarks = self.source_reader.read_and_parse(&mut self.reader)?;
         Ok(parsed_bookmarks)
     }

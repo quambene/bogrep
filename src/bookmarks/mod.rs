@@ -290,7 +290,7 @@ impl JsonBookmarks {
         Self { bookmarks }
     }
 
-    pub fn iter(&self) -> Iter<JsonBookmark> {
+    pub fn iter(&self) -> Iter<'_, JsonBookmark> {
         self.bookmarks.iter()
     }
 

@@ -20,6 +20,15 @@ jobs:
         - uses: dtolnay/rust-toolchain@stable
         - name: cargo clippy --all-features --all-targets -- -D warnings
           run: cargo clippy --all-features --all-targets -- -D warnings
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
   doc:
     runs-on: ubuntu-latest
     steps:

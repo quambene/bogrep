@@ -268,6 +268,7 @@ pub mod tests {
         collections::{HashMap, HashSet},
         io::{Cursor, Write},
         path::Path,
+        slice,
         str::FromStr,
     };
 
@@ -559,7 +560,12 @@ pub mod tests {
             .target_bookmarks_mut()
             .insert(target_bookmark.clone());
 
-        bookmark_manager.add_urls(&[url.clone()], &settings.cache_mode, &Action::None, now);
+        bookmark_manager.add_urls(
+            slice::from_ref(&url),
+            &settings.cache_mode,
+            &Action::None,
+            now,
+        );
 
         let bookmark = bookmark_manager.target_bookmarks().get(&url).unwrap();
         assert_eq!(bookmark.id, target_bookmark.id);
@@ -594,10 +600,15 @@ pub mod tests {
         let target_reader_writer = create_target_reader_writer(&TargetBookmarks::default());
         let mut bookmark_manager = BookmarkManager::new(Box::new(target_reader_writer));
 
-        bookmark_manager.add_urls(&[url.clone()], &settings.cache_mode, &Action::None, now);
+        bookmark_manager.add_urls(
+            slice::from_ref(&url),
+            &settings.cache_mode,
+            &Action::None,
+            now,
+        );
         assert_eq!(bookmark_manager.target_bookmarks.len(), 1);
 
-        bookmark_manager.remove_urls(&[url.clone()]);
+        bookmark_manager.remove_urls(slice::from_ref(&url));
 
         let bookmark = bookmark_manager.target_bookmarks().get(&url).unwrap();
         assert_eq!(bookmark.url, url);

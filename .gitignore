@@ -1,6 +1,7 @@
 # Rust
 /target
-.cargo
+.cargo/*
+!.cargo/audit.toml
 
 # Keys
 **/*.jks
