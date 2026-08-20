@@ -2,6 +2,8 @@
 
 ### v0.10.2 (unreleased)
 
+- added
+  - Add `cargo audit` to CI
 - changed
   - Update dependencies
   - Replace openssl by rustls
