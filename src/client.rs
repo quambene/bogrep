@@ -72,7 +72,7 @@ impl Fetch for Client {
         debug!("Fetch bookmark ({})", bookmark.url());
 
         if let Some(throttler) = &self.throttler {
-            throttler.throttle(bookmark).await?;
+            throttler.throttle(bookmark, Utc::now()).await?;
         }
 
         let mut headers = HeaderMap::new();
@@ -178,9 +178,12 @@ impl Throttler {
     }
 
     /// Wait some time before fetching bookmarks for the same host to prevent rate limiting.
-    pub async fn throttle(&self, bookmark: &TargetBookmark) -> Result<(), BogrepError> {
+    pub async fn throttle(
+        &self,
+        bookmark: &TargetBookmark,
+        now: DateTime<Utc>,
+    ) -> Result<(), BogrepError> {
         debug!("Throttle bookmark ({})", bookmark.url());
-        let now = Utc::now();
 
         if let Some(next_fetch_time) = self.update_fetch_time(bookmark, now)? {
             let duration_until_next_fetch = next_fetch_time - now.timestamp_millis();
@@ -289,9 +292,9 @@ mod tests {
         let start_instant = Instant::now();
 
         try_join!(
-            throttler.throttle(&bookmark1),
-            throttler.throttle(&bookmark2),
-            throttler.throttle(&bookmark3)
+            throttler.throttle(&bookmark1, now),
+            throttler.throttle(&bookmark2, now),
+            throttler.throttle(&bookmark3, now)
         )
         .unwrap();
 
