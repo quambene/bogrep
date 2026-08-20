@@ -320,10 +320,7 @@ where
     }
 
     /// Fetch and add bookmark to cache.
-    async fn execute_action<'a>(
-        &self,
-        bookmark: &'a mut TargetBookmark,
-    ) -> Result<(), BogrepError> {
+    async fn execute_action(&self, bookmark: &mut TargetBookmark) -> Result<(), BogrepError> {
         let client = &self.client;
         let cache = &self.cache;
 

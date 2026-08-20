@@ -302,15 +302,15 @@ impl TargetBookmarks {
         self.0.get_mut(url)
     }
 
-    pub fn keys(&self) -> Keys<Url, TargetBookmark> {
+    pub fn keys(&self) -> Keys<'_, Url, TargetBookmark> {
         self.0.keys()
     }
 
-    pub fn values(&self) -> Values<Url, TargetBookmark> {
+    pub fn values(&self) -> Values<'_, Url, TargetBookmark> {
         self.0.values()
     }
 
-    pub fn values_mut(&mut self) -> ValuesMut<Url, TargetBookmark> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, Url, TargetBookmark> {
         self.0.values_mut()
     }
 
@@ -322,11 +322,11 @@ impl TargetBookmarks {
         self.0.contains_key(url)
     }
 
-    pub fn iter(&self) -> Iter<Url, TargetBookmark> {
+    pub fn iter(&self) -> Iter<'_, Url, TargetBookmark> {
         self.0.iter()
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<Url, TargetBookmark> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, Url, TargetBookmark> {
         self.0.iter_mut()
     }
 

@@ -219,11 +219,11 @@ impl Settings {
         let url = Url::parse(url).context(format!("Invalid url {url}"))?;
         let normalized_url = url.to_string();
 
-        if self.ignored_urls.iter().any(|url| *url == normalized_url) {
+        if self.ignored_urls.contains(&normalized_url) {
             return Err(anyhow!("Duplicate url: {url}"));
         }
 
-        self.ignored_urls.push(url.to_string());
+        self.ignored_urls.push(normalized_url);
 
         Ok(())
     }
@@ -237,11 +237,7 @@ impl Settings {
             return Err(anyhow!("Underlying not supported for {url}"));
         }
 
-        if self
-            .underlying_urls
-            .iter()
-            .any(|url| *url == normalized_url)
-        {
+        if self.underlying_urls.contains(&normalized_url) {
             return Err(anyhow!("Duplicate url: {url}"));
         }
 

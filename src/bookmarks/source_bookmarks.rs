@@ -113,7 +113,7 @@ impl SourceBookmarks {
         self.0.get(url)
     }
 
-    pub fn keys(&self) -> Keys<String, SourceBookmark> {
+    pub fn keys(&self) -> Keys<'_, String, SourceBookmark> {
         self.0.keys()
     }
 
@@ -121,11 +121,11 @@ impl SourceBookmarks {
         self.0.contains_key(url)
     }
 
-    pub fn iter(&self) -> Iter<String, SourceBookmark> {
+    pub fn iter(&self) -> Iter<'_, String, SourceBookmark> {
         self.0.iter()
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<String, SourceBookmark> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, String, SourceBookmark> {
         self.0.iter_mut()
     }
 
